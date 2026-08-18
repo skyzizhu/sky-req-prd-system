@@ -17,6 +17,8 @@ TARGETS=(
   "$HOME/.codex/skills"       # Codex CLI
   "$HOME/.gemini/skills"      # Gemini CLI
   "$HOME/.openclaw/skills"    # OpenClaw
+  "$HOME/.cursor/skills"      # Cursor
+  "$HOME/.workbuddy/skills"   # WorkBuddy
 )
 for t in "${TARGETS[@]}"; do
   # agent 未安装则跳过

@@ -3,7 +3,7 @@
 > req / PRD in → **Product System** out
 > 把散落的需求，变成一个能看、能改、能追溯的产品系统。
 
-[![skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-blue)](https://agentskills.io) ![agents](https://img.shields.io/badge/%E5%85%BC%E5%AE%B9-ZCode%20%7C%20Claude%20Code%20%7C%20Codex%20%7C%20Gemini%20%7C%20OpenClaw-green)
+[![skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-blue)](https://agentskills.io) ![agents](https://img.shields.io/badge/%E5%85%BC%E5%AE%B9-7%20Agents%20%7C%20ZCode%20%7C%20Claude%20%7C%20Codex%20%7C%20Gemini%20%7C%20OpenClaw%20%7C%20Cursor%20%7C%20WorkBuddy-green)
 
 **一句话**：这是给产品经理的 AI 工作流 skill。你把 PRD 文档、半成品需求、甚至几句话的零散想法交给它，它还你一个**双击即开的「产品系统」网站**——需求文档、流程图、低保真原型、测试与上线目标，在一个站点里浏览、评审、持续演进。
 
@@ -16,7 +16,7 @@
 | AI 生成的内容不敢直接用——分不清哪些是真需求哪些是编的 | **全面溯源**：每个页面带徽标（PRD 原文 / AI 推断 × 已确认 / 待确认），“待确认清单”自动聚合，评审时逐条勾 |
 | 原型图和需求文档两张皮，交互说明堆成一团 | 低保真线框 + **连线式四色标注**（红=核心、黄=待确认、蓝=说明、绿=参考），序号徽章指哪说哪，连线永不交叉 |
 | 评审会上翻几十个文档找上下文 | 一个站点：左菜单右详情；投屏「待确认清单」页，从上往下过 |
-| 换个 AI 工具就得重来一套 | SKILL.md 遵循开放规范，一条命令装到 ZCode / Claude Code / Codex / Gemini / OpenClaw |
+| 换个 AI 工具就得重来一套 | SKILL.md 遵循开放规范，一条命令装到 ZCode / Claude Code / Codex / Gemini / OpenClaw / Cursor / WorkBuddy |
 
 ## 它能生成什么
 
@@ -90,6 +90,8 @@ bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh --copy   # 或复制
 | Codex CLI | `~/.codex/skills/` |
 | Gemini CLI | `~/.gemini/skills/` |
 | OpenClaw | `~/.openclaw/skills/`（工作区 `skills/` 优先级更高） |
+| Cursor | `~/.cursor/skills/`（项目级 `.cursor/skills/`） |
+| WorkBuddy | `~/.workbuddy/skills/`（放入后重启生效） |
 
 ## Skill 仓库结构
 

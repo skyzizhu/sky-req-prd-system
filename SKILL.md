@@ -1,0 +1,132 @@
+---
+name: sky-req-prd-system
+description: 将 PRD 文档或零散的产品需求整理为结构化「产品系统」Web 站点（左侧菜单 + 右侧详情）：产品概览、需求文档、流程/泳道/状态图、信息结构、低保真线框原型（连线式四色标注）、测试与上线目标。支持增量更新（只改受影响文件，不整站重生成）、溯源标注（PRD 原文 / AI 推断）、file:// 双击直开。用户要求建立或更新产品系统、整理 PRD/产品需求、生成需求文档站点、制作带标注的产品原型线框时使用。不用于普通 Web 应用开发、与产品需求无关的页面制作或博客/文档站搭建。
+---
+
+# 产品系统构建（sky-req-prd-system）
+
+把用户输入的 PRD 文档 / 半成品需求 / 零散产品需求，整理为一个可浏览、可增量维护的「产品系统」静态站点。产物不是一次性交付物，而是用户会反复修改的**活文档**。
+
+## 产物形态
+
+```
+product-system/                 # 默认目录（多产品时用 product-systems/<产品名>/）
+├── build.py                   # content/ → site/js/data.js 编译脚本（模板自带）
+├── content/                   # 内容层：唯一需要生成的部分
+│   ├── manifest.json          # 结构唯一事实源：模块、页面、溯源状态
+│   ├── overview/              # 产品概览（.md）
+│   ├── requirements/          # 需求文档（.md）+ 流程/泳道/状态图（.mmd）
+│   ├── info-structure/        # 信息结构图（HTML/CSS 卡片）
+│   ├── prototype/             # 低保真线框原型（每页一个 .html）
+│   │   └── assets/wireframe.css
+│   ├── testing/               # 验收标准、测试用例
+│   └── launch/                # 上线目标、checklist、数据埋点
+└── site/                      # 展示外壳：模板自带，初始化后基本不动
+    ├── index.html             # 唯一入口
+    ├── css/                   # base / layout / content 三层
+    └── js/                    # data(生成) + loader/router/menu/render/main
+```
+
+## 核心原则（违反任何一条都算失败）
+
+1. **内容与站点分离**：只生成/修改 `content/`；`site/` 外壳初始化时从 `template/` 复制，之后不重写。
+2. **manifest 是唯一事实源**：先改 manifest，再写内容文件。结构变更（增删页面/模块）必须在 manifest 中同步。
+3. **增量更新**：需求变更只重写受影响的页面文件。禁止「删掉整个 content/ 重新生成」。
+4. **人工修改保护**：覆盖已存在的内容文件前，先读当前内容与 manifest 记录对比；发现用户手改痕迹（内容与上次生成不一致）必须先确认再覆盖。
+5. **全面溯源**：每个页面在 manifest 中标记 `source`（origin=PRD 原文 / ai-inferred=AI 推断）与 `status`（confirmed / pending）。正文内 AI 补全的结论用引用块标注：`> 🤖 **AI 推断**：…`；待确认事项用 `> ⚠️ **待确认**：…`。
+6. **file:// 双击直开**：站点禁止 fetch 与 ES modules。文本内容经 `build.py` 编译进 `site/js/data.js`（全局变量 `window.__PS_DATA`）；JS 为按序加载的经典脚本。
+7. **模块化零内联**：HTML/CSS/JS 各自独立文件，任何产物文件中不得出现 `<style>`、`<script>` 内联块或 `style=` 属性（SVG 的 x/y/width 等几何属性除外）。
+8. **只写目标目录**：所有文件操作限制在产品系统目录内。
+
+## 流程：五阶段
+
+### 阶段 0：定位
+
+- 目标目录默认 `<工作区>/product-system/`；用户指定或多产品时用 `product-systems/<产品名>/`。
+- 目录已存在且有 manifest.json → **更新模式**（读 manifest 了解现状）。
+- 不存在 → **初始化模式**：复制 `template/build.py`、`template/site/`、`assets/wireframe.css`（到 `content/prototype/assets/`）、`assets/info.css`（到 `content/info-structure/`）。
+
+### 阶段 1：输入解析（产品形态必判）
+
+读取用户给的 PRD 文件 / 粘贴内容 / 零散需求，然后：
+
+1. **判断产品形态**，枚举：`web / desktop / mobile / h5 / miniapp / tv`。
+   - 依据输入关键词推断（如 "iOS/App/安卓" → mobile；"网站/后台" → web；"小程序" → miniapp；"TV/大屏" → tv；"macOS/Windows 客户端" → desktop）。
+   - **输入无法判断时必须用 AskUserQuestion 询问用户，禁止默认**。形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
+2. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
+3. 识别条件节点的触发信号（见 references/nodes.md）。
+
+### 阶段 2：归纳确认（两阶段的第一阶段）
+
+把零散输入整理成一份**归纳清单**给用户确认，包含：
+
+- 将生成的模块与页面（含固定节点 + 纳入的条件节点及判断依据）
+- 溯源分配：哪些内容来自原文（origin）、哪些需要 AI 补全（ai-inferred）
+- 发现的冲突与缺失项（列为待确认问题）
+
+首次生成或涉及删改页面时，**必须等用户确认后才进入阶段 3**；小的纯新增可以确认与执行合并为一步，但变更清单仍要展示。
+
+### 阶段 3：生成 / 更新
+
+- 首次：建 manifest → 按模块逐页生成内容文件。大产品（>20 页）分批：先出 manifest + 概览 + 功能清单，再按模块批量生成。
+- 更新：对照 manifest 列出将新建/修改/删除的文件清单 → 执行 → 更新 manifest 的 `updated` 字段与状态标记。
+- 各类内容的写法：
+  - 需求文档：FR 编号表格（编号/需求/优先级/状态）+ 规则说明 + 溯源引用块
+  - 流程图/泳道图/状态图：Mermaid 文本（`.mmd` 文件，页面 type=mermaid）
+  - 信息结构图：HTML/CSS 卡片树（type=html-embed，样式参考 `assets/info.css`）
+  - 原型：低保真线框（type=prototype）——**必须**先读 `references/prototype.md`，遵守连线式四色标注规范
+  - 功能清单：全量功能索引表（模块×功能×优先级×FR×状态）+ 统计行
+
+### 阶段 4：构建与验证
+
+每次内容变更后：
+
+```bash
+cd <产品系统目录> && python3 build.py
+```
+
+自检清单（全部通过才算完成）：
+
+- [ ] manifest.json 是合法 JSON，所有 `file` 引用的文件真实存在
+- [ ] `build.py` 成功执行，data.js 已更新
+- [ ] 产物无内联 style/script（grep 检查 `style=`、`<style>`、`<script>` 内联块）
+- [ ] Mermaid 语法正确（节点/箭头拼写）
+- [ ] 原型标注无交叉、四色语义正确
+- [ ] 若修改过 `site/` 外壳：index.html 中资源版本参数 `?v=N` 需 +1（HTTP 缓存用；file:// 不受影响）
+
+### 阶段 5：交付报告（固定格式，每次都要输出）
+
+```
+## ✅ 产品系统已更新
+
+**入口文件**：<产品系统目录的绝对路径>/site/index.html
+**打开方式**：双击 index.html（无需本地服务；如需 HTTP：cd <目录> && python3 -m http.server 4173）
+
+**本次变更**：
+- 新增：requirements/xxx.md（…）
+- 修改：prototype/xxx.html（…）
+
+**待确认清单**：当前 N 项待评审，打开站点左侧第一个菜单逐条确认
+**下次更新**：直接说要改什么（如"把回收站保留期改成 3 天"），会增量更新对应页面
+```
+
+## 页面类型（manifest.page.type）
+
+| type | 文件 | 站点行为 |
+|---|---|---|
+| markdown | .md | 渲染正文（支持表格/引用块/```mermaid 代码块） |
+| mermaid | .mmd | Mermaid 渲染，CDN 失败降级为源码 |
+| prototype | .html | iframe 嵌入 + 新窗口打开链接 |
+| html-embed | .html | 同 prototype（用于信息结构图） |
+
+## 参考文件（按需读取）
+
+- `references/nodes.md` —— 固定/条件节点清单、条件判定依据、菜单骨架
+- `references/prototype.md` —— 原型画布（按产品形态）、线框组件、连线式四色标注规范
+- `references/workflow.md` —— manifest schema、初始化/更新详细步骤、人工修改保护、验证清单、常见问题
+
+## 边界
+
+- 只处理**产品需求**，不处理用户原始诉求挖掘（那是上游工作；用户给了什么需求就整理什么）。
+- 不部署站点、不做后端；产物是纯本地静态站点。
+- 不主动 git 操作；建议用户把产品系统目录纳入版本管理（天然获得内容历史），仅在报告里提示。

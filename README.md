@@ -35,6 +35,8 @@ sky-req-prd-system/
 ├── template/
 │   ├── build.py        # content/ → site/js/data.js 编译脚本
 │   └── site/           # 站点外壳（index + css/ + js/，零内联）
+├── scripts/
+│   └── validate.py     # 一致性校验（manifest/引用/零内联/data.js 新鲜度）
 └── assets/
     ├── wireframe.css   # 低保真线框组件库
     └── info.css        # 信息结构图样式
@@ -55,6 +57,8 @@ sky-req-prd-system/
 1. 内容与站点分离：只生成 `content/`，外壳一次安装基本不动
 2. manifest 唯一事实源：结构变更先改 manifest
 3. 增量更新 + 人工修改保护：产物是活文档，不是一次性输出
+4. 多端支持：C 端 App + 管理后台等组合，原型按端分组
+5. 确定性验证：validate.py 一键校验，不带病交付
 4. 全面溯源：AI 补全永远可见、可评审
 5. 零依赖：纯静态 + Python 标准库构建脚本
 

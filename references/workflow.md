@@ -6,7 +6,8 @@
 {
   "product": {
     "name": "产品名",
-    "form": "desktop",          // web|desktop|mobile|h5|miniapp|tv，必填
+    "form": "desktop",          // 主形态：web|desktop|mobile|h5|miniapp|tv，必填
+    "ends": ["mobile", "web"],  // 可选：多端组合（如 C 端 App + web 管理后台）；单端省略
     "version": "0.1.0",
     "tagline": "一句话定位",
     "updated": "YYYY-MM-DD"
@@ -58,7 +59,7 @@
 
 ## 更新（增量，默认模式）
 
-1. 读现有 manifest，对照用户的新需求，产出**变更清单**：
+1. 读现有 manifest，对照用户的新需求，产出**变更清单**（涉及增删页面/模块时，先备份 `cp content/manifest.json content/manifest.backup.json`）：
    - 新增页（写明 source 判定）
    - 修改页（写明改什么）
    - 删除/下架页（需用户确认）
@@ -76,19 +77,18 @@
 | "快速粘贴这块确认了" | manifest 中相关页 status → confirmed → build（徽标与待确认清单更新） |
 | "再加一个页面：关于我们" | manifest 加页（判断归入哪个模块）→ 生成文件 → build |
 
-## 验证清单（每次 build 后）
+## 验证（每次 build 后）
 
 ```bash
-cd <系统目录>
-python3 build.py                                   # 必须成功
-python3 -c "import json; json.load(open('content/manifest.json'))"   # JSON 合法
-grep -rn "style=" content/prototype/*.html content/info-structure/*.html   # 应为空
-grep -rn "<style>\|<script" content/prototype/*.html                      # 应为空
+cd <系统目录> && python3 build.py                                # 必须成功
+python3 <skill 目录>/scripts/validate.py <系统目录>               # 退出码必须为 0
 ```
 
-再核对：manifest 每个 file 字段指向的文件存在；data.js 生成行数 > 0。
+validate.py 覆盖：manifest JSON 与枚举合法性、id 唯一性与 kebab-case、file 引用存在性、HTML 零内联（style=/`<style>`/`<script>`）、data.js 新鲜度（不早于任何 content 文件）。脚本报错必须修复重跑。
 
-有浏览器环境时可进一步：起 `python3 -m http.server`，截图检查菜单/徽标/原型标注（连线无交叉、四色正确）。
+脚本之外肉眼确认：Mermaid 语法、原型标注无交叉且四色语义正确。
+
+有浏览器环境时可进一步：起 `python3 -m http.server`，截图检查菜单/徽标/原型标注。
 
 ## 交付报告
 
@@ -102,4 +102,7 @@ grep -rn "<style>\|<script" content/prototype/*.html                      # 应�
 - **多产品**：`product-systems/<产品名>/`，每个产品独立一套完整结构。
 - **git**：建议用户纳管；skill 不主动执行 git 命令，仅在报告尾部提示一次（首次）。
 - **大产品防上下文溢出**：>20 页时分批生成（manifest + 概览 + 功能清单先行），每批 build 一次保持可用。
+- **多端产品**：`product.ends` 记录端组合（如 ["mobile","web"]）；原型图模块按端分组（id 如 `prototype-app` / `prototype-admin`，标题「原型图 · App」「原型图 · 管理后台」），每端有自己的页面总览与页面；功能清单加「端」列；各端画布按各自形态选择。
+- **版本演进**：仅当用户明确说「开始 X 版本 / 新版本规划」时 bump `product.version` 并在概览页版本记录表追加一行；普通需求修改不 bump。每次变更刷新 `product.updated`。
+- **回滚**：结构变更前已备份 manifest.backup.json；内容回滚建议走 git（无 git 时报告里提醒）。
 - **中断恢复**：若上次生成中断（manifest 引用的文件缺失），先报告缺失清单并补齐，再继续新需求。

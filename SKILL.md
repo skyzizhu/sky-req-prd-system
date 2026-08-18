@@ -52,9 +52,10 @@ product-system/                 # 默认目录（多产品时用 product-systems
 
 1. **判断产品形态**，枚举：`web / desktop / mobile / h5 / miniapp / tv`。
    - 依据输入关键词推断（如 "iOS/App/安卓" → mobile；"网站/后台" → web；"小程序" → miniapp；"TV/大屏" → tv；"macOS/Windows 客户端" → desktop）。
-   - **输入无法判断时必须用 AskUserQuestion 询问用户，禁止默认**。形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
-2. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
-3. 识别条件节点的触发信号（见 references/nodes.md）。
+   - **输入无法判断时必须用 AskUserQuestion 询问用户，禁止默认**。主形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
+2. **识别多端组合**：产品常是「C 端 + 管理后台」等组合（如 mobile App + web 管理后台）。识别到多端时记入 `manifest.product.ends` 数组；原型图模块**按端分组**（如「原型图 · App」「原型图 · 管理后台」），功能清单加「端」列。单端产品省略 ends。各端画布按各自形态选择。
+3. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
+4. 识别条件节点的触发信号（见 references/nodes.md）。
 
 ### 阶段 2：归纳确认（两阶段的第一阶段）
 
@@ -64,12 +65,24 @@ product-system/                 # 默认目录（多产品时用 product-systems
 - 溯源分配：哪些内容来自原文（origin）、哪些需要 AI 补全（ai-inferred）
 - 发现的冲突与缺失项（列为待确认问题）
 
+**冲突检测清单**（归纳时逐类排查，见 references/workflow.md 详述）：
+
+- 数字冲突：同一指标/时限在不同输入处数值不同
+- 功能重复或包含：两个需求描述同一能力
+- 优先级矛盾：同一功能既 P0 又被描述为可选
+- 与已确认内容冲突：新输入推翻 confirmed 页面 → 不得静默改，列入待确认
+- 形态冲突：描述与已定 form 矛盾（如 mobile 产品出现 hover 交互）
+- 端归属不明（多端产品）：功能没说清属于哪个端
+
 首次生成或涉及删改页面时，**必须等用户确认后才进入阶段 3**；小的纯新增可以确认与执行合并为一步，但变更清单仍要展示。
 
 ### 阶段 3：生成 / 更新
 
 - 首次：建 manifest → 按模块逐页生成内容文件。大产品（>20 页）分批：先出 manifest + 概览 + 功能清单，再按模块批量生成。
 - 更新：对照 manifest 列出将新建/修改/删除的文件清单 → 执行 → 更新 manifest 的 `updated` 字段与状态标记。
+- **批量变更前备份**：涉及结构变更（增删页面/模块）时，先 `cp content/manifest.json content/manifest.backup.json`，无 git 的场景也能回滚结构。
+- 功能需求每个模块页**必须包含「异常与边界」小节**（失败路径、权限/网络异常、极值场景）——只写 happy path 是不合格的需求文档。
+- 版本演进：仅当用户明确说「开始 X 版本规划 / 新版本」时才 bump `product.version`，并在概览页版本记录表自动追加一行；普通需求修改保持当前版本。
 - 各类内容的写法：
   - 需求文档：FR 编号表格（编号/需求/优先级/状态）+ 规则说明 + 溯源引用块
   - 流程图/泳道图/状态图：Mermaid 文本（`.mmd` 文件，页面 type=mermaid）
@@ -79,17 +92,17 @@ product-system/                 # 默认目录（多产品时用 product-systems
 
 ### 阶段 4：构建与验证
 
-每次内容变更后：
+每次内容变更后，构建 + 跑校验脚本：
 
 ```bash
 cd <产品系统目录> && python3 build.py
+python3 <skill 目录>/scripts/validate.py <产品系统目录>
 ```
 
-自检清单（全部通过才算完成）：
+`validate.py` 确定性检查：manifest 结构与枚举值、file 引用存在性、HTML 零内联、data.js 新鲜度。**脚本退出码非 0 必须修复后重跑，不许带病交付。**
 
-- [ ] manifest.json 是合法 JSON，所有 `file` 引用的文件真实存在
-- [ ] `build.py` 成功执行，data.js 已更新
-- [ ] 产物无内联 style/script（grep 检查 `style=`、`<style>`、`<script>` 内联块）
+脚本之外仍需肉眼确认（脚本查不了的）：
+
 - [ ] Mermaid 语法正确（节点/箭头拼写）
 - [ ] 原型标注无交叉、四色语义正确
 - [ ] 若修改过 `site/` 外壳：index.html 中资源版本参数 `?v=N` 需 +1（HTTP 缓存用；file:// 不受影响）

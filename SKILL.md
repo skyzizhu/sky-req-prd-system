@@ -52,7 +52,7 @@ product-system/                 # 默认目录（多产品时用 product-systems
 
 1. **判断产品形态**，枚举：`web / desktop / mobile / h5 / miniapp / tv`。
    - 依据输入关键词推断（如 "iOS/App/安卓" → mobile；"网站/后台" → web；"小程序" → miniapp；"TV/大屏" → tv；"macOS/Windows 客户端" → desktop）。
-   - **输入无法判断时必须用 AskUserQuestion 询问用户，禁止默认**。主形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
+   - **输入无法判断时必须向用户提问确认（用当前 agent 的交互提问工具，如 AskUserQuestion；没有该工具就直接文字提问），禁止默认**。主形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
 2. **识别多端组合**：产品常是「C 端 + 管理后台」等组合（如 mobile App + web 管理后台）。识别到多端时记入 `manifest.product.ends` 数组；原型图模块**按端分组**（如「原型图 · App」「原型图 · 管理后台」），功能清单加「端」列。单端产品省略 ends。各端画布按各自形态选择。
 3. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
 4. 识别条件节点的触发信号（见 references/nodes.md）。
@@ -62,7 +62,7 @@ product-system/                 # 默认目录（多产品时用 product-systems
 |---|---|
 | 充分（完整 PRD / 结构化文档） | 不追问，直接进归纳 |
 | 中等（半成品、缺关键骨架项） | 最多问 2 个 |
-| 贫瘠（一句话 / 零散几条） | 用 AskUserQuestion 一次性批量问 3~4 个（选项化，降低回答成本） |
+| 贫瘠（一句话 / 零散几条） | 用交互提问工具一次性批量问 3~4 个，选项式（无此工具则文字列出选项），降低回答成本 |
 
 **骨架级问题白名单**（只问"答案会改变系统结构"的问题，问完即止）：
 

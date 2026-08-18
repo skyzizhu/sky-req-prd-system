@@ -18,10 +18,27 @@
 
 ## 安装
 
+SKILL.md 格式遵循开放规范（[agentskills.io](https://agentskills.io)），各主流 agent 均可直接使用，差异仅在发现路径：
+
 ```bash
 git clone https://github.com/skyzizhu/sky-req-prd-system.git \
   ~/.agents/skills/sky-req-prd-system
 ```
+
+多 agent 共存时一键安装（symlink 到各家目录，未安装的自动跳过）：
+
+```bash
+bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh          # 链接（推荐）
+bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh --copy   # 或复制
+```
+
+| Agent | 用户级 skills 目录 |
+|---|---|
+| ZCode | `~/.agents/skills/` |
+| Claude Code | `~/.claude/skills/` |
+| Codex CLI | `~/.codex/skills/` |
+| Gemini CLI | `~/.gemini/skills/` |
+| OpenClaw | `~/.openclaw/skills/`（工作区 `skills/` 优先级更高） |
 
 ## 目录结构
 
@@ -36,7 +53,8 @@ sky-req-prd-system/
 │   ├── build.py        # content/ → site/js/data.js 编译脚本
 │   └── site/           # 站点外壳（index + css/ + js/，零内联）
 ├── scripts/
-│   └── validate.py     # 一致性校验（manifest/引用/零内联/data.js 新鲜度）
+│   ├── validate.py     # 一致性校验（manifest/引用/零内联/data.js 新鲜度）
+│   └── install.sh      # 多 agent 一键安装（symlink/复制）
 └── assets/
     ├── wireframe.css   # 低保真线框组件库
     └── info.css        # 信息结构图样式

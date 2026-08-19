@@ -27,6 +27,7 @@ PAGE_TYPES = {"markdown", "mermaid", "prototype", "html-embed"}
 SOURCES = {"origin", "ai-inferred"}
 STATUS = {"confirmed", "pending"}
 LAYOUTS = {"pages", "continuous"}
+AUDIENCES = {"c", "b", "g"}
 ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -64,6 +65,9 @@ def main():
             err(f"product.{field} 缺失")
     if product.get("form") and product["form"] not in FORMS:
         err(f"product.form 非法：{product['form']}（允许：{sorted(FORMS)}）")
+    audience = product.get("audience")
+    if audience is not None and audience not in AUDIENCES:
+        err(f"product.audience 非法：{audience}（允许：{sorted(AUDIENCES)}）")
     ends = product.get("ends")
     if ends is not None:
         if not isinstance(ends, list) or not ends:

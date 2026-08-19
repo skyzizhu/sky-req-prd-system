@@ -7,6 +7,7 @@
   "product": {
     "name": "产品名",
     "form": "desktop",          // 主形态：web|desktop|mobile|h5|miniapp|tv，必填
+    "audience": "c",            // 受众端型：c|b|g（消费者/企业/政务），建议必填
     "ends": ["mobile", "web"],  // 可选：多端组合（如 C 端 App + web 管理后台）；单端省略
     "version": "0.1.0",
     "tagline": "一句话定位",

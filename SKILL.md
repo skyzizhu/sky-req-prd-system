@@ -54,9 +54,10 @@ product-system/                 # 默认目录（多产品时用 product-systems
    - 依据输入关键词推断（如 "iOS/App/安卓" → mobile；"网站/后台" → web；"小程序" → miniapp；"TV/大屏" → tv；"macOS/Windows 客户端" → desktop）。
    - **输入无法判断时必须向用户提问确认（用当前 agent 的交互提问工具，如 AskUserQuestion；没有该工具就直接文字提问），禁止默认**。主形态写入 `manifest.product.form`，决定原型画布（见 references/prototype.md）。
 2. **识别多端组合**：产品常是「C 端 + 管理后台」等组合（如 mobile App + web 管理后台）。识别到多端时记入 `manifest.product.ends` 数组；原型图模块**按端分组**（如「原型图 · App」「原型图 · 管理后台」），功能清单加「端」列。单端产品省略 ends。各端画布按各自形态选择。
-3. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
-4. 识别条件节点的触发信号（见 references/nodes.md）。
-5. **分级追问**：先评估输入充分度，再决定问不问——
+3. **判定受众端型** `audience`：`c`（消费者）/ `b`（企业）/ `g`（政务）。依据输入推断（"企业内部/客户管理/ERP/工作台" → b；"政务/机关/单位/等保" → g；"大众用户/App 市场/社交" → c）；推断不出时与形态合并为一次提问。多端产品取主端，端间受众差异在功能清单与正文中说明。**audience 决定内容侧重**（目标写法、条件节点倾向、非功能侧重、原型取向），映射表见 references/nodes.md。
+4. 提取产品名、版本、一句话定位；缺失则合理推断并标记 ai-inferred/pending。
+5. 识别条件节点的触发信号（见 references/nodes.md），结合 audience 的节点倾向（B端→权限角色必查，G端→法务合规必查）。
+6. **分级追问**：先评估输入充分度，再决定问不问——
 
 | 输入状态 | 策略 |
 |---|---|

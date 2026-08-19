@@ -133,6 +133,7 @@ sky-req-prd-system/
 │   └── workflow.md     # manifest schema、增量更新、验证、FAQ
 ├── scripts/
 │   ├── validate.py     # 一致性校验（manifest/引用/零内联/data.js 新鲜度）
+│   ├── serve.py        # 局域网共享服务（自动取本机 IP，打印访问地址）
 │   └── install.sh      # 多 agent 一键安装（symlink/复制）
 ├── template/
 │   ├── build.py        # content/ → site/js/data.js 编译脚本
@@ -195,7 +196,8 @@ sky-req-prd-system/
 - SKILL.md 工具名解耦（不绑定特定 agent 的交互工具）
 
 ### 协作
-- 分享指引：压缩整个方案目录发同事，解压双击即看；长期协作建议 git
+- 交付报告含双地址：本地入口路径 + 局域网共享地址（serve.py 自动探测本机 IP）
+- 分享三方式：局域网即时评审（serve.py）/ 压缩目录离线发送 / git 长期协作
 
 ## License
 

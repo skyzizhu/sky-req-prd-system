@@ -131,8 +131,9 @@ python3 <skill 目录>/scripts/validate.py <方案目录>
 ```
 ## ✅ 产品方案已更新
 
-**入口文件**：<方案目录的绝对路径>/site/index.html
-**打开方式**：双击 index.html（无需本地服务；如需 HTTP：cd <目录> && python3 -m http.server 4173）
+**入口文件（本地）**：<方案目录的绝对路径>/site/index.html（双击直开，无需服务）
+**局域网共享**：http://<本机局域网IP>:<端口>/site/index.html（同一路由器下的同事可直接访问）
+**重启共享**：python3 <skill 目录>/scripts/serve.py 8000 <方案目录>
 
 **本次变更**：
 - 新增：requirements/xxx.md（…）
@@ -142,7 +143,9 @@ python3 <skill 目录>/scripts/validate.py <方案目录>
 **下次更新**：直接说要改什么（如"把回收站保留期改成 3 天"），会增量更新对应页面
 ```
 
-macOS 环境下交付时执行 `open <入口文件绝对路径>` 让用户立即看到页面；其他平台给出路径即可。
+交付时建议（可按用户偏好省略）：
+- macOS 执行 `open <入口文件绝对路径>` 让用户立即看到页面；其他平台给出路径即可。
+- 后台运行 `python3 <skill 目录>/scripts/serve.py 8000 <方案目录>`：自动探测局域网 IP、端口占用自动后移，把打印出的「本机访问 + 局域网共享」两个地址写进报告。服务随本次会话存活；长期共享建议 git 或压缩目录。
 
 ## 模块布局（manifest.module.layout）
 

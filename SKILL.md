@@ -143,6 +143,13 @@ python3 <skill 目录>/scripts/validate.py <产品系统目录>
 
 macOS 环境下交付时执行 `open <入口文件绝对路径>` 让用户立即看到页面；其他平台给出路径即可。
 
+## 模块布局（manifest.module.layout）
+
+| layout | 行为 | 适用 |
+|---|---|---|
+| pages（默认） | 二级页独立切换 | 概览 / 原型 / 测试 / 上线 |
+| continuous | 全部二级页拼为长页；菜单=锚点平滑滚动，滚动高亮反向联动 | **需求文档**（阅读连续性好，评审可顺读） |
+
 ## 页面类型（manifest.page.type）
 
 | type | 文件 | 站点行为 |

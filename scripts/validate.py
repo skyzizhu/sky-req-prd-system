@@ -26,6 +26,7 @@ FORMS = {"web", "desktop", "mobile", "h5", "miniapp", "tv"}
 PAGE_TYPES = {"markdown", "mermaid", "prototype", "html-embed"}
 SOURCES = {"origin", "ai-inferred"}
 STATUS = {"confirmed", "pending"}
+LAYOUTS = {"pages", "continuous"}
 ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -88,6 +89,10 @@ def main():
         if mod.get("id") in module_ids:
             err(f"模块 id 重复：{mid}")
         module_ids.add(mod.get("id"))
+
+        layout = mod.get("layout")
+        if layout is not None and layout not in LAYOUTS:
+            err(f"模块 {mid}: layout 非法：{layout}（允许：{sorted(LAYOUTS)}）")
 
         if mod.get("special") == "pending-report":
             if mi != 0:

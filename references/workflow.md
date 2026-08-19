@@ -22,6 +22,7 @@
     {
       "id": "requirements",      // kebab-case，路由用
       "title": "需求文档",
+      "layout": "continuous",    // 可选：pages（默认，分页）| continuous（连续长页+锚点菜单）
       "pages": [
         {
           "id": "capture",                  // kebab-case

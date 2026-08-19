@@ -216,6 +216,8 @@ bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh --copy   # 或复制
 ```
 sky-req-prd-system/
 ├── SKILL.md            # 五阶段流程 + 核心规则（agent 读取的主文件）
+├── config.md           # ⭐ 用户配置（产品理念/设计理念/输出风格/硬约束/溯源政策/默认偏好，
+│                       #    默认全注释不生效，取消注释即生效；见「个性化配置」节）
 ├── references/
 │   ├── nodes.md        # 固定/条件节点清单与判定依据
 │   ├── prototype.md    # 画布/线框组件/序号徽章四色标注规范

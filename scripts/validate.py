@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""validate.py —— 产品系统一致性校验
+"""validate.py —— 产品方案站点一致性校验
 
 用法：
-    python3 <skill>/scripts/validate.py [产品系统目录]    # 缺省为当前目录
+    python3 <skill>/scripts/validate.py [方案目录]    # 缺省为当前目录
 
 检查项：
     1. manifest.json 结构与字段合法性（枚举值、id 规范、唯一性）

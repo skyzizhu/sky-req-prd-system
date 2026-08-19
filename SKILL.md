@@ -33,7 +33,7 @@ description: 将 PRD 文档或零散的产品需求，生成一套结构化的�
 | 全局 | `<skill 目录>/config.md` | 该 PM 的所有产品方案 |
 | 产品级 | `<方案目录>/config.md` | 仅该产品，**优先于全局** |
 
-从 `config.example.md` 复制修改；没有 config.md 时完全按默认流程执行。
+全局 `config.md` 随 skill 自带（内容默认全为注释 = 不生效）；直接编辑、取消注释或新增条目即生效。仅注释/空文件/不存在 = 完全按默认流程执行。
 
 **可配置项**：产品理念 / 设计理念 / 输出风格（详略、文风、术语习惯）/ 输出物硬约束（必含章节、禁用词、编号规范）/ 溯源政策（保守 / 激进）/ 默认偏好（形态、受众，减少追问）。
 
@@ -91,7 +91,7 @@ product-system/                 # 默认目录（多产品时用 product-systems
 - 目标目录默认 `<工作区>/product-system/`；用户指定或多产品时用 `product-systems/<产品名>/`。
 - 目录已存在且有 manifest.json → **更新模式**（读 manifest 了解现状）。
 - 不存在 → **初始化模式**：复制 `template/build.py`、`template/site/`、`assets/wireframe.css`（到 `content/prototype/assets/`）、`assets/info.css`（到 `content/info-structure/`）。
-- **读取用户配置（可选但必须检查）**：全局 `<skill 目录>/config.md` 与产品级 `<方案目录>/config.md`。任一存在 → 全程遵守（见「用户配置」节）；都不存在 → 按默认流程，不提及配置。
+- **读取用户配置（可选但必须检查）**：全局 `<skill 目录>/config.md` 与产品级 `<方案目录>/config.md`。读取后提取**实际填写**的条目（纯注释/空节不算）；有实际条目 → 全程遵守（见「用户配置」节）；无 → 按默认流程，不提及配置。
 
 ### 阶段 1：输入解析（形态必判 + 分级追问）
 

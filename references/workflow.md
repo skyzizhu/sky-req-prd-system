@@ -117,4 +117,6 @@ validate.py 覆盖：manifest JSON 与枚举合法性、id 唯一性与 kebab-ca
 - **多端产品**：`product.ends` 记录端组合（如 ["mobile","web"]）；原型图模块按端分组（id 如 `prototype-app` / `prototype-admin`，标题「原型图 · App」「原型图 · 管理后台」），每端有自己的页面总览与页面；功能清单加「端」列；各端画布按各自形态选择。
 - **版本演进**：仅当用户明确说「开始 X 版本 / 新版本规划」时 bump `product.version` 并在概览页版本记录表追加一行；普通需求修改不 bump。每次变更刷新 `product.updated`。
 - **回滚**：结构变更前已备份 manifest.backup.json；内容回滚建议走 git（无 git 时报告里提醒）。
+- **图片素材**：PRD 中的截图/手绘等图片统一放 `content/assets/`，markdown 中用 content 相对路径引用（`![说明](assets/xxx.png)`），渲染器自动补 `../content/` 前缀；http(s) 外链原样。
+- **分享给团队**：压缩整个产品系统目录（含 site/ 与 content/）发给对方，解压后双击 `site/index.html` 即可；长期协作建议放 git 仓库。
 - **中断恢复**：若上次生成中断（manifest 引用的文件缺失），先报告缺失清单并补齐，再继续新需求。

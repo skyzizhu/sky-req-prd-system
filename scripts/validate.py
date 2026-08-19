@@ -138,6 +138,29 @@ def main():
                 if not target.exists():
                     err(f"{mid}/{pid}: 文件不存在：content/{f}")
 
+    # ---- 孤儿文件：content 下存在但未被 manifest 引用的文本文件 ----
+    referenced = set()
+    for mod in modules:
+        for page in mod.get("pages", []):
+            if page.get("file"):
+                referenced.add(str(page["file"]))
+    for f in (root / "content").rglob("*"):
+        if f.is_file() and f.suffix in (".md", ".mmd"):
+            rel = str(f.relative_to(root / "content"))
+            if rel not in referenced:
+                warn(f"孤儿文件（未被 manifest 引用）：content/{rel}")
+
+    # ---- 确认状态一致性：confirmed 页正文不应残留待确认引用块 ----
+    for mod in modules:
+        for page in mod.get("pages", []):
+            if page.get("status") != "confirmed" or page.get("type") != "markdown":
+                continue
+            f = root / "content" / str(page.get("file", ""))
+            if not f.exists():
+                continue
+            if "**待确认**" in f.read_text(encoding="utf-8", errors="replace"):
+                warn(f"{mod.get('id')}/{page.get('id')}: 已确认页面正文残留「⚠️ 待确认」引用块，请复核")
+
     # ---- HTML 零内联 ----
     for html_file in sorted((root / "content").rglob("*.html")):
         text = html_file.read_text(encoding="utf-8", errors="replace")

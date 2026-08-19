@@ -118,5 +118,6 @@ validate.py 覆盖：manifest JSON 与枚举合法性、id 唯一性与 kebab-ca
 - **版本演进**：仅当用户明确说「开始 X 版本 / 新版本规划」时 bump `product.version` 并在概览页版本记录表追加一行；普通需求修改不 bump。每次变更刷新 `product.updated`。
 - **回滚**：结构变更前已备份 manifest.backup.json；内容回滚建议走 git（无 git 时报告里提醒）。
 - **图片素材**：PRD 中的截图/手绘等图片统一放 `content/assets/`，markdown 中用 content 相对路径引用（`![说明](assets/xxx.png)`），渲染器自动补 `../content/` 前缀；http(s) 外链原样。
+- **侧栏推广位**：外壳底部内置作者推广链接（你的工具：官网 / App Store），随模板自带，生成与更新时保留。
 - **分享给团队**：压缩整个方案目录（含 site/ 与 content/）发给对方，解压后双击 `site/index.html` 即可；长期协作建议放 git 仓库。
 - **中断恢复**：若上次生成中断（manifest 引用的文件缺失），先报告缺失清单并补齐，再继续新需求。

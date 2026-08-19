@@ -10,13 +10,23 @@
   <script defer src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 </head>
 <body>
+  <button class="sidebar-expand" id="sidebar-expand" title="展开菜单">☰</button>
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-name" id="brand-name">加载中…</div>
+      <div class="brand-row">
+        <div class="brand-name" id="brand-name">加载中…</div>
+        <button class="sidebar-toggle" id="sidebar-toggle" title="收起菜单">⟨</button>
+      </div>
       <div class="brand-meta" id="brand-meta"></div>
     </div>
     <nav class="menu" id="menu" aria-label="产品方案导航"></nav>
-    <div class="sidebar-foot">产品方案站点 · 内容驱动 · 增量更新</div>
+    <div class="sidebar-foot">
+      <div>产品方案 · 内容驱动 · 增量更新</div>
+      <div class="sidebar-promo">
+        <div>你的工具：<a href="https://www.yourtools.xyz" target="_blank" rel="noopener">yourtools.xyz</a></div>
+        <div>你的工具：<a href="https://apps.apple.com/cn/app/skypaste-%E5%89%AA%E8%B4%B4%E6%9D%BF%E7%AE%A1%E7%90%86%E5%99%A8/id6760884520?mt=12" target="_blank" rel="noopener">App Store 下载</a></div>
+      </div>
+    </div>
   </aside>
 
   <main class="main">

@@ -3,7 +3,7 @@
 > req / PRD in → **Product System** out
 > 把散落的需求，变成一份能看、能改、能追溯的产品方案。
 
-[![skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-blue)](https://agentskills.io) ![agents](https://img.shields.io/badge/%E5%85%BC%E5%AE%B9-7%20Agents%20%7C%20ZCode%20%7C%20Claude%20%7C%20Codex%20%7C%20Gemini%20%7C%20OpenClaw%20%7C%20Cursor%20%7C%20WorkBuddy-green)
+[![skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-blue)](https://agentskills.io) [![license](https://img.shields.io/badge/License-MIT-green)](./LICENSE) ![agents](https://img.shields.io/badge/%E5%85%BC%E5%AE%B9-7%20Agents%20%7C%20ZCode%20%7C%20Claude%20%7C%20Codex%20%7C%20Gemini%20%7C%20OpenClaw%20%7C%20Cursor%20%7C%20WorkBuddy-green)
 
 **一句话**：这是给产品经理的 AI 工作流 skill。对它说「**帮我出具详细的产品需求方案：xxx**」或「**帮我出具详细的产品设计方案：xxx**」（xxx 为你的产品描述），把 PRD 文档、半成品需求甚至几句零散描述交给它，它生成一个完整的**产品方案 HTML 站点**，包含：产品需求文档、整体流程图 / 泳道图 / 状态图、信息架构、低保真原型、测试与上线目标——纯本地生成、双击即开、可持续迭代修订。
 

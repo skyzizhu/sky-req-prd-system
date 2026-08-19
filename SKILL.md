@@ -106,7 +106,7 @@ product-system/                 # 默认目录（多产品时用 product-systems
   - 需求文档：FR 编号表格（编号/需求/优先级/状态）+ 规则说明 + 溯源引用块
   - 流程图/泳道图/状态图：Mermaid 文本（`.mmd` 文件，页面 type=mermaid）；**按 nodes.md 图表智能判定**——小颗粒度专题无跨节点流程/状态变化时省略并在归纳清单说明，禁止硬造图
   - 信息结构图：HTML/CSS 卡片树（type=html-embed，样式参考 `assets/info.css`）
-  - 原型：低保真线框（type=prototype）——**必须**先读 `references/prototype.md`，遵守连线式四色标注规范
+  - 原型：低保真线框（type=prototype）——**必须**先读 `references/prototype.md`，遵守连线式四色标注规范；**含状态与边界页**（弹框遮罩/空态/加载/错误/权限，按判定表智能分析生成并附设计说明）
   - 功能清单：全量功能索引表（模块×功能×优先级×FR×状态）+ 统计行
 
 ### 阶段 4：构建与验证

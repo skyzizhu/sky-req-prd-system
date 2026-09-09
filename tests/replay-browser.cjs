@@ -1,0 +1,64 @@
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const {pathToFileURL} = require('node:url');
+(async () => {
+  const browser = await chromium.launch({headless: true});
+  const page = await browser.newPage({viewport: {width: 1440, height: 900}});
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.route('https://**/*', r => r.abort());
+  const direct = pathToFileURL(path.join(process.argv[2], 'versions/v1.1/content/prototype/list.html')).href;
+  try {
+    await page.goto(direct);
+    await page.evaluate(() => { const s = PSPrototype.readState(); s.orders = [{name:'本机私有演示',status:'待处理'}]; PSPrototype.writeState(s); });
+    await page.locator('#ps-replay-case').selectOption('viewer-ready');
+    await page.waitForFunction(() => window.PSPrototype?.readState().role === 'viewer');
+    assert.equal(await page.locator('#create').isDisabled(), true);
+    assert.match(await page.locator('#rows').innerText(), /合成订单 A/);
+    await page.locator('#ps-replay-share').click();
+    assert.equal(await page.locator('#ps-replay-dialog .ps-dialog-review').count(), 0);
+    const fixed = await page.locator('#ps-replay-project-link').inputValue();
+    const shared = await page.locator('#ps-replay-direct-link').inputValue();
+    assert.ok(!shared.includes('ps-run') && !shared.includes('本机私有'));
+    await page.screenshot({path: process.argv[3]});
+    await page.goto(fixed);
+    const frame = page.frameLocator('iframe');
+    await frame.locator('#ps-replay-status').waitFor();
+    assert.equal(await frame.locator('#create').isDisabled(), true);
+    assert.ok((await page.locator('#project-open').getAttribute('href')).includes('ps-case'));
+    await page.goto(direct);
+    await page.locator('#ps-replay-case').selectOption('operator-ready');
+    await page.waitForFunction(() => window.PSPrototype?.readState().role === 'operator');
+    await page.locator('#batch').click();
+    await page.locator('#detail').click();
+    await page.locator('#detail-content').waitFor();
+    assert.match(await page.locator('#detail-content').innerText(), /已完成/);
+    await page.locator('#back').click();
+    assert.match(await page.locator('#rows').innerText(), /已完成/);
+    await page.locator('#ps-reset').click();
+    await page.waitForFunction(() => window.PSPrototype?.readState().orders?.[0]?.status === '待处理');
+    await page.locator('#ps-replay-case').selectOption('');
+    await page.waitForFunction(() => window.PSPrototype?.readState().orders?.[0]?.name === '本机私有演示');
+    for (const [cid, text, scenario] of [['operator-empty','暂无订单','empty'],['operator-error','加载失败','error'],['guest-denied','无权','forbidden']]) {
+      await page.goto(shared.replace('viewer-ready', cid));
+      await page.waitForFunction(s => window.PSPrototype?.readState().scenario === s, scenario);
+      assert.match(await page.locator('#feedback').innerText(), new RegExp(text));
+    }
+    await page.goto(shared.replace('viewer-ready', 'missing'));
+    await page.waitForFunction(() => document.querySelector('#ps-replay-status')?.textContent.includes('复现失败'));
+    assert.match(await page.locator('#ps-replay-status').innerText(), /复现失败/);
+    assert.equal(await page.locator('main').evaluate(e => e.inert), true);
+    await page.goto(shared.replace('ps-version=v1.1', 'ps-version=v1.0'));
+    assert.match(await page.locator('#ps-replay-status').innerText(), /复现失败/);
+    await page.goto(direct.replace('/v1.1/', '/v1.0/'));
+    assert.doesNotMatch(await page.locator('#rows').innerText(), /本机私有演示/);
+    const isolated = await browser.newPage();
+    await isolated.addInitScript(() => { Object.defineProperty(window, 'sessionStorage', {get() { throw new Error('blocked'); }}); });
+    await isolated.goto(shared);
+    assert.match(await isolated.locator('#ps-replay-status').innerText(), /存储不可用/);
+    assert.equal(await isolated.locator('#create').isDisabled(), true);
+    await isolated.close();
+    assert.deepEqual(errors, []);
+    console.log('PASS replay: roles, fixtures, standalone/iframe links, navigation, reset, isolation, invalid context');
+  } finally { await browser.close(); }
+})();

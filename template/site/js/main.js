@@ -30,6 +30,7 @@ var FORM_LABELS = {
 })();
 
 PS.boot = async function () {
+  if (window.__PS_PROJECT) return PS.bootProject();
   var manifest;
   try {
     manifest = PS.getManifest();

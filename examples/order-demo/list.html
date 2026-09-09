@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>订单列表</title><link rel="stylesheet" href="assets/demo.css"><link rel="stylesheet" href="assets/prototype-runtime.css"></head>
+<body data-page-id="order-list"><main class="demo-window"><header><p>订单工作台 / 列表</p><h1>订单管理</h1><p>创建并查阅订单，查看订单状态。演示数据仅保存在当前浏览器。</p></header>
+<div class="toolbar"><label>查找订单 <input id="search" type="search" placeholder="输入订单名称"></label><button id="create" type="button">新建订单</button></div>
+<div id="feedback" role="status"></div><div id="rows"></div>
+<button id="detail" type="button">查看第一笔订单</button><button id="batch" type="button" hidden>批量完成</button>
+<dialog id="create-dialog"><form id="order-form"><h2>新建订单</h2><label>订单名称 <input id="order-name" required maxlength="40" autocomplete="off"></label><p>必填，1～40 字；提交失败时保留输入。</p><p id="form-error" role="alert"></p><div class="toolbar"><button id="cancel" type="button">取消</button><button id="submit" type="submit">提交订单</button></div></form></dialog>
+</main><script src="assets/spec-data.js"></script><script src="assets/annotation-store.js"></script><script src="assets/prototype-runtime.js"></script><script src="assets/demo.js"></script></body></html>

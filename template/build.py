@@ -8,8 +8,19 @@
 
 import json
 import pathlib
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
+if (ROOT / 'project.json').exists():
+    from projectlib import compile_project
+    try:
+        for warning in compile_project(ROOT):
+            print('警告：', warning)
+        print('已构建项目固定入口 site/index.html')
+    except (ValueError, OSError, KeyError, TypeError) as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
 CONTENT = ROOT / "content"
 OUT = ROOT / "site" / "js" / "data.js"
 

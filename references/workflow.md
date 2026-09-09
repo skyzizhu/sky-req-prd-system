@@ -1,136 +1,141 @@
-# 工作流细则：manifest schema、初始化、更新、验证、FAQ
+# 项目与版本工作流
 
-## 用户配置文件（config.md，可选）
+## 目录
 
-- 全局 `<skill 目录>/config.md`（随 skill 自带，默认全注释）、产品级 `<方案目录>/config.md`（新建即可）
-- 纯 Markdown 自由格式，按小节识别：产品理念 / 设计理念 / 输出风格 / 输出物约束（硬）/ 溯源政策 / 默认偏好
-- 合并顺序：当场指令 > 产品级 > 全局 > skill 默认；「输出物约束」小节内容逐条作为硬约束执行
-- 生效判定：只认实际填写的条目，HTML 注释与空小节不算——默认自带文件不改变任何默认行为
-- 应用位置：归纳清单需声明已应用的约束数量；生成内容与原型全程遵循；默认偏好直接作为阶段 1 的预填答案（用户当场说了以当场为准）
-- 禁止配置覆盖：八条核心原则、稳定性原则（工程底线）
-- 更新模式下每次进入也要重读配置（用户可能改过）
+```text
+project/
+├── project.json
+├── config.md                         # 可选的项目偏好
+├── build.py
+├── projectlib.py
+├── versions/
+│   ├── v1.0/
+│   │   ├── .snapshot.json           # 冻结时所有版本文件的 SHA-256
+│   │   ├── .baseline.json           # 上次确认维护完成的源文件哈希
+│   │   └── content/
+│   │       ├── manifest.json
+│   │       ├── spec.json
+│   │       ├── overview/
+│   │       ├── requirements/
+│   │       ├── prototype/
+│   │       │   ├── list.html
+│   │       │   └── assets/          # 本版独立的 CSS/JS/spec-data.js
+│   │       ├── testing/
+│   │       └── launch/
+│   └── v1.1/...
+└── site/
+    ├── index.html                    # 永久项目入口
+    └── js/data.js                    # 全版本编译数据
+```
 
-## manifest.json schema
+版本采用完整物料副本，让历史原型自包含。新版本只重写变化文件。避免无版本约束的远程原型素材；需保存历史外观的资源应复制到版本内。外壳不属于历史内容快照，升级外壳前做兼容验证。
 
-```jsonc
+## 项目 schema
+
+```json
 {
-  "product": {
-    "name": "产品名",
-    "form": "desktop",          // 主形态：web|desktop|mobile|h5|miniapp|tv，必填
-    "audience": "c",            // 受众端型：c|b|g（消费者/企业/政务），建议必填
-    "ends": ["mobile", "web"],  // 可选：多端组合（如 C 端 App + web 管理后台）；单端省略
-    "version": "0.1.0",
-    "tagline": "一句话定位",
-    "updated": "YYYY-MM-DD"
-  },
-  "modules": [
-    {
-      "id": "pending",           // 固定第一个：待确认清单聚合页
-      "title": "待确认清单",
-      "special": "pending-report",
-      "pages": []
-    },
-    {
-      "id": "requirements",      // kebab-case，路由用
-      "title": "需求文档",
-      "layout": "continuous",    // 可选：pages（默认，分页）| continuous（连续长页+锚点菜单）
-      "pages": [
-        {
-          "id": "capture",                  // kebab-case
-          "title": "剪贴板捕获",
-          "type": "markdown",              // markdown|mermaid|prototype|html-embed
-          "file": "requirements/capture.md",  // 相对 content/，不含 content/ 前缀
-          "source": "origin",              // origin|ai-inferred
-          "status": "confirmed",           // confirmed|pending
-          "summary": "侧栏/页头一句话摘要"
-        }
-      ]
-    }
+  "schema_version": 2,
+  "id": "稳定项目标识",
+  "name": "订单管理",
+  "summary": "项目定位与长期范围",
+  "current_version": "v1.1",
+  "versions": [
+    {"id":"v1.1","title":"批量完成","status":"planning","base":"v1.0","goal":"减少重复处理"},
+    {"id":"v1.0","title":"基础订单","status":"released","base":null}
   ]
 }
 ```
 
-规则：
+版本顺序即导航顺序，通常最新在前。版本 ID 只允许小写字母、数字、连字符与点。状态与需求 confirmed/pending 不共用字段。
 
-- 模块顺序即菜单顺序：pending → 产品概览 → 需求文档 → 原型图 → 测试 → 上线目标
-- `special: "pending-report"` 模块无 pages，站点自动聚合所有 pending 页面
-- file 路径与目录一致：requirements/、prototype/、info-structure/、testing/、launch/
-- 用户评审通过某页后：把 status 改为 confirmed → 重跑 build.py
+各版 manifest 保留 1.0 的 product/modules/pages 结构。页面 ID 在**同一版本全局唯一**，跨版本保持相同 ID 便于比较；模块 id 不随标题改动。页面 type 增加 `spec`，无需 file，由 spec.json 自动生成正文。
 
-## 初始化（首次生成）
-
-1. 建目录结构，复制模板：
-   - `<skill>/template/build.py` → `<系统>/build.py`
-   - `<skill>/template/site/` → `<系统>/site/`（整个目录）
-   - `<skill>/assets/wireframe.css` → `<系统>/content/prototype/assets/wireframe.css`
-   - `<skill>/assets/info.css` → `<系统>/content/info-structure/info.css`
-2. 判定产品形态（缺失必问，见 SKILL.md 阶段 1）
-3. 归纳清单 → 用户确认
-4. 写 manifest → 按固定节点 + 纳入的条件节点生成内容文件
-5. `python3 build.py` → 自检 → 交付报告
-
-## 更新（增量，默认模式）
-
-1. 读现有 manifest，对照用户的新需求，产出**变更清单**（涉及增删页面/模块时，先备份 `cp content/manifest.json content/manifest.backup.json`）：
-   - 新增页（写明 source 判定）
-   - 修改页（写明改什么）
-   - 删除/下架页（需用户确认）
-   - 状态翻转页（pending → confirmed 等）
-2. **人工修改保护**：对要覆盖的每个已存在文件，先读当前内容；若当前内容包含上次生成时没有的段落/修改（与 manifest 的 summary 及本次要写的内容对不上），暂停并向用户展示差异确认，而不是直接覆盖。用户手改是常态，产物是活文档。
-3. 执行变更：只写受影响文件；同步 manifest（页面、updated、状态）。
-4. `python3 build.py` → 自检 → 交付报告（含变更清单）。
-
-典型更新指令与动作：
-
-| 用户说 | 动作 |
-|---|---|
-| "把回收站保留期从 7 天改成 3 天" | 改对应需求 md + 相关标注/用例中的数字 → build |
-| "新增一个深色模式设置项" | FR 表加行 → 功能清单同步 → settings.html 线框加开关 → build |
-| "快速粘贴这块确认了" | manifest 中相关页 status → confirmed → build（徽标与待确认清单更新） |
-| "把风险与依赖、名词解释也都确认了" | 批量 status 翻转 → build → 报告剩余待确认数 |
-| "再加一个页面：关于我们" | manifest 加页（判断归入哪个模块）→ 生成文件 → build |
-
-## 验证（每次 build 后）
-
-```bash
-cd <系统目录> && python3 build.py                                # 必须成功
-python3 <skill 目录>/scripts/validate.py <系统目录>               # 退出码必须为 0
+```json
+{
+  "product":{"name":"订单管理","form":"web","audience":"b","version":"v1.1","tagline":"管理订单","updated":"2026-09-08"},
+  "modules":[
+    {"id":"requirements","title":"需求文档","layout":"continuous","pages":[
+      {"id":"spec","title":"页面需求与验收","type":"spec","source":"ai-inferred","status":"pending"}
+    ]},
+    {"id":"prototype","title":"交互原型","pages":[
+      {"id":"order-list","title":"订单列表","type":"prototype","file":"prototype/list.html","source":"ai-inferred","status":"pending"}
+    ]}
+  ]
+}
 ```
 
-validate.py 覆盖：manifest JSON 与枚举合法性、id 唯一性与 kebab-case、file 引用存在性、HTML 零内联（style=/`<style>`/`<script>`）、data.js 新鲜度（不早于任何 content 文件）。脚本报错必须修复重跑。
+其他 type：markdown、mermaid、prototype、html-embed。file 相对本版 content，禁止越界。多端沿用 product.ends，各端原型按模块分组，ID 带端前缀避免碰撞。
 
-脚本之外肉眼确认：Mermaid 语法、原型标注无交叉且四色语义正确。
+## 命令
 
-有浏览器环境时可进一步：起 `python3 -m http.server`，截图检查菜单/徽标/原型标注。
+以下 `project.py` 位于 Skill 的 scripts/。不会操作 Git 或调用网络。
 
-## 交付报告
+```bash
+python3 <skill>/scripts/project.py discover <工作区>
+python3 <skill>/scripts/project.py init <空项目目录> --name "订单管理" --form web --version v1.0
+python3 <skill>/scripts/project.py new-version <项目目录> --version v1.1 --name "批量完成"
+python3 <项目目录>/build.py
+python3 <skill>/scripts/validate.py <项目目录>
+python3 <skill>/scripts/project.py impact <项目目录> --version v1.1
+python3 <skill>/scripts/project.py checkpoint <项目目录> --version v1.1
+python3 <skill>/scripts/project.py freeze <项目目录> --version v1.1
+python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state developing
+python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state released
+```
 
-固定格式见 SKILL.md 阶段 5。要点：入口文件**绝对路径** + 双击打开说明 + 变更清单 + 待确认统计。这是用户找产物的唯一线索，不能省略。
+new-version 可加 `--from-version v1.0`，默认继承 current_version。同版本修订直接编辑，不调用 new-version。首次 init 只建最小概览；接下来按用户范围补充物料。
 
-## 内容深度基准（防止过深或过浅）
+freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。
 
-- FR 表：每模块 5~15 行，超过时考虑拆模块
-- 用户故事：3~6 个；关键场景：2~4 个
-- 原型页：每页标注 3~5 条；线框组件够用即可，不做视觉细节
-- Mermaid 图：单图节点 ≤ 15，超过用 subgraph 拆分或拆多张图
-- 验收标准：8~12 条；测试用例按模块 3~5 条
-- 所有「AI 补全的深度」以够评审用为准，宁可待确认也不要编造细节
+## 修改保护与影响检查
 
-## FAQ / 边界情况
+### 同版本交接修订
 
-- **用户想改 site/ 外壳样式**：可以改，但改完把 index.html 中资源 `?v=N` +1，并提醒此后 skill 不再维护外壳的一致性。
-- **模板升级**：skill 的 template/ 更新后，已存在的系统**不自动覆盖** site/；只提示用户有新模板，由用户决定。
-- **data.js 与 content/ 不同步**：以 content/ 为准重跑 build.py 即可；data.js 是纯生成物，可随时删除重建。
-- **多产品**：`product-systems/<产品名>/`，每个产品独立一套完整结构。
-- **git**：建议用户纳管；skill 不主动执行 git 命令，仅在报告尾部提示一次（首次）。
-- **大产品防上下文溢出**：>20 页时分批生成（manifest + 概览 + 功能清单先行），每批 build 一次保持可用。
-- **多端产品**：`product.ends` 记录端组合（如 ["mobile","web"]）；原型图模块按端分组（id 如 `prototype-app` / `prototype-admin`，标题「原型图 · App」「原型图 · 管理后台」），每端有自己的页面总览与页面；功能清单加「端」列；各端画布按各自形态选择。
-- **版本演进**：仅当用户明确说「开始 X 版本 / 新版本规划」时 bump `product.version` 并在概览页版本记录表追加一行；普通需求修改不 bump。每次变更刷新 `product.updated`。
-- **回滚**：结构变更前已备份 manifest.backup.json；内容回滚建议走 git（无 git 时报告里提醒）。
-- **图片素材**：PRD 中的截图/手绘等图片统一放 `content/assets/`，markdown 中用 content 相对路径引用（`![说明](assets/xxx.png)`），渲染器自动补 `../content/` 前缀；http(s) 外链原样。
-- **侧栏推广位**：外壳底部内置作者推广链接（「你的工具」App：官网 / Mac剪切板管理：App Store），随模板自带，生成与更新时保留。
-- **分享给团队**（按场景三选一）：
-  - 即时评审：`python3 <skill>/scripts/serve.py 8000 <方案目录>`，把打印出的局域网地址（`http://<本机IP>:8000/site/index.html`）发给同一路由器下的同事；服务随会话存活
-  - 离线发送：压缩整个方案目录（含 site/ 与 content/），对方解压后双击 `site/index.html`
-  - 长期协作：放 git 仓库
-- **中断恢复**：若上次生成中断（manifest 引用的文件缺失），先报告缺失清单并补齐，再继续新需求。
+用户要求交接当前工作成果时执行：
+
+```bash
+python3 <skill>/scripts/project.py handoff <项目目录> --version v1.1 --revision r1 --name "第一轮开发交接"
+```
+
+工作版 v1.1 保持 planning，可继续修订；命令复制完整 content 到内部版本 `v1.1.r1`，在副本编译原型数据后冻结快照。产品仍属于 v1.1，project.json 中 handoff_parent/revision 记录归属；左侧把交接归入 v1.1 下的“交接修订”，不是新产品版本。每次编号唯一，不能覆盖。r2 的比较基线为 r1，父版本 current_handoff 指向最新一次交接；项目 current_version 仍是工作版。
+
+固定入口的 `#/v/v1.1.r1/_changes/report` 展示该次差异及全套物料链接；页面深链接仍采用该内部版本 ID，原型资源和模拟状态独立。旧链接不自动跳到最新修订，顶部标明历史交接或当前开发依据。普通保存不创建交接，不自动 checkpoint，不把待确认事项改为已确认；阻塞需求或子规则尚待确认则拒绝交接。
+
+交接副本可使用现有 status 命令进入 developing/released，文件仍不可修改。原有已冻结版本继续只读，不能借此解冻；需要修改时先按已有工作流建立规划工作版。新流程的 freeze（锁定整个工作版）与 handoff（冻结一次交接，继续保留工作草稿）按用户意图选择。
+
+命令先在临时副本验证，并在落盘前检查项目指纹。目录复制、元数据及构建写入仍不是完整事务；中断时保留目标目录，检查 project.json、快照和构建结果，不能删掉快照后复用编号重试。避免和编辑/构建命令同时运行。
+
+开始更新时先 validate，再 impact、读取目标文件：
+- since_checkpoint 标出上次工作完成后新增/修改/删除的源文件，**可能来自人工修改**，需读取并保留；无法判断时展示具体差异再问。
+- since_base_version 比较当前版与来源版本的文件变更。
+- changed_requirements、review_pages、review_interactions、review_acceptance 给出结构化需求变化的关联复核范围。
+
+哈希能发现变化，不能确定作者，也不能自动证明所有相关文案已同步。对受影响的编号、旧数值和规则关键词执行文本搜索，检查 PRD 外的文案、原型脚本和测试说明。交付时明确仍需人工判断的关联。
+
+完成本次修改、构建、检查及业务验证后才 checkpoint。它只更新源文件基线，不清除任何快照保护。命令不会自动推断用户确认了需求。
+
+## 迁移 1.0 方案
+
+```bash
+python3 <skill>/scripts/project.py migrate <已有方案目录> --version v1.0
+```
+
+迁移先把原 content、site、build.py 复制到 migration-backup，再把 content 复制到 versions/v1.0/content，安装新外壳，固定 site/index.html 不变。旧 content 保留；不要主动删除备份。旧 `#/模块/页面` 链接映射至当前工作版本。
+
+迁移不编造需求关联。缺 spec 的旧版可展示、会发出关联未建立警告；需要交互能力时，在新版本补建 spec、外部 JS 和需求面板。迁移不代表已经冻结或发布，请依据用户对该产品历史状态的说明执行。
+
+## 导航与详情空间
+
+项目壳的导航按三级区分：版本使用有底色的粗体组标题，模块使用次级标题与树状引导线，页面使用进一步缩进的常规字重及选中条。当前路由自动展开所属模块，并用 aria-current 标记页面。
+
+顶部导航保持单行紧凑（桌面默认 40px），历史状态作为同行短标签保留。原型页不在 iframe 上方重复输出页面大标题、说明条和历史横幅；“新窗口打开”和“专注查看”集中在顶部。专注查看收起左栏，可通过按钮退出。
+
+原型内的共享工具栏保持单行（默认 40px）；窄窗口横向滚动控件，不能压缩为不可操作的极小按钮。新的样式在规划版本使用；已经冻结的原型资源不随外壳更新覆盖。
+
+## 构建与恢复
+
+项目根 outcomes/ 保存交付后的验收/指标记录，按 outcomes.md 追加，与冻结版本内容分离。构建指纹包含台账；记录后重建固定入口才能展示最新结果。复制或备份项目需包含台账；它不是防篡改审计日志。
+
+每次构建写完整项目数据并保存内容哈希，validate 检查构建是否过期或被修改。规划版本编译本地 spec-data.js；冻结版本资源不会重写。构建错误不应交付。
+
+PRD 正式编辑可使用 editing.md 的本机服务或共享命令；原型脚本及结构调整仍由 Agent 完成。建议版本内容纳入用户自己的 Git。完整多文件工作流不是事务；中断后检查 project.json、版本目录、`.editing/` 保存记录和 validate 报错，保留已有内容，补齐缺失项后重新构建。不要反复运行 init 覆盖现有项目。

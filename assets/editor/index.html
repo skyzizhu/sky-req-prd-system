@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PRD 编辑器</title><link rel="stylesheet" href="/editor.css"></head>
+<body><header><strong id="title">PRD 编辑器</strong><span id="dirty"></span></header>
+<main><nav><label>选择物料<select id="material"></select></label><button id="reload" type="button">重新载入</button><button id="export" type="button">导出当前草稿</button><p>修改保存回项目。规则改动重新标为待确认。冻结版本只读。</p></nav>
+<section><div class="actions"><button id="preview" type="button">预览变更</button><button id="save" type="button" disabled>确认保存</button><button id="undo" type="button" disabled>撤销上次保存</button></div><div id="form"></div><p id="status" role="status"></p><section id="impact" aria-label="变更影响"></section></section></main><script src="/editor.js"></script></body></html>

@@ -41,6 +41,22 @@ def warn(msg):
 
 def main():
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    if (root / 'project.json').exists():
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'template'))
+        from projectlib import validate, check_build
+        try:
+            errors, warnings = validate(root)
+            if not errors:
+                errors.extend(check_build(root))
+            for message in warnings:
+                print('警告：', message)
+            for message in errors:
+                print('错误：', message)
+            print('未通过' if errors else '验证通过')
+            return int(bool(errors))
+        except (ValueError, KeyError, TypeError, OSError) as e:
+            print('验证失败：', e)
+            return 1
     manifest_path = root / "content" / "manifest.json"
 
     if not manifest_path.exists():

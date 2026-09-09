@@ -1,130 +1,134 @@
-# 原型规范：画布、线框组件、连线式四色标注
+# 可交互原型与本页需求
 
-原型是低保真线框：灰阶占位表达结构，不表达视觉细节。标注是原型的核心价值。
+低保真表达真实布局与行为。开发应能操作关键流程，并在原型旁读到相应规则。参考 examples/order-demo 与 scripts/create_demo.py 了解可运行接入。
 
-## 画布（按产品形态选择）
+## 一份结构化需求
 
-| 形态 | 画布结构 | 总宽 |
-|---|---|---|
-| desktop | 窗口 760（标题栏三圆点）+ 标注栏 220 + 间距 20 | 1000 |
-| web | 浏览器窗框 760（地址栏占位）+ 标注栏 220 + 间距 20 | 1000 |
-| mobile / h5 | 手机框 375（h5 顶部加浏览器栏）+ 标注栏 220 + 间距 20 | 615 |
-| miniapp | 手机框 375（顶部胶囊/导航栏）+ 标注栏 220 + 间距 20 | 615 |
-| tv | 16:9 大屏 960 + 标注栏 220 + 间距 20 | 1200 |
+每版 content/spec.json：
 
-`.wf-page` 固定宽度（`flex:none`），SVG 标注坐标因此稳定。每个线框页引用共享 `content/prototype/assets/wireframe.css`（初始化时已从 skill assets 复制）。移动端形态可自行追加少量组件类，但保持灰阶线框风格。
-
-## 线框组件（wireframe.css 提供）
-
-- 窗口骨架：`.wf-window` `.wf-titlebar` `.wf-dot` `.wf-title`
-- 工具栏：`.wf-toolbar` `.wf-input` `.wf-kbd` `.wf-btn`
-- 筛选：`.wf-chips` `.wf-chip(.on)`
-- 列表：`.wf-list` `.wf-item(.on)` `.wf-num` `.wf-thumb` `.wf-lines` `.wf-line(.w-30~.w-90)` `.wf-tag` `.wf-star`
-- 面板：`.wf-row` `.wf-pane` `.wf-preview` `.wf-actions` `.wf-statusbar` `.wf-label`
-- 表单：`.wf-tabs` `.wf-tab(.on)` `.wf-form` `.wf-field` `.wf-field-label` `.wf-field-hint` `.wf-switch(.on)` `.wf-select` `.wf-hotkey` `.wf-ignore-list` `.wf-ignore-item`
-- 交互说明文字一律不写进线框内部，全部走标注。
-
-## 连线式标注（强制规范）
-
-结构：SVG 覆盖层（**`.wf-ann-layer`**，注意：不得使用 `.wf-lines`——那是列表占位条容器的类名）画引导线与**序号徽章**（目标点），标注框与图例放在右侧标注栏。
-
-**铁律：标注栏从上到下的顺序 = 目标元素在线框中从上到下的顺序 = 序号顺序（1 最上）。** 先排序目标再排标注框，确保连线互不交叉。
-
-**序号徽章**：目标点不是普通圆点，而是 r=9 的圆形徽章，中心白色加粗序号，颜色随重要程度级别。序号同时作为标注框首行前缀（`1 · 说明文字`），徽章与标注框靠虚线 + 同序号双重关联。
-
-四色分级（重要程度从高到低）：
-
-| 级别 | class | 颜色 | 语义 | 典型用途 |
-|---|---|---|---|---|
-| crit | `.wf-ann.crit` | 红 | 核心 / 必须 | 核心交互路径、P0 功能行为 |
-| warn | `.wf-ann.warn` | 黄 | 待确认 / 注意 | 策略待评审、边界场景、风险点 |
-| info | `.wf-ann.info` | 蓝 | 一般说明 | 常规功能说明、交互细节 |
-| ok | `.wf-ann.ok` | 绿 | 参考信息 | 状态栏、辅助信息、布局说明 |
-
-每个标注是一个 `<g class="wf-ann 级别">`（绘制顺序：线 → 徽章底圆 → 序号 → 标注框 → 文字，徽章盖住线端）：
-
-```html
-<g class="wf-ann crit">
-  <line class="wf-ann-line" x1="783" y1="238" x2="37" y2="161"/>   <!-- 从标注框左缘到目标点 -->
-  <circle class="wf-ann-dot" cx="33" cy="164" r="9"/>               <!-- 序号徽章，落在目标元素上 -->
-  <text class="wf-ann-num" x="33" y="168">2</text>                 <!-- y = cy + 4，居中白字序号 -->
-  <rect class="wf-ann-box" x="785" y="215" width="205" height="46" rx="6"/>
-  <text class="wf-ann-label" x="795" y="233">2 · 第一行（前缀序号）</text>
-  <text class="wf-ann-label" x="795" y="251">第二行（可选）</text>
-</g>
+```json
+{
+  "requirements": [{
+    "id":"FR-ORDER-001",
+    "title":"创建订单",
+    "description":"用户从订单列表创建订单。",
+    "source":"ai-inferred",
+    "status":"pending",
+    "blocking":true,
+    "rules":{
+      "显示规则":"有创建权限才可操作。",
+      "输入与校验":"名称必填，去除首尾空格后 1～40 字；提交时定位错误。",
+      "提交反馈":"处理中禁重复提交；成功关闭弹框并刷新列表。",
+      "异常与边界":"失败保留输入并允许重试。"
+    },
+    "acceptance":[{"id":"AC-ORDER-001","given":"名称有效且有权限","when":"提交","then":"创建成功并显示在列表"}]
+  }],
+  "pages":[{"id":"order-list","title":"订单列表","purpose":"查阅和创建订单","requirement_ids":["FR-ORDER-001"]}],
+  "interactions":[{
+    "id":"INT-CREATE",
+    "page":"order-list",
+    "selector":"#create",
+    "requirement_ids":["FR-ORDER-001"],
+    "action":"dialog",
+    "target":"create-dialog",
+    "description":"点击打开创建弹框；无权限禁用。",
+    "level":"crit"
+  }]
+}
 ```
 
-坐标约定（以 desktop 1000 宽画布为例）：
+requirements 为 PRD 的唯一规则来源，pages 将需求关联到 manifest 页面，interactions 将具体控件关联到需求。稳定 ID 不随文案或页面标题改变。同一需求可以关联多个页面。
 
-- 标注栏图例固定在 `left:785px; top:36px`（HTML div `.wf-legend`，四色圆点 + 文字，每个线框页都要有）
-- 序号数字 = 标注栏行号（第一个标注框为 1，依次递增）；`.wf-ann-num` 的 y = 徽章 cy + 4
-- 标注框 x=785、宽 205；起始 y=130，每个间隔 85（一行高 28，两行高 46）
-- 引导线 x1=783，y1 = 标注框垂直中点；x2/y2 = 目标点坐标 ± 4（避免遮住圆点）
-- 每页标注 3~5 个，按目标 y 排序后再分配标注框位置
+每个 requirements 条目包含来源、确认状态、阻塞属性、行为规则和 Given/When/Then 验收。rules 按业务填写：显示、可操作条件、输入校验、动作、跳转、处理中、成功、失败、数据格式与边界。不要用空泛“按设计实现”代替规则。纯装饰元素无需编造需求。
 
-写完标注后**必须自查交叉**：任意两条线的 y1 与对应目标 y2 的顺序一致（同为升序或降序）则必不交叉。不确定时在浏览器截图确认。
+action：
+- inspect：只读业务数据，无业务点击动作；金额、状态、统计数等用 data-business-value 标记并提供稳定 ID，validate 检查是否关联说明。
+- navigate：target 为同版本原型页面 ID，runtime 处理跳转。
+- dialog / close：target 为本页 dialog 的元素 ID，runtime 打开/关闭。
+- toggle：target 为本页可显隐区块 ID。
+- input / submit / custom：行为由本页独立 JS 实现，包括校验、筛选、批量、Tab、模拟请求等。列出声明不代表行为已经完成。
 
-## 线框页骨架
+selector 使用稳定的 #元素ID，不能依赖 DOM 顺序。所有业务 button/input/select/textarea/a 要有对应交互；范围外控件用 data-out-of-scope 写明原因，并禁用。脚本动态创建的交互控件也必须实际测试，静态校验无法穷尽动态 DOM。
+
+## 接入
+
+原型 HTML 放在 content/prototype/ 一级，样式和脚本放 assets/。复制 Skill 的 assets/prototype-runtime.css、prototype-runtime.js、annotation-store.js 到本版本 assets；可复用 wireframe.css。页面自己的布局与业务行为分离为独立 CSS/JS。
 
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>页面名 · 低保真线框</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>订单列表</title>
   <link rel="stylesheet" href="assets/wireframe.css">
+  <link rel="stylesheet" href="assets/prototype-runtime.css">
+  <link rel="stylesheet" href="assets/page.css">
 </head>
-<body>
-  <div class="wf-page">
-    <div class="wf-window"> …线框内容… </div>
-    <div class="wf-legend"> …四色图例… </div>
-    <svg class="wf-ann-layer" aria-hidden="true"> …标注… </svg>
-  </div>
+<body data-page-id="order-list">
+  <main><!-- 带稳定元素 ID 的业务内容 --></main>
+  <script src="assets/spec-data.js"></script>
+  <script src="assets/annotation-store.js"></script>
+  <script src="assets/prototype-runtime.js"></script>
+  <script src="assets/page.js"></script>
 </body>
 </html>
 ```
 
-禁止：内联 style、内联 script、底部堆叠式说明（`.wf-notes` 已废弃）。
+spec-data.js 由 build 生成，包含本版需求与页面索引，独立打开原型也可读取。禁止手工修改生成数据。所有真实规则进入 spec，页面 JS 实现相同规则。
 
-## 可读性红线（生成后逐条自查）
+## 原型运行时能力
 
-- **类名纪律**：SVG 标注覆盖层只用 `.wf-ann-layer`；`.wf-lines` 专用于列表项内的占位条容器——两者混用会导致占位条变成铺满画布的绝对定位层，遮住标题栏与正文（历史事故，勿再犯）
-- **引导线避让**：线不得穿过标题栏、按钮文字、表格文字密集区；无法避让时移动标注框位置或换目标点
-- **徽章落点**：序号徽章落在目标元素的图标、边框、空白处，不压在文字中心
-- **遮罩纪律**：`.wf-mask` 只放在 `.wf-state-body` 内演示弹框状态；外壳已做兜底（标题栏/状态栏 z-index 高于遮罩），但仍应正确使用
-- **对比度**：小字（标签/状态栏）颜色不低于 `--wf-faint`（#7d7d7d），禁止更浅的灰
-- 生成后必须在浏览器打开自查一遍可读性，截图留档
+需要角色、状态与模拟数据的可分享复现链接时，按 replay.md 在 spec 声明 replay_cases；共享运行时提供场景选择与链接窗口，业务 JS 实现角色权限。链接还原预设起点，不导出用户当前输入；跨页演示数据与普通演示隔离。
 
-## 状态与边界页（强制智能分析）
+interactions 可带 properties（控件文案 text、placeholder、defaultValue、maxLength、required、select 的 options[{value,label}]、width:auto/compact/full），由共享 runtime 在业务脚本之前应用。字段合法性和元素类型由 validate 检查；不允许任意 HTML、脚本或 CSS 属性。正式编辑与保存见 editing.md。自定义 JS 需读取元素原生约束，不能硬编码另一份长度等规则；动态生成控件仍须独立实现并测试。属性会同时显示在 PRD 和控件规则区，其他规则正文的冲突不能因配置生效而忽略。
 
-每个产品方案必须分析下表状态页需求，**命中即生成为独立线框页**（菜单编号顺延），未命中的在页面总览注明「已分析，无此场景」：
+本页需求顶部提供“控件与数据规则”检查区。标注模式点击元素即显示其规则；也可从下拉列表选择隐藏、禁用或弹框内元素。仅看待确认筛选依据规则自身状态，不能用需求已确认掩盖尚待确认的子规则。旧数据没有控件级关联时，明确提示展示关联需求范围，不能声称已经精确匹配。
 
-| 需求信号 | 需生成 | 级别 |
-|---|---|---|
-| 危险操作（删除/清空/提交/支付/覆盖） | 确认弹框（遮罩 + 危险色主按钮） | 必须 |
-| 表单输入 | 校验错误提示（即时、定位到字段） | 必须 |
-| 列表 / 数据展示 | 空态 + 加载态（骨架屏） | 必须 |
-| 网络请求 | 网络错误页 / 重试提示 | 必须 |
-| 登录 / 角色体系 | 登录过期页、无权限页 | 按需 |
-| 系统权限（desktop / mobile） | 权限引导页（说明用途 + 去授权入口） | 按需 |
-| 首次使用 | 引导空态（带下一步动作） | 按需 |
+新建/深改控件在 interactions 添加 `rule_ids: ["RULE-NAME-INPUT"]`，只能引用该控件 requirement_ids 内的 rule_details。字段、显示、操作、反馈等使用规则 category 分组，statement 记录具体语义、类型、单位、默认值、空值、条件等适用信息；例子和验收从规则引用读取，不维护第二份正文。只读数据也遵循此结构，纯装饰不标为业务数据。静态检查只能覆盖声明的业务数据，仍需实际审阅遗漏。
 
-**组织方式**：按主题合并为 1~3 个线框页（如「弹框与遮罩」「空态·加载·错误·权限」），页内用 `.wf-state-grid` 网格陈列，每个状态一个 `.wf-state-box`（顶部标签 + 状态内容）。禁止只写文字说明不画状态。
+- 演示/标注切换；标注模式点击业务控件定位需求，不执行提交等业务动作。
+- 可见编号徽章、四色简述、详细需求面板与元素双向定位；不限制标注数量。
+- 本页需求面板支持拖动、调整大小、收起、右侧停靠；独立原型与 iframe 中均可用。
+- 原生 dialog 内提供“查看弹框需求”，面板可进入弹框顶层供查阅。
+- 场景选择器：normal/empty/loading/error/forbidden；页面 JS 必须监听 ps:scenario 并实际呈现状态。
+- PSPrototype.readState()/writeState()：按项目+版本隔离浏览器模拟数据。
+- PSPrototype.notify(text)：操作反馈；重置只清除本项目本版本的演示状态。
 
-**组件**（wireframe.css 提供）：
-- 遮罩与弹框：`.wf-mask` `.wf-dialog` `.wf-dialog-title` `.wf-dialog-text` `.wf-dialog-actions`（危险操作按钮加 `.wf-btn.danger`）
-- 加载：`.wf-skeleton`（复用 `.wf-line` 做骨架条）
-- 空态：`.wf-empty` + `.wf-empty-icon`（是否带引导按钮看设计说明）
-- 轻提示：`.wf-toast`（`.warn` 为错误红色变体）
+运行时不提供真实后端。不同页面共享模拟数据，独立版本互不污染。file:// 的本地存储支持受浏览器策略影响，测试目标浏览器；不支持时界面仍需可打开，可使用固定本机服务演示跨页状态。
 
-**设计说明**（页面总览必须写）：何种操作必须二次确认、错误反馈用 toast 还是弹框、空态是否带引导动作、权限回收后的降级行为。状态页标注同样用四色序号徽章规范。
+## 布局与标注
 
-## 页面总览（prototype 模块第一个页面）必须包含
+### 手动编辑标记
 
-1. **标注阅读说明**：四色分级表（颜色/级别/语义/典型用途）+ 读图方法（序号徽章 → 虚线 → 同序号标注框）+ 其他约定（菜单 `01 ·` 序号含义、低保真边界、每页 3~5 条标注）
-2. 页面清单表（页面/入口/职责/对应需求）
-3. 跳转关系 mermaid 图
-4. 设计说明（如有）
+已保存标记可通过查看卡片的“处理批注”进入评审状态表单；状态、说明、需求关联、修改记录和验证说明见 review-loop.md。批注管理面板支持处理状态筛选。新批注导出 schema_version=2，旧 v1 导入兼容。
 
-二级菜单中线框页自动带 `01 ·` 序号（site 外壳按 type=prototype 自动编号，每端独立计数），序号即页面顺序，供口头引用。
+“编辑标记”打开管理面板。点击“新增标记”后，管理面板收起，用户直接点击原型中的控件或任意位置；系统优先选择点击处所属的按钮、输入框、链接等可操作控件，并在落点附近立刻弹出表单。表单只要求填写“标注优先级”和“说明内容”，确认后直接增加。新增过程拦截业务点击，Esc 或页面底部“取消放置”结束。
+
+优先级选项为：P0 核心（红）、P1 重要/待确认（黄）、P2 一般说明（蓝）、参考信息（绿）。说明最多 2000 字。保存后的标记点击行为固定为“查看”：就地弹出只读卡片，展示优先级、说明、标注来源及关联 FR；用户从卡片明确点击“编辑”后才进入表单，也可在卡片中删除。禁止点击标记后直接进入编辑态。
+
+原始标记和手动标记均可删除、撤销；勾选“显示已删除标记”可恢复。删除只隐藏标记，不改变 FR、验收标准或原型的业务交互。原始编号保持稳定，手动标记使用 M1、M2 等，删除不导致其他编号变化。
+
+手动标记优先绑定元素 ID；没有 ID 时绑定结构选择器及元素内相对位置。滚动与尺寸变化时重算坐标；页面结构或动态内容变化后需检查落点，找不到目标时编辑列表会提示。优先为会被评审的业务元素提供稳定 ID。
+
+保存到当前浏览器 localStorage，键按项目、版本、页面隔离。演示重置不清除标记。浏览器禁止存储时提示仅当前页面有效，提供导出。打开同项目文件的另一个浏览器/设备不会自动共享标记。
+
+导出为本页 JSON 批注文件，导入校验项目/版本/页面、字段、数量、类型、字数与落点；不匹配时拒绝且保留现状。导入替换本页批注，可撤销。原始规则和交互逻辑保持不变：删除标记不删除 FR，编辑标记说明不自动更新 PRD。需要把评审意见正式纳入需求时，用户提供导出文件并明确修改意图，再走需求变更和验证流程。
+
+已冻结的历史资源不自动升级；如需新编辑功能，放入规划版本。原型内原生弹框提供“编辑弹框标记”。
+
+按 form 使用合适画布：移动端常用 375～430 内容宽，桌面/Web 按任务需要设置，电视关注遥控焦点。面板是独立可拖拽层，不强迫画布为标注预留固定 220px。
+
+四色：crit 红=核心；warn 黄=待确认/风险；info 蓝=一般说明；ok 绿=参考。来源和确认状态另用文字表达。关键流程可加短连线，避免穿过文字；复杂规则放面板。编号对应 interactions 顺序，同一页面稳定排序。标注数量以覆盖为准。
+
+## 业务交互验收
+
+至少操作：
+1. 核心正常路径到结果页；返回后应保留的状态仍存在。
+2. 必填/格式/长度校验、处理中、重复点击、失败保留输入与重试。
+3. 显示/禁用条件、无权限、空数据、加载、错误等真实场景。
+4. 原型 → 需求 → 元素定位、面板拖拽/缩放/停靠/收起。
+5. 同入口切历史版本；历史内容、旧原型资源不变化。
+6. 对业务控件逐项核对，不出现无反馈假按钮。
+
+validate 校验静态引用、需求和验收关联、控件覆盖、脚本接入、历史哈希。仍需浏览器操作证明行为；校验通过不能作为已完成所有业务实现的证据。

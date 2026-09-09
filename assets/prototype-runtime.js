@@ -147,7 +147,8 @@
       section.innerHTML = '<h4>' + esc(rule.id + ' · ' + rule.category) + '</h4><p>' + esc(rule.statement) + '</p><p class="ps-hint">' + esc((rule.source === 'origin' ? '原文依据' : 'AI 推断') + ' · ' + (rule.status === 'confirmed' ? '已确认' : '待确认')) + '</p>' + (rule.examples || []).map(function (example) {
         return '<p>' + esc('实例：' + example.input + ' → 预期：' + example.expected) + '</p>';
       }).join('') + '<p>' + esc('关联验收：' + (rule.acceptance_ids || []).join('、')) + '</p>';
-      article.insertBefore(section, article.querySelector('h4'));
+      var h4Anchor = Array.prototype.find.call(article.children, function (c) { return c.tagName === 'H4'; });
+      article.insertBefore(section, h4Anchor || null);
     });
   });
   var inspectBox = document.createElement('section');

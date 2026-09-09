@@ -55,6 +55,12 @@ def main():
         def __init__(self, *a, **kw):
             super().__init__(*a, directory=str(root), **kw)
 
+        def end_headers(self):
+            # 方案是活文档，Agent 会高频改文件：禁用启发式缓存，浏览器每次回源校验，
+            # 避免「改了文件但页面显示旧内容」的迭代陷阱。
+            self.send_header('Cache-Control', 'no-cache')
+            super().end_headers()
+
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("0.0.0.0", port), Handler) as httpd:
         try:

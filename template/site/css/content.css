@@ -13,7 +13,17 @@
 .badge-pending { color: var(--warn); background: var(--warn-bg); }
 
 /* ---------- 页面头 ---------- */
-.doc { max-width: 920px; }
+.doc { max-width: 960px; }
+
+.content > .doc {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 30px 38px 34px;
+}
+
+@media (max-width: 750px) { .content > .doc { padding: 20px 18px 24px; } }
 
 .page-title { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.01em; }
 
@@ -21,7 +31,7 @@
 
 /* ---------- Markdown 正文 ---------- */
 .doc h1, .doc h2, .doc h3, .doc h4 { margin: 26px 0 10px; line-height: 1.35; }
-.doc h1 { font-size: 22px; }
+.doc h1 { font-size: 24px; letter-spacing: -0.015em; }
 .doc h2 { font-size: 18px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .doc h3 { font-size: 15.5px; }
 .doc h4 { font-size: 14px; color: var(--ink-2); }
@@ -60,8 +70,9 @@
   vertical-align: top;
 }
 
-.doc th { background: #f1f3f5; font-weight: 600; white-space: nowrap; }
+.doc th { background: #f3f5f8; font-weight: 600; white-space: nowrap; }
 .doc tbody tr:nth-child(even) { background: #fafbfc; }
+.doc tbody tr:hover { background: var(--accent-soft); }
 
 .doc blockquote {
   margin: 14px 0;
@@ -170,3 +181,12 @@ iframe.embed-inline {
 }
 
 .pending-list li a { flex: 1; font-weight: 600; }
+
+/* ---------- 打印 / 导出 PDF：隐藏导航，正文通栏 ---------- */
+@media print {
+  body { display: block; background: #fff; }
+  .sidebar, .topbar, .sidebar-expand, .embed-bar { display: none !important; }
+  .main, .content { height: auto; overflow: visible; padding: 0; }
+  .content > .doc { border: none; box-shadow: none; padding: 0; }
+  .doc-section + .doc-section { break-inside: avoid; }
+}

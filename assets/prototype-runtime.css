@@ -79,3 +79,8 @@ body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; 
 .ps-inspector dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
 .ps-placement-target { outline:3px solid #2563eb !important; outline-offset:3px; cursor:crosshair !important; }
 .ps-note-popover { max-height:calc(100vh - 64px); overflow:auto; }
+
+/* PS_ERROR_SURFACE_V1：脚本错误以底部固定条显式展示，不静默失败 */
+.ps-error-surface { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; max-height: 30vh; overflow: auto; background: #fdecea; color: #8a1f1c; border-top: 2px solid #c93434; font: 12px/1.5 system-ui, sans-serif; padding: 6px 12px; }
+.ps-error-surface[hidden] { display: none; }
+.ps-error-surface div { margin: 1px 0; overflow-wrap: anywhere; }

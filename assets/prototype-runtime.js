@@ -1,6 +1,27 @@
 /* Same spec renders the PRD and standalone draggable page panel; no fetch. */
 (function () {
   'use strict';
+  // PS_ERROR_SURFACE_V1: 脚本错误必须可见；静默失败会让需求面板/场景切换悄悄失效，破坏评审信任。
+  var errorSurface = document.createElement('div');
+  errorSurface.className = 'ps-error-surface';
+  errorSurface.setAttribute('role', 'alert');
+  errorSurface.hidden = true;
+  document.body.appendChild(errorSurface);
+  function surfaceError(text) {
+    var line = document.createElement('div');
+    line.textContent = text + '；本页需求面板/场景切换可能不完整，请反馈维护者';
+    errorSurface.appendChild(line);
+    errorSurface.hidden = false;
+  }
+  window.addEventListener('error', function (event) {
+    if (!event || !event.message) return;
+    var where = (event.filename || '').split('/').pop();
+    surfaceError('原型脚本错误：' + event.message + (where ? '（' + where + (event.lineno ? ':' + event.lineno : '') + '）' : ''));
+  });
+  window.addEventListener('unhandledrejection', function (event) {
+    var reason = event && event.reason;
+    surfaceError('未处理的 Promise 拒绝：' + ((reason && (reason.message || reason)) || '未知原因'));
+  });
   var data = window.PS_SPEC;
   if (!data) return;
   var pid = document.body.dataset.pageId;
@@ -24,6 +45,10 @@
       else el.defaultValue = p.defaultValue;
     }
     if (p.width) el.style.width = {auto: 'auto', compact: '160px', full: '100%'}[p.width];
+    ['min', 'max', 'step', 'accept', 'pattern'].forEach(function (k) {
+      if (Object.prototype.hasOwnProperty.call(p, k) && el.tagName === 'INPUT') el.setAttribute(k, p[k]);
+    });
+    if (Object.prototype.hasOwnProperty.call(p, 'unit')) el.setAttribute('data-unit', p.unit);
   });
   var savedNotes=(data.spec.review_notes || {})[pid];
   var savedFrom=savedNotes && savedNotes.version;
@@ -71,7 +96,7 @@
   };
   var tools = document.createElement('div');
   tools.className = 'ps-tools';
-  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
+  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
   document.body.prepend(tools);
   var pageIdentity = document.createElement('code'); pageIdentity.id = 'ps-page-id';
   pageIdentity.textContent = '页面：' + pid;
@@ -161,7 +186,7 @@
     inspectSelect.value = it.id;
     var pending = inspectBox.querySelector('input').checked;
     var html = '<h4>' + esc(it.description) + '</h4><p>' + esc(it.selector + ' · ' + it.action + (it.target ? ' → ' + it.target : '')) + '</p>';
-    var propertyNames = {text:'控件文案', placeholder:'占位提示', defaultValue:'默认值', maxLength:'最大长度', required:'必填', options:'选项', width:'宽度'};
+    var propertyNames = {text:'控件文案', placeholder:'占位提示', defaultValue:'默认值', maxLength:'最大长度', required:'必填', options:'选项', width:'宽度', min:'最小值', max:'最大值', step:'步进', unit:'单位', pattern:'格式校验', accept:'可接受文件类型'};
     html += '<dl>' + Object.keys(it.properties || {}).map(function (key) { return '<dt>' + esc(propertyNames[key] || key) + '</dt><dd>' + esc(JSON.stringify(it.properties[key])) + '</dd>'; }).join('') + '</dl>';
     var matched = 0;
     requirements.filter(function (r) { return it.requirement_ids.includes(r.id); }).forEach(function (r) {
@@ -215,11 +240,18 @@
     var active = document.body.classList.toggle('ps-annotate'); this.setAttribute('aria-pressed', String(active)); this.textContent = active ? '返回演示' : '查看说明';
     if (active) show(); else if (notes) { stopAdding(); editor.hidden = true; }
   };
-  tools.querySelector('#ps-scenario').onchange = function () {
+  // PS_SCENARIO_URL_V1: 普通演示支持 ?scenario= 深链直达（复现模式保持自身预设，不生效）。
+  var scenarioSelect = tools.querySelector('#ps-scenario');
+  var urlScenario = replayId === null ? new URLSearchParams(location.search).get('scenario') : null;
+  if (urlScenario !== null && ['normal', 'empty', 'loading', 'error', 'forbidden'].indexOf(urlScenario) === -1) urlScenario = null;
+  if (urlScenario !== null) {
+    var linked = api.readState(); linked.scenario = urlScenario; api.writeState(linked);
+  }
+  scenarioSelect.value = api.readState().scenario || 'normal';
+  scenarioSelect.addEventListener('change', function () {
     var state = api.readState(); state.scenario = this.value; api.writeState(state);
     document.dispatchEvent(new CustomEvent('ps:scenario', {detail: this.value}));
-  };
-  tools.querySelector('#ps-scenario').value = api.readState().scenario || 'normal';
+  });
   tools.querySelector('#ps-reset').onclick = function () { try { if (replayId !== null) sessionStorage.removeItem(replayKey); else localStorage.removeItem(key); } catch (_) {} location.reload(); };
   body.addEventListener('click', function (event) {
     var button = event.target.closest('button'); if (!button) return;

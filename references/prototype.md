@@ -75,13 +75,13 @@ selector 使用稳定的 #元素ID，不能依赖 DOM 顺序。所有业务 butt
 </html>
 ```
 
-spec-data.js 由 build 生成，包含本版需求与页面索引，独立打开原型也可读取。禁止手工修改生成数据。所有真实规则进入 spec，页面 JS 实现相同规则。
+spec-data.js 由 build 生成，包含本版需求与页面索引（含模板版本与构建时间，用于识别模板漂移），独立打开原型也可读取。禁止手工修改生成数据。所有真实规则进入 spec，页面 JS 实现相同规则。
 
 ## 原型运行时能力
 
 需要角色、状态与模拟数据的可分享复现链接时，按 replay.md 在 spec 声明 replay_cases；共享运行时提供场景选择与链接窗口，业务 JS 实现角色权限。链接还原预设起点，不导出用户当前输入；跨页演示数据与普通演示隔离。
 
-interactions 可带 properties（控件文案 text、placeholder、defaultValue、maxLength、required、select 的 options[{value,label}]、width:auto/compact/full），由共享 runtime 在业务脚本之前应用。字段合法性和元素类型由 validate 检查；不允许任意 HTML、脚本或 CSS 属性。正式编辑与保存见 editing.md。自定义 JS 需读取元素原生约束，不能硬编码另一份长度等规则；动态生成控件仍须独立实现并测试。属性会同时显示在 PRD 和控件规则区，其他规则正文的冲突不能因配置生效而忽略。
+interactions 可带 properties（控件文案 text、placeholder、defaultValue、maxLength、required、select 的 options[{value,label}]、width:auto/compact/full，以及数值约束 min/max/step、单位 unit、格式 pattern、文件类型 accept），由共享 runtime 在业务脚本之前应用；min/max/step 仅支持数值/日期类 input，accept 仅支持 file input，unit 为展示性标注。编辑器表单暂覆盖原有键，新增键由 Agent 直接修订 spec.json。字段合法性和元素类型由 validate 检查；不允许任意 HTML、脚本或 CSS 属性。正式编辑与保存见 editing.md。自定义 JS 需读取元素原生约束，不能硬编码另一份长度等规则；动态生成控件仍须独立实现并测试。属性会同时显示在 PRD 和控件规则区，其他规则正文的冲突不能因配置生效而忽略。
 
 本页需求顶部提供“控件与数据规则”检查区。标注模式点击元素即显示其规则；也可从下拉列表选择隐藏、禁用或弹框内元素。仅看待确认筛选依据规则自身状态，不能用需求已确认掩盖尚待确认的子规则。旧数据没有控件级关联时，明确提示展示关联需求范围，不能声称已经精确匹配。
 
@@ -91,7 +91,8 @@ interactions 可带 properties（控件文案 text、placeholder、defaultValue�
 - 可见编号徽章、四色简述、详细需求面板与元素双向定位；不限制标注数量。
 - 本页需求面板支持拖动、调整大小、收起、右侧停靠；独立原型与 iframe 中均可用。
 - 原生 dialog 内提供“查看弹框需求”，面板可进入弹框顶层供查阅。
-- 场景选择器：normal/empty/loading/error/forbidden；页面 JS 必须监听 ps:scenario 并实际呈现状态。
+- 场景选择器：normal/empty/loading/error/forbidden；页面 JS 必须监听 ps:scenario 并实际呈现状态。普通演示支持 `?scenario=` 深链直达（复现模式保持自身预设，不生效）。
+- 脚本错误以页面底部错误条显式展示（含未处理的 Promise 拒绝），不静默失败；需求面板或场景切换失灵时先看错误条。
 - PSPrototype.readState()/writeState()：按项目+版本隔离浏览器模拟数据。
 - PSPrototype.notify(text)：操作反馈；重置只清除本项目本版本的演示状态。
 

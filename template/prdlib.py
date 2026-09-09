@@ -4,9 +4,9 @@ import pathlib
 import re
 
 CHAPTERS = [
-    ('scope', '版本说明与本版范围', 'overview/index.md', '问题、目标用户、目标、包含/排除范围、版本变化与待决策。'),
+    ('scope', '版本说明和范围', 'overview/index.md', '问题、目标用户、目标、包含/排除范围、版本变化与待决策。'),
     ('users', '用户与业务流程', 'prd/users.md', '角色、使用场景、主流程、异常流程、权限边界与跨页规则。'),
-    ('functions', '功能需求与页面规则', None, ''),
+    ('functions', '功能需求与规则', None, ''),
     ('tracking', '数据与埋点', 'prd/tracking.md', '数据口径、事件名、触发时机、属性及类型、去重、用户授权、验证与负责人。'),
     ('nonfunctional', '非功能需求', 'prd/nonfunctional.md', '逐项检查性能、安全、兼容性、可用性、无障碍、隐私与合规；填写场景、可验证目标、验证方式与负责人，未知阈值待确认。'),
     ('acceptance', '验收与上线条件', 'prd/acceptance.md', '验收范围、发布前置条件、灰度/放量、暂停与回滚、监控和负责人；功能验收自动引用 spec。'),

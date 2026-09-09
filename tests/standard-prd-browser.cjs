@@ -24,7 +24,7 @@ const {pathToFileURL}=require('node:url');
   assert.match(await page.locator('.attachment-item').innerText(),/访谈.txt/);
   const exp=page.waitForEvent('download');await page.locator('#standard-prd-export').click();
   const md=fs.readFileSync(await(await exp).path(),'utf8');
-  for(const word of ['版本说明与本版范围','用户与业务流程','数据与埋点','非功能需求','验收与上线条件','里程碑与计划','风险与待决策','访谈.txt'])assert.ok(md.includes(word),word);
+  for(const word of ['版本说明和范围','用户与业务流程','数据与埋点','非功能需求','验收与上线条件','里程碑与计划','风险与待决策','访谈.txt'])assert.ok(md.includes(word),word);
   await page.goto(base+'#/v/v1.1/_prd/functions');await page.locator('.prd-requirement').first().waitFor();
   assert.equal(await page.locator('.prd-requirement').count(),3);
   await page.goto(base+'#/v/v1.1/_prd/nonfunctional');await page.locator('.standard-prd').waitFor();

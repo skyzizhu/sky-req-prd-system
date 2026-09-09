@@ -94,6 +94,9 @@
     writeState: function (s) { memoryState = s; try { (replayId !== null ? sessionStorage : localStorage).setItem(replayId !== null ? replayKey : key, JSON.stringify(s)); } catch (_) {} },
     notify: function (message) { var n = document.createElement('div'); n.className = 'ps-notice'; n.setAttribute('role', 'status'); n.textContent = message; document.body.appendChild(n); setTimeout(function () { n.remove(); }, 3000); }
   };
+  // PS_HOST_LAYOUT_V1: 工具栏 prepend 到 body 且 sticky 吸顶，要求 body 为常规块级流。
+  // 页面 CSS 误用 body flex/grid 会把工具栏与画布并排（真实事故），这里加类供运行时 CSS 强制纠正。
+  document.body.classList.add('ps-host');
   var tools = document.createElement('div');
   tools.className = 'ps-tools';
   tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';

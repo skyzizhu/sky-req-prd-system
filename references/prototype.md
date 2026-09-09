@@ -77,7 +77,7 @@ selector 使用稳定的 #元素ID，不能依赖 DOM 顺序。所有业务 butt
 
 spec-data.js 由 build 生成，包含本版需求与页面索引（含模板版本与构建时间，用于识别模板漂移），独立打开原型也可读取。禁止手工修改生成数据。所有真实规则进入 spec，页面 JS 实现相同规则。
 
-**页面布局约束**：运行时把工具栏 `prepend` 到 body（`.ps-tools` 为 `position: sticky; top: 0` 的通栏吸顶条）。页面 CSS **不得**对 body 使用 flex/grid 布局——那会把工具栏与画布变成并排的 flex/grid 子项（工具栏在左、画布被挤到右侧）。需要居中画布时保持 body 为 block，用画布容器 `margin: N auto` 实现水平居中。
+**页面布局约束**：运行时把工具栏 `prepend` 到 body（`.ps-tools` 为 `position: sticky; top: 0` 的通栏吸顶条），并给 body 加 `ps-host` 类。页面 CSS **不得**对 body 使用 flex/grid 或顶部内边距——那会把工具栏与画布变成并排子项、或让工具栏不贴顶。运行时 CSS 对 `body.ps-host` 强制 `display: block; padding-top: 0` 兜底；需要居中画布时用画布容器 `margin: N auto`。validate 会对 body flex/grid 的页面 CSS 发出警告。
 
 ## 原型运行时能力
 

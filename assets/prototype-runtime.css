@@ -84,3 +84,7 @@ body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; 
 .ps-error-surface { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; max-height: 30vh; overflow: auto; background: #fdecea; color: #8a1f1c; border-top: 2px solid #c93434; font: 12px/1.5 system-ui, sans-serif; padding: 6px 12px; }
 .ps-error-surface[hidden] { display: none; }
 .ps-error-surface div { margin: 1px 0; overflow-wrap: anywhere; }
+
+/* PS_HOST_LAYOUT_V1：宿主 body 必须保持块级流——工具栏通栏吸顶、无顶部间隙；
+   画布居中由页面用容器 margin auto 实现（见 prototype.md）。 */
+body.ps-host { display: block !important; padding-top: 0 !important; }

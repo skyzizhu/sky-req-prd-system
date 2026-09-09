@@ -256,6 +256,9 @@ def validate_replay_cases(spec, prototype_ids):
     return errors
 
 
+BODY_LAYOUT = re.compile(r'(^|[},])\s*body\b[^{},]*\{[^}]*display\s*:\s*(?:flex|grid)', re.I | re.S)
+
+
 def validate(root):
     errors, warnings = [], []
     project = read(root / 'project.json')
@@ -439,6 +442,15 @@ def validate(root):
                 for required in ('assets/spec-data.js', 'assets/annotation-store.js', 'assets/prototype-runtime.js', 'assets/prototype-runtime.css'):
                     if required not in html.refs:
                         errors.append(f'{vid}/{pid}: 原型缺少共享需求面板资源 {required}')
+                for ref in html.refs:
+                    if not ref.endswith('.css') or 'prototype-runtime.css' in ref or re.match(r'^(https?:)?//', ref):
+                        continue
+                    css_path = safe(vr / 'content/prototype', ref) if ref.startswith('assets/') else None
+                    if css_path is None or not css_path.is_file():
+                        continue
+                    css_text = re.sub(r'/\*.*?\*/', '', css_path.read_text(encoding='utf-8'), flags=re.S)
+                    if BODY_LAYOUT.search(css_text):
+                        warnings.append(f'{vid}/{pid}: 页面 CSS 将 body 设为 flex/grid，会破坏运行时工具栏布局；画布居中请用容器 margin auto（prototype.md）')
                 for control in parsed.get(pid, HTMLCheck()).controls:
                     if control.get('data-out-of-scope'):
                         if 'disabled' not in control and control.get('aria-disabled') != 'true':

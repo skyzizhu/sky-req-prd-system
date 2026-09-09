@@ -101,7 +101,7 @@
   document.body.classList.add('ps-host');
   var tools = document.createElement('div');
   tools.className = 'ps-tools';
-  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
+  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">查看说明</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
   document.body.prepend(tools);
   var pageIdentity = document.createElement('code'); pageIdentity.id = 'ps-page-id';
   pageIdentity.textContent = '页面：' + pid;
@@ -165,7 +165,7 @@
   if (notes) document.body.appendChild(placement);
   var editingId = null, pendingAnchor = null, adding = false;
   var requirements = data.spec.requirements.filter(function (r) { return page.requirement_ids.includes(r.id); });
-  body.innerHTML = '<p class="ps-hint">「查看说明」模式下点击画布中带虚线框的控件，可直接定位它的规则与验收。</p><h2>' + esc(page.title) + '</h2><p>' + esc(page.purpose || '') + '</p><p class="ps-hint">红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。标注模式点击控件可定位需求。</p><div class="ps-a红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。标注模式点击控件可定位需求。</p><div class="ps-annotation-list">' + interactions.map(function (i, n) {
+  body.innerHTML = '<p class="ps-hint">「查看说明」模式下点击画布中带虚线框的控件，可直接定位它的规则与验收。</p><h2>' + esc(page.title) + '</h2><p>' + esc(page.purpose || '') + '</p><p class="ps-hint">红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。查看说明模式点击控件可定位需求。</p><div class="ps-annotation-list">' + interactions.map(function (i, n) {
     return '<button type="button" data-interaction="' + esc(i.id) + '" data-level="' + esc(i.level || 'info') + '">' + (n + 1) + ' · ' + esc(i.description) + '</button>';
   }).join('') + '</div>' + requirements.map(function (r) {
     return '<article id="req-' + esc(r.id) + '"><h3>' + esc(r.id + ' · ' + r.title) + '</h3><p class="ps-hint">' + esc((r.source === 'origin' ? '原文依据' : 'AI 推断') + ' · ' + (r.status === 'confirmed' ? '已确认' : '待确认') + (r.blocking ? ' · 阻塞开发' : '')) + '</p><p>' + esc(r.description || '') + '</p><dl>' + Object.keys(r.rules || {}).map(function (k) { return '<dt>' + esc(k) + '</dt><dd>' + esc(r.rules[k]) + '</dd>'; }).join('') + '</dl><h4>验收标准</h4>' + r.acceptance.map(function (a) { return '<p>' + esc(a.id + ' · Given ' + a.given + '；When ' + a.when + '；Then ' + a.then) + '</p>'; }).join('') + '<button type="button" data-requirement="' + esc(r.id) + '">定位页面元素</button></article>';

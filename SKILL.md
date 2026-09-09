@@ -99,4 +99,4 @@ Skill 版本与用户项目版本独立。此 Skill 为 1.1；项目可以使用
 - references/outcomes.md：验收执行与指标观测台账、更正与下一版跟进。
 - references/developer-delivery.md：需求范围与交接视图、筛选导出与联调依赖。
 - `python3 <skill>/scripts/create_demo.py <空目录>`：生成含已发布 V1.0 和规划 V1.1 的订单示例，演示状态不代表真实产品决策。
-- `tests/`：python3 -m unittest discover -s tests 与 node --test tests/*.cjs（浏览器测试需 playwright）。
+- `tests/`：分层测试，运行方式与环境要求见 `TESTS.md`（逻辑层零依赖，浏览器层需 playwright）。

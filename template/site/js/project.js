@@ -58,6 +58,54 @@ PS.bootProject = function () {
       try { localStorage.setItem(memory, JSON.stringify(saved)); } catch (_) {}
     });
   });
+  function diffLines(oldText, newText) {
+    var a = String(oldText == null ? '' : oldText).split('\n');
+    var b = String(newText == null ? '' : newText).split('\n');
+    var n = a.length, m = b.length;
+    if (n * m > 1500000) return null;
+    var dp = [];
+    for (var i = 0; i <= n; i++) { dp.push(new Array(m + 1).fill(0)); }
+    for (var i = n - 1; i >= 0; i--) {
+      for (var j = m - 1; j >= 0; j--) {
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i][j + 1], dp[i + 1][j]);
+      }
+    }
+    var rows = [], i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { rows.push([' ', a[i]]); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { rows.push(['-', a[i]]); i++; }
+      else { rows.push(['+', b[j]]); j++; }
+    }
+    while (i < n) { rows.push(['-', a[i]]); i++; }
+    while (j < m) { rows.push(['+', b[j]]); j++; }
+    return rows;
+  }
+  function textDiffs(v, data) {
+    var base = v.base && data.versions[v.base];
+    if (!base) return '<p>首版无基线可比较。</p>';
+    var current = data.versions[v.id];
+    var keys = Object.keys(current.files || {}).filter(function (k) {
+      return Object.prototype.hasOwnProperty.call(base.files || {}, k) && base.files[k] !== current.files[k];
+    }).sort();
+    if (!keys.length) return '<p>正文文件无文本差异；其余变化见上方结构化需求差异与 changed_files。</p>';
+    return keys.map(function (k) {
+      var rows = diffLines(base.files[k], current.files[k]);
+      var body;
+      if (!rows) {
+        body = '<p>文件过大，差异未计算，请人工比对。</p>';
+      } else if (rows.length > 1500) {
+        var add = rows.filter(function (r) { return r[0] === '+'; }).length;
+        var del = rows.filter(function (r) { return r[0] === '-'; }).length;
+        body = '<p>差异行数过多（' + rows.length + ' 行；新增 ' + add + ' / 删除 ' + del + '），请人工比对。</p>';
+      } else {
+        body = rows.map(function (r) {
+          var cls = r[0] === ' ' ? 'ctx' : r[0] === '+' ? 'add' : 'del';
+          return '<span class="diff-' + cls + '">' + esc(r[0] + ' ' + r[1]) + '</span>';
+        }).join('');
+      }
+      return '<details class="ps-diff"><summary>' + esc(k) + '</summary><div class="diff-body">' + body + '</div></details>';
+    }).join('');
+  }
   function changesHtml(v, bundle) {
     var base = v.base && data.versions[v.base];
     var old = {}, current = {};
@@ -70,6 +118,7 @@ PS.bootProject = function () {
     result += '<h2>需求差异</h2>' + (changed.length ? '<ul>' + changed.map(function (id) {
       return '<li>' + (!old[id] ? '新增' : !current[id] ? '移除' : '修改') + ' · ' + esc(id + ' ' + (current[id] || old[id]).title) + '</li>';
     }).join('') + '</ul>' : '<p>没有结构化需求变化；范围、背景及其他文档变更请查看本版概览。</p>');
+    result += '<h2>正文变更（行级差异）</h2>' + textDiffs(v, data);
     result += '<h2>待确认需求</h2>';
     var pending = Object.values(current).filter(function (r) { return r.status === 'pending'; });
     result += pending.length ? '<ul>' + pending.map(function (r) { return '<li>' + esc(r.id + ' · ' + r.title) + (r.blocking ? ' · 阻塞开发' : ' · 可后补') + '</li>'; }).join('') + '</ul>' : '<p>没有待确认的结构化需求。</p>';

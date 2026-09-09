@@ -19,6 +19,65 @@ def install(root):
         shutil.copy2(SKILL / 'template' / name, root / name)
 
 
+BUILD_TOOLS = ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'notelib.py')
+SHARED_ASSETS = ('prototype-runtime.js', 'prototype-runtime.css', 'annotation-store.js')
+
+
+def plan_upgrade(root, project):
+    """对比 skill 模板与项目现状：外壳 / 构建工具 / planning 版共享资源 / 冻结版漂移（只报告）。"""
+    plan = {'shell': [], 'tools': [], 'planning_assets': [], 'frozen_stale': []}
+    for src in sorted((SKILL / 'template/site').rglob('*')):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(SKILL / 'template/site')
+        target = root / 'site' / rel
+        if not target.exists() or target.read_bytes() != src.read_bytes():
+            plan['shell'].append(str(rel))
+    for name in BUILD_TOOLS:
+        target, src = root / name, SKILL / 'template' / name
+        if not target.exists() or target.read_bytes() != src.read_bytes():
+            plan['tools'].append(name)
+    for v in project['versions']:
+        assets = safe(root, 'versions/' + v['id']) / 'content/prototype/assets'
+        stale = [n for n in SHARED_ASSETS
+                 if (assets / n).exists() and (assets / n).read_bytes() != (SKILL / 'assets' / n).read_bytes()]
+        if not stale:
+            continue
+        if v['status'] == 'planning' and not v.get('handoff_parent'):
+            plan['planning_assets'].append({'version': v['id'], 'assets': stale})
+        else:
+            plan['frozen_stale'].append({'version': v['id'], 'status': v['status'], 'assets': stale})
+    return plan
+
+
+def apply_upgrade(root, project, plan):
+    """仅覆盖外壳、构建工具与 planning 版共享资源；冻结/交接内容绝不触碰；被覆盖文件先备份。"""
+    backup = root / '.upgrade-backup' / datetime.datetime.now().strftime('%Y%m%dT%H%M%SZ')
+    saved = 0
+
+    def keep(target):
+        nonlocal saved
+        if target.exists():
+            rel = target.relative_to(root)
+            dest = backup / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(target, dest)
+            saved += 1
+
+    if plan['shell'] or plan['tools']:
+        for rel in plan['shell']:
+            keep(root / 'site' / rel)
+        for name in plan['tools']:
+            keep(root / name)
+        install(root)
+    for item in plan['planning_assets']:
+        assets = safe(root, 'versions/' + item['version']) / 'content/prototype/assets'
+        for name in item['assets']:
+            keep(assets / name)
+            shutil.copy2(SKILL / 'assets' / name, assets / name)
+    return backup if saved else None
+
+
 def manifest(name, form, version):
     return {'product': {'name': name, 'form': form, 'version': version, 'tagline': '',
                         'updated': datetime.date.today().isoformat()},
@@ -35,7 +94,7 @@ def checkpoint(vr):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'migrate', 'handoff'])
+    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'migrate', 'handoff', 'upgrade-shell'])
     p.add_argument('root', type=pathlib.Path)
     p.add_argument('--version', default=None)
     p.add_argument('--name')
@@ -43,6 +102,7 @@ def main():
     p.add_argument('--from-version')
     p.add_argument('--state', choices=['developing', 'released'])
     p.add_argument('--revision', help='交接修订编号，例如 r1')
+    p.add_argument('--apply', action='store_true', help='upgrade-shell：应用升级（默认仅预览）')
     a = p.parse_args()
     root = a.root.resolve()
     if a.version and not ID.fullmatch(a.version):
@@ -123,6 +183,26 @@ def main():
         if read(root/'project.json')['id']!=previous_identity or any(hashes(root/'versions'/key)!=value for key,value in previous_history.items()):
             raise ValueError('版本追加后身份或历史校验失败，请检查并恢复，不要重复创建')
         print('复用固定入口：',root/'site/index.html','；继承基线：',base)
+    elif a.command == 'upgrade-shell':
+        plan = plan_upgrade(root, project)
+        print('外壳差异文件：', len(plan['shell']), ('：' + '、'.join(plan['shell'])) if plan['shell'] else '')
+        print('构建工具差异：', len(plan['tools']), ('：' + '、'.join(plan['tools'])) if plan['tools'] else '')
+        for item in plan['planning_assets']:
+            print('规划版共享资源待升级：', item['version'], '：', '、'.join(item['assets']))
+        for item in plan['frozen_stale']:
+            print('历史版本资源与模板不同（默认不动，保持快照）：', item['version'], '（' + item['status'] + '）：', '、'.join(item['assets']))
+        if not a.apply:
+            print('预览模式：加 --apply 执行升级；仅覆盖外壳、构建工具与规划版共享资源，冻结/交接内容不触碰。')
+            return
+        backup = apply_upgrade(root, project, plan)
+        compile_project(root)
+        errors, warnings = validate(root)
+        if errors:
+            raise ValueError('升级后校验失败：\n' + '\n'.join(errors) + '\n备份在：' + str(backup))
+        print('\n'.join('警告：' + w for w in warnings) or '升级完成，校验通过。')
+        if backup:
+            print('已备份原文件至：', backup)
+        print('请重新在浏览器验证关键路径（外壳与规划版运行时已更新；规划版构建戳将显示新模板版本）。')
     elif a.command == 'build':
         print('\n'.join(compile_project(root)))
     elif a.command == 'check':

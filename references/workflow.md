@@ -81,9 +81,13 @@ python3 <skill>/scripts/project.py checkpoint <项目目录> --version v1.1
 python3 <skill>/scripts/project.py freeze <项目目录> --version v1.1
 python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state developing
 python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state released
+python3 <skill>/scripts/project.py upgrade-shell <项目目录>            # 预览：外壳/构建工具/规划版共享资源与模板的差异
+python3 <skill>/scripts/project.py upgrade-shell <项目目录> --apply   # 应用升级
 ```
 
 new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、原 site/index.html 和旧深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
+
+upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime / annotation-store），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
 
 freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。
 

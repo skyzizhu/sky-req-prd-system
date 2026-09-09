@@ -1,4 +1,5 @@
 """Project/version storage and deterministic validation. Standard library only."""
+import datetime
 import hashlib
 import json
 import pathlib
@@ -11,10 +12,12 @@ import notelib
 from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
+# 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
+TEMPLATE_VERSION = '1.1.0'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
-PROPERTY_LABELS = {'text': '控件文案', 'placeholder': '占位提示', 'defaultValue': '默认值', 'maxLength': '最大长度', 'required': '必填', 'options': '选项', 'width': '宽度'}
+PROPERTY_LABELS = {'text': '控件文案', 'placeholder': '占位提示', 'defaultValue': '默认值', 'maxLength': '最大长度', 'required': '必填', 'options': '选项', 'width': '宽度', 'min': '最小值', 'max': '最大值', 'step': '步进', 'unit': '单位', 'pattern': '格式校验', 'accept': '可接受文件类型'}
 
 
 def property_errors(it, element):
@@ -40,6 +43,18 @@ def property_errors(it, element):
         elif key == 'width':
             if value not in ('auto', 'compact', 'full'):
                 errors.append('宽度仅支持 auto/compact/full')
+        elif key in {'min', 'max', 'step'}:
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or tag != 'input' or element.get('type', 'text') not in {'number', 'range', 'date', 'datetime-local', 'time', 'month', 'week'}:
+                errors.append(key + ' 仅支持数值/日期类 input 的数字值')
+        elif key == 'unit':
+            if not isinstance(value, str) or not 1 <= len(value) <= 20:
+                errors.append('单位需要 1～20 字文本')
+        elif key == 'pattern':
+            if not isinstance(value, str) or not 1 <= len(value) <= 200 or tag != 'input':
+                errors.append('格式校验需要 200 字内文本并适用于 input')
+        elif key == 'accept':
+            if not isinstance(value, str) or not 1 <= len(value) <= 200 or element.get('type') != 'file':
+                errors.append('可接受文件类型仅支持 file input')
         elif not isinstance(value, str) or len(value) > 2000:
             errors.append(key + ' 必须为 2000 字以内文本')
         elif key == 'text' and (tag in {'input', 'textarea', 'select', 'script', 'style'} or element.get('_children')):
@@ -112,9 +127,17 @@ def pages(manifest):
     return [p for m in manifest['modules'] for p in m.get('pages', [])]
 
 
-def spec_markdown(spec):
+def spec_markdown(spec, outcomes=None):
     out = ['# 产品需求文档', '按业务需求组织；编号用于追踪和精确修改，不代替需求说明。', '## 页面与功能范围']
     requirements = {r['id']: r for r in spec.get('requirements', [])}
+    latest_execution = {}
+    for record in outcomes or []:
+        payload = record.get('payload', {}) if isinstance(record, dict) else {}
+        if payload.get('kind') != 'execution' or record.get('superseded') or not payload.get('acceptance_id'):
+            continue
+        current = latest_execution.get(payload['acceptance_id'])
+        if current is None or str(record.get('recorded_at', '')) > str(current.get('recorded_at', '')):
+            latest_execution[payload['acceptance_id']] = record
     page_names = {p['id']: p['title'] for p in spec.get('pages', [])}
     category_names = {'validation':'输入校验','permission':'权限规则','state':'状态规则','data':'数据口径','feedback':'操作反馈'}
     actions = {'navigate':'页面跳转','dialog':'打开弹框','close':'关闭弹框','toggle':'显示切换','input':'输入','submit':'提交','custom':'业务操作','inspect':'只读展示'}
@@ -138,6 +161,13 @@ def spec_markdown(spec):
         out += ['### 验收标准']
         for ac in r.get('acceptance', []):
             out += [f"- 前提：{ac['given']}\n  - 操作：{ac['when']}\n  - 预期：{ac['then']}\n  - 验收编号：{ac['id']}"]
+            record = latest_execution.get(ac['id'])
+            if record is not None:
+                payload = record['payload']
+                result_names = {'passed': '通过', 'failed': '失败', 'blocked': '阻塞', 'not_run': '未执行'}
+                scope_name = '原型验证' if payload.get('scope') == 'prototype' else '产品验收'
+                stale = ' · 基线已变化，需复核' if record.get('stale') else ''
+                out += [f"  - 验证记录：{result_names.get(payload.get('result'), payload.get('result'))}（{scope_name}）· {str(payload.get('observed_at', ''))[:10]}{stale}；取自台账，有记录不代表当前仍通过"]
         controls=[i for i in spec.get('interactions',[]) if r['id'] in i.get('requirement_ids',[])]
         if controls: out += ['### 页面控件与显示说明']
         for it in controls:
@@ -439,15 +469,17 @@ def compile_project(root):
         manifest = read(vr / 'content/manifest.json')
         spec = read(vr / 'content/spec.json') if (vr / 'content/spec.json').exists() else None
         if spec: notelib.validate(spec.get('review_notes',{}),spec)
+        version_outcomes = [record for record in bundle['outcomes']
+                            if isinstance(record, dict) and record.get('payload', {}).get('version') == v['id']]
         files = {}
         for p in pages(manifest):
             if p['type'] in {'markdown', 'mermaid'}:
                 files[p['file']] = safe(vr / 'content', p['file']).read_text(encoding='utf-8')
             elif p['type'] == 'spec':
-                files[p['id']] = spec_markdown(spec or {})
+                files[p['id']] = spec_markdown(spec or {}, version_outcomes)
         bundle['versions'][v['id']] = {'manifest': manifest, 'spec': spec, 'files': files,
                                       'content_hashes': {k: h for k, h in hashes(vr / 'content').items() if k != 'prototype/assets/spec-data.js'}}
-        sections = prdlib.compile_sections(vr / 'content', spec, spec_markdown(spec or {}))
+        sections = prdlib.compile_sections(vr / 'content', spec, spec_markdown(spec or {}, version_outcomes))
         attachments = attachmentlib.for_version(root, project, v['id'], catalog)
         current = bundle['versions'][v['id']]
         current['prd_sections'] = sections
@@ -473,7 +505,7 @@ def compile_project(root):
                     parts += ['- '+a['name']+'：'+a['description']+'；文件相对项目根路径：'+a['relative_path']+('（冻结后补充）' if a['late_addition'] else '') for a in attachments]
             current['full_prd_markdown'] = '\n\n'.join(parts)
         if spec and v['status'] == 'planning':
-            data = {'project': project['id'], 'version': v['id'], 'spec': spec,
+            data = {'project': project['id'], 'version': v['id'], 'build': {'template': TEMPLATE_VERSION, 'generated_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}, 'spec': spec,
                     'noteRevisions': {pid:notelib.digest(note) for pid,note in spec.get('review_notes',{}).items()},
                     'pageRoutes': {p['id']: '/v/' + v['id'] + '/' + m['id'] + '/' + p['id'] for m in manifest['modules'] for p in m['pages'] if p['type'] == 'prototype'},
                     'pageFiles': {p['id']: p['file'] for p in pages(manifest) if p['type'] == 'prototype'}}

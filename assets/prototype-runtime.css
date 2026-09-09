@@ -88,3 +88,15 @@ body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; 
 /* PS_HOST_LAYOUT_V1：宿主 body 必须保持块级流——工具栏通栏吸顶、无顶部间隙；
    画布居中由页面用容器 margin auto 实现（见 prototype.md）。 */
 body.ps-host { display: block !important; padding-top: 0 !important; }
+
+/* PS_DISCOVER_V1：查看说明模式下，带规则的控件虚线现形——开发不必盲点试探 */
+body.ps-annotate .ps-declared { outline: 1.5px dashed #2563eb; outline-offset: 2px; cursor: help; }
+body.ps-annotate .ps-declared:hover { outline-color: #1d4ed8; background: #eff6ff33; }
+
+/* 工具栏窄窗口换行：所有控件保持可点，不横向溢出 */
+.ps-tools { flex-wrap: wrap; height: auto; min-height: 40px; row-gap: 4px; }
+.ps-tools > * { flex-shrink: 0; }
+
+/* 标记查看卡片中的 FR 跳转按钮 */
+.ps-req-jump { border: 1px solid #94a3b8; border-radius: 4px; background: #f8fafc; color: #2563eb; padding: 1px 6px; font: inherit; font-size: 12px; cursor: pointer; }
+.ps-req-jump:hover { background: #eff6ff; border-color: #2563eb; }

@@ -28,6 +28,8 @@
   var page = data.spec.pages.find(function (p) { return p.id === pid; });
   if (!page) return;
   var interactions = data.spec.interactions.filter(function (i) { return i.page === pid; });
+  // PS_DISCOVER_V1: 查看说明模式下，带规则的控件以虚线框现形——开发不必盲点试探。
+  interactions.forEach(function (i) { var el = document.querySelector(i.selector); if (el) el.classList.add('ps-declared'); });
   // PS_PROPERTY_RUNTIME_V1: declarative, allowlisted prototype attributes.
   interactions.forEach(function (it) {
     var el = document.querySelector(it.selector), p = it.properties || {};
@@ -163,7 +165,7 @@
   if (notes) document.body.appendChild(placement);
   var editingId = null, pendingAnchor = null, adding = false;
   var requirements = data.spec.requirements.filter(function (r) { return page.requirement_ids.includes(r.id); });
-  body.innerHTML = '<h2>' + esc(page.title) + '</h2><p>' + esc(page.purpose || '') + '</p><p class="ps-hint">红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。标注模式点击控件可定位需求。</p><div class="ps-annotation-list">' + interactions.map(function (i, n) {
+  body.innerHTML = '<p class="ps-hint">「查看说明」模式下点击画布中带虚线框的控件，可直接定位它的规则与验收。</p><h2>' + esc(page.title) + '</h2><p>' + esc(page.purpose || '') + '</p><p class="ps-hint">红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。标注模式点击控件可定位需求。</p><div class="ps-a红：核心 · 黄：待确认 · 蓝：说明 · 绿：参考。标注模式点击控件可定位需求。</p><div class="ps-annotation-list">' + interactions.map(function (i, n) {
     return '<button type="button" data-interaction="' + esc(i.id) + '" data-level="' + esc(i.level || 'info') + '">' + (n + 1) + ' · ' + esc(i.description) + '</button>';
   }).join('') + '</div>' + requirements.map(function (r) {
     return '<article id="req-' + esc(r.id) + '"><h3>' + esc(r.id + ' · ' + r.title) + '</h3><p class="ps-hint">' + esc((r.source === 'origin' ? '原文依据' : 'AI 推断') + ' · ' + (r.status === 'confirmed' ? '已确认' : '待确认') + (r.blocking ? ' · 阻塞开发' : '')) + '</p><p>' + esc(r.description || '') + '</p><dl>' + Object.keys(r.rules || {}).map(function (k) { return '<dt>' + esc(k) + '</dt><dd>' + esc(r.rules[k]) + '</dd>'; }).join('') + '</dl><h4>验收标准</h4>' + r.acceptance.map(function (a) { return '<p>' + esc(a.id + ' · Given ' + a.given + '；When ' + a.when + '；Then ' + a.then) + '</p>'; }).join('') + '<button type="button" data-requirement="' + esc(r.id) + '">定位页面元素</button></article>';
@@ -231,6 +233,7 @@
       inspect(it);
     }
   }
+  if (window.innerWidth >= 1180 && !panel.classList.contains('ps-docked')) { panel.classList.add('ps-docked'); document.body.classList.add('ps-panel-docked'); panel.querySelector('#ps-dock').textContent = '浮动'; }
   tools.querySelector('#ps-open').onclick = function () { show(); document.body.classList.toggle('ps-panel-docked', panel.classList.contains('ps-docked')); };
   panel.querySelector('#ps-close').onclick = function () { panel.hidden = true; document.body.classList.remove('ps-panel-docked'); tools.querySelector('#ps-open').focus(); };
   panel.querySelector('#ps-dock').onclick = function () {
@@ -305,6 +308,17 @@
     dialog.addEventListener('close', function () { document.body.appendChild(panel); positionMarkers(); });
   });
   document.addEventListener('click', function (event) {
+    var reqJump = event.target.closest('[data-req-jump]');
+    if (reqJump) {
+      var article = document.getElementById('req-' + reqJump.dataset.reqJump);
+      if (article) {
+        panel.hidden = false;
+        article.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        article.style.boxShadow = '0 0 0 3px #2563eb55';
+        setTimeout(function () { article.style.boxShadow = ''; }, 900);
+      }
+      return;
+    }
     if (tools.contains(event.target) || panel.contains(event.target) || markers.contains(event.target) || editor.contains(event.target) || notePopover.contains(event.target) || placement.contains(event.target) || event.target.closest('.ps-dialog-review,#ps-replay-dialog')) return;
     if (adding) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -404,7 +418,7 @@
     move.hidden=!it.manual;move.onclick=function(){movingId=it.id;adding=true;placement.hidden=false;document.body.classList.add('ps-adding-note');notePopover.hidden=true;};
     var level = notePopover.querySelector('#ps-note-view-level'); level.textContent = priorityLabel(it.level); level.dataset.level = it.level || 'info';
     notePopover.querySelector('#ps-note-view-text').textContent = it.description;
-    notePopover.querySelector('#ps-note-view-meta').textContent = (it.manual ? '手动标注' : '需求标注') + (it.requirement_ids && it.requirement_ids.length ? ' · ' + it.requirement_ids.join('、') : '');
+    notePopover.querySelector('#ps-note-view-meta').innerHTML = (it.manual ? '手动标注' : '需求标注') + (it.requirement_ids && it.requirement_ids.length ? ' · ' + it.requirement_ids.map(function (id) { return '<button type="button" class="ps-req-jump" data-req-jump="' + esc(id) + '">' + esc(id) + '</button>'; }).join(' ') : '');
     var review=it.review || {status:'pending',history:[]};
     reviewRead.textContent=reviewNames[review.status]+' · '+(review.note || '尚未处理')+(review.requirement_ids && review.requirement_ids.length?' · 关联 '+review.requirement_ids.join('、'):'')+(review.change_ref?' · 修改记录 '+review.change_ref:'')+(review.evidence?' · 验证：'+review.evidence:'');
     if(savedFrom && savedFrom!==data.version)reviewRead.textContent+=' · 继承自 '+savedFrom+'，本版适用性与完成证据需重新复核';

@@ -99,3 +99,9 @@
 /* 验收条目：台账验证记录徽标（有记录不代表当前仍通过） */
 .prd-ac-badge { font-size:13px; color:#1a7f37; background:#e9f7ee; border-left:3px solid #2f8652; padding:4px 10px; margin:6px 0 2px; border-radius:0 6px 6px 0; }
 .prd-ac-badge.stale { color:#8a6800; background:#fff8c5; border-left-color:#986c00; }
+
+/* 交接视图：本版速览与阅读路径 */
+.scope-tldr { border:1px solid #bfdbfe; background:#eff6ff; border-radius:8px; padding:12px 16px; margin:0 0 14px; }
+.scope-tldr strong { color:#1d4ed8; }
+.scope-tldr p { margin:6px 0 0; font-size:14px; color:#334155; }
+.scope-tldr .scope-tldr-path { color:#475569; font-size:13px; }

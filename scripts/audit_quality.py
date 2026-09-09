@@ -3,13 +3,38 @@
 import argparse
 import json
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'template'))
 from projectlib import read, safe
 
+SCRIPT_SRC = re.compile(r'<script[^>]+src="([^"]+)"')
+BINDING_PRIMITIVE = re.compile(r'addEventListener\s*\(|\.on(?:click|submit|change|input)\s*=')
 
-def audit(spec):
+
+def page_script_text(version_dir):
+    """按原型页面汇总其引用的本地 JS 文本（排除编译生成的 spec-data，避免声明本身造成假阳性）。"""
+    manifest = read(version_dir / 'content/manifest.json')
+    result = {}
+    for module in manifest.get('modules', []):
+        for page in module.get('pages', []):
+            if page.get('type') != 'prototype':
+                continue
+            html_path = version_dir / 'content' / page['file']
+            chunks = []
+            for src in SCRIPT_SRC.findall(html_path.read_text(encoding='utf-8')):
+                name = src.split('#')[0].split('?')[0]
+                if name.endswith('spec-data.js'):
+                    continue
+                target = html_path.parent / name
+                if target.is_file():
+                    chunks.append(target.read_text(encoding='utf-8'))
+            result[page['id']] = '\n'.join(chunks)
+    return result
+
+
+def audit(spec, version_dir=None):
     issues = []
     seen = set()
 
@@ -65,8 +90,30 @@ def audit(spec):
                 issue(rp, '缺少验收关联')
             elif any(not isinstance(ref, str) or ref not in ac_ids for ref in refs):
                 issue(rp, '验收关联必须指向当前需求的验收 ID')
+    # PS_DECLARATION_CHECK_V1：声明由页面 JS 实现的控件，必须在页面脚本中留有绑定痕迹；
+    # 字符串级检查只能提示，不能证明行为正确（装饰性按钮靠它兜底，最终仍需浏览器实测）。
+    if version_dir is not None:
+        try:
+            scripts = page_script_text(version_dir)
+        except (OSError, ValueError, KeyError, TypeError):
+            scripts = None
+        if scripts is not None:
+            for it in spec.get('interactions', []):
+                if not isinstance(it, dict) or it.get('action') not in ('custom', 'submit', 'input'):
+                    continue
+                selector = it.get('selector') or ''
+                element_id = selector[1:] if selector.startswith('#') else ''
+                page_scripts = scripts.get(it.get('page'))
+                if not element_id or page_scripts is None:
+                    continue
+                if element_id not in page_scripts:
+                    issue(str(it.get('id') or selector),
+                          f'声明了 {it.get("action")} 动作，但页面脚本未见对 #{element_id} 的任何引用（需人工确认，避免装饰性控件）')
+                elif not BINDING_PRIMITIVE.search(page_scripts):
+                    issue(str(it.get('id') or selector),
+                          f'页面脚本引用了 #{element_id}，但整个页面未见事件绑定原语（addEventListener/on*），需人工确认行为是否实现')
     return {'requirements_checked': len(requirements), 'rules_checked': len(seen),
-            'issues': issues, 'scope': '仅检查已记录规则的结构、实例和关联；不证明业务正确、交互通过或开发就绪'}
+            'issues': issues, 'scope': '仅检查已记录规则的结构、实例和关联（含声明/实现绑定提示）；不证明业务正确、交互通过或开发就绪'}
 
 
 def main():
@@ -81,7 +128,7 @@ def main():
         vid = args.version or project['current_version']
         if vid not in [v['id'] for v in project['versions']]:
             raise ValueError('版本不存在')
-        report = audit(read(safe(root, f'versions/{vid}/content/spec.json')))
+        report = audit(read(safe(root, f'versions/{vid}/content/spec.json')), safe(root, f'versions/{vid}'))
         report.update(project=project['id'], version=vid)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return int(args.strict and bool(report['issues']))

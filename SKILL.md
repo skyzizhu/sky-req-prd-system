@@ -89,4 +89,14 @@ Skill 版本与用户项目版本独立。此 Skill 为 1.1；项目可以使用
 - references/workflow.md：目录、schema、项目命令、迁移、快照和增量维护。
 - references/nodes.md：按工作场景裁剪物料、版本范围、跨端规则。
 - references/prototype.md：结构化需求与交互 schema、运行时接入、原型验收。
+- references/delivery-quality.md：需求深化检查维度、rule_details 结构、测试与上线口径。
+- references/standard-prd.md：九章标准 PRD、章节适用性声明与附件落盘。
+- references/maintenance.md：已生成项目的轻量维护入口与稳定物料锚点。
+- references/incremental.md：从 HTML/编号/控件做自然语言增量修订的单字段入口。
+- references/editing.md：本机 PRD 编辑器、原型属性编辑、保存冲突与撤销。
+- references/replay.md：角色与业务状态复现链接（合成数据）。
+- references/review-loop.md：原型批注处理闭环与正式采纳流程。
+- references/outcomes.md：验收执行与指标观测台账、更正与下一版跟进。
+- references/developer-delivery.md：需求范围与交接视图、筛选导出与联调依赖。
 - `python3 <skill>/scripts/create_demo.py <空目录>`：生成含已发布 V1.0 和规划 V1.1 的订单示例，演示状态不代表真实产品决策。
+- `tests/`：python3 -m unittest discover -s tests 与 node --test tests/*.cjs（浏览器测试需 playwright）。

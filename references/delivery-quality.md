@@ -15,9 +15,13 @@
 
 用具体实例核对规则。例：取消订单不能只写“支持取消”；应明确状态、角色、成功结果、失败处理，以及是否涉及库存/退款等依赖。无关依赖不强加。
 
+## 优先级与自动功能清单
+
+需求可带可选 `priority`（P0～P3，省略标待定）；功能章节顶部由 spec 自动生成功能清单表（编号/功能/优先级/来源/状态），不手工维护第二份清单文档。P0 需求必须有验收口径（audit 检查缺口）。
+
 ## 可选结构化深化数据
 
-保留既有 requirements.rules 兼容；新建或深改需求采用 requirement.rule_details 数组，稳定 ID 不随标题变更。该数组存在时是细粒度规则唯一来源；rules 仅保留不重复的背景说明。每条格式：
+保留既有 requirements.rules 兼容；新建或深改需求采用 requirement.rule_details 数组，稳定 ID 不随标题变更。该数组存在时是细粒度规则唯一来源，边界与异常融合为对应 category 的细目；rules 可整体省略或仅保留不重复的背景说明，避免与细目重复。每条格式：
 
 ```json
 {"id":"RULE-NAME-LENGTH","category":"validation","statement":"去除首尾空格后长度为 1～40 个字符","source":"ai-inferred","status":"pending","examples":[{"input":"空字符串","expected":"拒绝提交并定位名称字段"}],"acceptance_ids":["AC-ORDER-001"]}

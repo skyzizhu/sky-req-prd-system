@@ -39,14 +39,14 @@
 #delivery-tasks pre { white-space:pre-wrap; overflow-wrap:anywhere; }
 #outcome-draft { display: block; box-sizing: border-box; width: 100%; margin: 12px 0; font: 13px/1.5 monospace; }
 .outcome-record { border-top: 1px solid #ddd; padding: 12px 0; overflow-wrap: anywhere; }
-.prd-reader { max-width: 1200px; margin: 0 auto; padding: 20px 24px; font: 14px/1.65 system-ui; }
+.prd-reader { max-width: 1500px; margin: 0; padding: 18px 22px 28px; font: 14px/1.65 system-ui; }
 .prd-reader h1 { font-size: 23px; margin: 0 0 6px; }
 .prd-reader h2 { font-size: 21px; margin: 0; }
 .prd-reader h3 { font-size: 16px; margin: 24px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
 .prd-reader h4 { font-size: 14px; margin: 0 0 6px; }
 .prd-tools { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
 .prd-tools input { min-width: 200px; }
-.prd-layout { display:grid; grid-template-columns:170px minmax(0,1fr); gap:20px; align-items:start; }
+.prd-layout { display:grid; grid-template-columns:186px minmax(0,1fr); gap:14px; align-items:start; }
 #prd-toc { position:sticky; top:10px; display:grid; gap:6px; max-height:70vh; overflow:auto; }
 #prd-toc button { text-align:left; padding:8px; border:0; background:#eef2f7; border-radius:5px; }
 .prd-requirement { background:white; border:1px solid #e2e8f0; border-radius:9px; padding:24px; margin-bottom:20px; scroll-margin-top:12px; overflow-wrap:anywhere; }
@@ -105,3 +105,13 @@
 .scope-tldr strong { color:#1d4ed8; }
 .scope-tldr p { margin:6px 0 0; font-size:14px; color:#334155; }
 .scope-tldr .scope-tldr-path { color:#475569; font-size:13px; }
+
+/* 功能章节：spec 自动生成的功能清单表 */
+.prd-featlist { margin: 0 0 14px; border: 1px solid #dbe2ec; border-radius: 8px; background: white; overflow: hidden; }
+.prd-featlist summary { cursor: pointer; padding: 9px 14px; font-size: 13px; color: #475569; }
+.prd-featlist table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.prd-featlist th, .prd-featlist td { border-top: 1px solid #eef2f7; padding: 7px 12px; text-align: left; }
+.prd-featlist th { background: #f6f8fa; color: #475569; font-weight: 600; }
+
+/* PRD 目录锚点选中态：当前阅读中的需求高亮 */
+#prd-toc button.on { background:#1d4ed8; color:#fff; font-weight:600; }

@@ -12,6 +12,7 @@
     "id":"FR-ORDER-001",
     "title":"创建订单",
     "description":"用户从订单列表创建订单。",
+    "priority":"P0",
     "source":"ai-inferred",
     "status":"pending",
     "blocking":true,

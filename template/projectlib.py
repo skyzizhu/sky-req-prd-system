@@ -128,7 +128,14 @@ def pages(manifest):
 
 
 def spec_markdown(spec, outcomes=None):
-    out = ['# 产品需求文档', '按业务需求组织；编号用于追踪和精确修改，不代替需求说明。', '## 页面与功能范围']
+    out = ['# 产品需求文档', '按业务需求组织；编号用于追踪和精确修改，不代替需求说明。', '## 功能清单',
+           '由 spec 自动生成，索引与详情同源；优先级缺失标待定。', '',
+           '| 编号 | 功能 | 优先级 | 来源 | 状态 |', '|---|---|---|---|---|']
+    for r in spec.get('requirements', []):
+        out += ['| ' + r['id'] + ' | ' + r['title'] + ' | ' + (r.get('priority') or '待定') + ' | '
+                + ('AI 推断' if r['source'] == 'ai-inferred' else '原始需求') + ' | '
+                + ('已确认' if r['status'] == 'confirmed' else '待评审') + ' |']
+    out += ['## 页面与功能范围']
     requirements = {r['id']: r for r in spec.get('requirements', [])}
     latest_execution = {}
     for record in outcomes or []:
@@ -342,6 +349,8 @@ def validate(root):
                     errors.append(f'{vid}/{rid}: 需求 ID 或标题无效')
                 if r.get('source') not in {'origin', 'ai-inferred'} or r.get('status') not in {'pending', 'confirmed'}:
                     errors.append(f'{vid}/{rid}: 来源或状态无效')
+                if 'priority' in r and r.get('priority') not in {'P0', 'P1', 'P2', 'P3'}:
+                    errors.append(f'{vid}/{rid}: priority 仅允许 P0～P3 或省略')
                 if not r.get('acceptance'):
                     errors.append(f'{vid}/{rid}: 缺少验收口径')
                 delivery = r.get('delivery', {})

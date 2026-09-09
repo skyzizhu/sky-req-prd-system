@@ -14,6 +14,29 @@
     input.addEventListener('input', function () { object[key] = input.value; changed(); }); wrap.appendChild(input); parent.appendChild(wrap);
   }
   function group(title) { var box = document.createElement('fieldset'); var legend = document.createElement('legend'); legend.textContent = title; box.appendChild(legend); return box; }
+  function attachmentsForm(form) {
+    form.innerHTML='<h2>附录 · 文件附件</h2><p>文件真实保存到项目 attachments/ 目录。最大 10MB；支持 PDF、PNG/JPEG、UTF-8 文本/CSV/Markdown、无宏 Office 文档。不提供在线执行或预览。</p><p>'+ (current.editable?'规划版附件纳入后续冻结快照引用。':'此版本已冻结：本次上传仅作为带时间标记的补充资料，不修改原交接内容。')+'</p><div id="attachment-list"></div><fieldset><legend>上传新附件</legend><label>选择文件<input id="attachment-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.csv,.docx,.xlsx,.pptx"></label><label>附件说明<textarea id="attachment-description" maxlength="2000"></textarea></label><label>关联需求编号（逗号分隔，可留空）<input id="attachment-refs"></label><label><input id="attachment-share" type="checkbox">确认附件会随项目分享，且不含未授权敏感资料</label><button id="attachment-upload" type="button">上传并保存到项目</button></fieldset>';
+    var list=form.querySelector('#attachment-list');
+    (current.attachments || []).forEach(function(a){
+      var row=document.createElement('p'), button=document.createElement('button');
+      row.textContent=a.name+' · '+a.size+' 字节 · '+a.description+(a.late_addition?' · 冻结后补充':' · 版本引用')+' · '+a.created_at+' ';
+      button.textContent='下载'; button.type='button';
+      button.onclick=function(){run(async function(){var response=await fetch('/api/attachment?id='+encodeURIComponent(a.id),{headers:{'X-Editor-Token':token}});if(!response.ok)throw new Error('附件下载失败');var url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=a.name;link.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);});};
+      row.appendChild(button);list.appendChild(row);
+    });
+    if(!current.attachments.length)list.textContent='尚无附件。';
+    form.querySelector('#attachment-upload').onclick=function(){
+      if(dirty){el('status').textContent='请先保存或明确放弃当前 PRD 草稿，再上传附件。';return;}
+      var file=form.querySelector('#attachment-file').files[0];
+      if(!file || file.size>10*1024*1024 || !file.size){el('status').textContent='请选择 1 字节～10MB 的文件';return;}
+      run(async function(){
+        var encoded=await new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(reader.result.split(',')[1]);};reader.onerror=reject;reader.readAsDataURL(file);});
+        var result=await request('upload',{revision:current.revision,name:file.name,data:encoded,description:form.querySelector('#attachment-description').value,requirement_ids:form.querySelector('#attachment-refs').value.split(/[,，]/).map(function(s){return s.trim();}).filter(Boolean),share_ack:form.querySelector('#attachment-share').checked});
+        adopt(result.state);undoId=null;el('undo').disabled=true;
+        el('status').textContent='附件已保存到项目：'+result.attachment.name+(result.build_error?'；站点构建失败，请修复后重建，勿重复上传：'+result.build_error:'；附录链接已更新。');
+      });
+    };
+  }
   function prototypeForm(form, it) {
     var metadata = current.prototype_elements[it.page][it.selector.slice(1)];
     var title = document.createElement('h2'); title.textContent = it.description; form.appendChild(title);
@@ -98,6 +121,16 @@
   function render() {
     var form = el('form'); form.replaceChildren();
     var value = el('material').value;
+    if(value==='review-notes'){
+      form.innerHTML='<h2>保存原型批注到项目</h2><p>选择原型导出的批注 JSON。将替换该页已保存批注，可撤销；其他页、PRD 规则不变。仅规划版允许保存。上传前请核对文件版本和已有批注。</p><input id="review-file" type="file" accept=".json"><button id="review-publish" type="button">确认保存到项目</button>';
+      form.querySelector('#review-publish').disabled=!current.editable;
+      form.querySelector('#review-publish').onclick=function(){
+        if(dirty){el('status').textContent='请先保存或放弃当前正文草稿。';return;}
+        var file=form.querySelector('#review-file').files[0];if(!file || file.size>1024*1024){el('status').textContent='请选择不超过 1MB 的批注 JSON';return;}
+        run(async function(){var result=await request('notes',{revision:current.revision,notes:JSON.parse(await file.text())});adopt(result.state);undoId=result.undo_id;el('undo').disabled=!undoId;el('status').textContent='批注已保存到项目；重新打开原型可查看，未修改正式需求规则。';});
+      };return;
+    }
+    if (value === 'attachments') { attachmentsForm(form); return; }
     if (value.startsWith('it:')) { prototypeForm(form, draft.spec.interactions.find(function (i) { return i.id === value.slice(3); })); return; }
     if (value.startsWith('doc:')) { field(form, '正文（Markdown）', draft.documents, value.slice(4)); return; }
     var r = (draft.spec && draft.spec.requirements || []).find(function (r) { return r.id === value; });
@@ -122,6 +155,8 @@
     (s.spec && s.spec.requirements || []).forEach(function (r) { var opt = new Option(r.id + ' · ' + r.title, r.id); el('material').add(opt); });
     Object.keys(s.documents).forEach(function (path) { el('material').add(new Option(path, 'doc:' + path)); });
     (s.spec && s.spec.interactions || []).forEach(function (it) { if (s.prototype_elements[it.page] && s.prototype_elements[it.page][it.selector.slice(1)]) el('material').add(new Option('原型 · ' + it.description, 'it:' + it.id)); });
+    el('material').add(new Option('附录 · 文件附件（上传/下载）', 'attachments'));
+    el('material').add(new Option('原型批注 · 保存到项目', 'review-notes'));
     if (Array.from(el('material').options).some(function (o) { return o.value === selected; })) el('material').value = selected;
     render();
   }

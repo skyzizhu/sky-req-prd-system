@@ -4,6 +4,8 @@
 
 ## 本机编辑入口
 
+纯自然语言小修订优先读 maintenance.md，使用精简查询/单条补丁，不先把 state 的全量 HTML 和文档输出给模型。需要跨字段修改包或可视化编辑时再使用本节完整编辑器。
+
 ```bash
 python3 <skill>/scripts/edit_project.py <项目目录> --version v1.1
 ```
@@ -42,6 +44,8 @@ python3 <skill>/scripts/edit_project.py <项目目录> --version v1.1
 
 ## 自然语言修改与命令复用
 
+从已有 HTML、需求/规则编号或控件定位自然语言变更时先读 incremental.md；revise_item.py 提供候选查询与稳定 ID 的单字段预览/保存。布局和自定义 JS 仍局部修改源文件，不重新生成页面。
+
 先按 workflow.md 运行 impact、读取受影响源内容，再获取编辑状态：
 
 ```bash
@@ -54,3 +58,6 @@ python3 <skill>/scripts/edit_project.py <项目> --version v1.1 --action undo --
 修改包为 state 返回的 revision、spec、documents，保留未改字段和所有已登记正文键；只改用户范围内内容。撤销包为 `{ "revision": "当前指纹", "undo_id": "保存返回的ID" }`。使用 apply_patch 写修改包。用户已授权修改时直接预览并保存，无需重复询问；真正存在无法判断的冲突才请求方向。命令不会调用模型，Agent 负责解释自然语言和业务规则。
 
 保存后依据 report 逐项复核脚本、测试、旧值残留。project.py impact 也提供 rule_changes_since_checkpoint 的稳定 ID 前后差异，验收影响包含删除前的条目。完成相关修订及实际交互验证后再 checkpoint。只完成 PRD 编辑时，交付必须明确原型行为与测试仍待复核。
+# 标准章节与文件附件
+
+涉及完整 PRD、章节适用性或附录时先读 standard-prd.md。编辑器正文列表包含 prd.json 注册的 Markdown 来源；保存复用已有预览/冲突/撤销流程。文件附件在独立物料项上传，不能把文件名或浏览器临时 Blob 链接当成已保存附件。冻结正文只读，但可追加明确标识的项目级补充附件。

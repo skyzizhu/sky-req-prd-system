@@ -12,6 +12,9 @@ import fcntl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'template'))
 from projectlib import read, write, safe, hashes, pages, validate, compile_project, HTMLCheck, property_errors
+import prdlib
+import attachmentlib
+import notelib
 
 
 class Conflict(ValueError):
@@ -32,7 +35,7 @@ def diff(before, after, path=''):
 def revision(root):
     # Includes generated files, metadata, manually edited sources, and frozen snapshots.
     result = {}
-    for base in ('project.json', 'config.md', 'versions', 'site', 'outcomes'):
+    for base in ('project.json', 'config.md', 'versions', 'site', 'outcomes', 'attachments'):
         p = root / base
         if p.is_symlink():
             raise ValueError('编辑项目不支持符号链接：' + base)
@@ -56,6 +59,11 @@ def state(root, vid):
     manifest = read(vr / 'content/manifest.json')
     documents = {p['file']: safe(vr / 'content', p['file']).read_text(encoding='utf-8')
                  for p in pages(manifest) if p['type'] == 'markdown'}
+    registry = prdlib.registry(vr / 'content')
+    if registry:
+        for section in registry['sections']:
+            for source in section['sources']:
+                documents[source] = safe(vr / 'content', source).read_text(encoding='utf-8')
     specfile = vr / 'content/spec.json'
     prototype_elements = {}
     prototype_previews = {}
@@ -72,6 +80,7 @@ def state(root, vid):
                     css.append(safe(vr / 'content', str(file.parent.relative_to(vr / 'content') / ref)).read_text(encoding='utf-8'))
             prototype_previews[p['id']] = {'html': html, 'css': '\n'.join(css)}
     return {'project': project['name'], 'version': vid, 'editable': version['status'] == 'planning',
+            'attachments': attachmentlib.for_version(root, project, vid), 'prd_registry': registry,
             'revision': revision(root), 'spec': read(specfile) if specfile.exists() else None,
             'documents': documents, 'prototype_elements': prototype_elements, 'prototype_previews': prototype_previews}
 
@@ -107,8 +116,9 @@ def candidate(current, payload):
             raise ValueError('请先通过需求工作流建立结构化 PRD')
         # Only declarative properties/targets of existing interactions are editable.
         for key in spec.keys() | current['spec'].keys():
-            if key not in {'requirements', 'interactions'} and spec.get(key) != current['spec'].get(key):
+            if key not in {'requirements', 'interactions', 'review_notes'} and spec.get(key) != current['spec'].get(key):
                 raise ValueError('此编辑器仅修改需求，页面与交互结构请走原型变更流程')
+        notelib.validate(spec.get('review_notes',{}),spec)
         old_interactions = current['spec'].get('interactions', [])
         interactions = spec.get('interactions', [])
         if not isinstance(interactions, list) or [i['id'] for i in interactions] != [i['id'] for i in old_interactions]:
@@ -189,6 +199,8 @@ def _save(root, vid, payload, restore=False):
                 shutil.copy2(p, stage / name)
         if (root / 'outcomes').exists():
             shutil.copytree(root / 'outcomes', stage / 'outcomes')
+        if (root / 'attachments').exists():
+            shutil.copytree(root / 'attachments', stage / 'attachments')
         vr = stage / 'versions' / vid / 'content'
         if spec is not None:
             write(vr / 'spec.json', spec)

@@ -5,9 +5,12 @@ import json
 import pathlib
 import secrets
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs, quote
 
 from editlib import Conflict, state, prepare, save, undo
+from attachments import upload
+from save_notes import publish
+import attachmentlib
 
 ASSETS = pathlib.Path(__file__).resolve().parents[1] / 'assets/editor'
 
@@ -19,13 +22,15 @@ def server(root, vid, port=0):
         def log_message(self, *args):
             pass
 
-        def reply(self, status, body, kind='application/json; charset=utf-8'):
+        def reply(self, status, body, kind='application/json; charset=utf-8', download=None):
             content = json.dumps(body, ensure_ascii=False).encode() if not isinstance(body, bytes) else body
             self.send_response(status)
             self.send_header('Content-Type', kind)
             self.send_header('Content-Length', str(len(content)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
+            if download:
+                self.send_header('Content-Disposition', "attachment; filename*=UTF-8''"+quote(download))
             self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
             self.end_headers()
             self.wfile.write(content)
@@ -38,6 +43,16 @@ def server(root, vid, port=0):
 
         def do_GET(self):
             route = urlsplit(self.path).path
+            if route == '/api/attachment':
+                if not self.authorized(): return self.reply(403, {'error':'编辑会话无效'})
+                try:
+                    aid = parse_qs(urlsplit(self.path).query).get('id', [''])[0]
+                    meta = next((a for a in state(root,vid)['attachments'] if a['id']==aid), None)
+                    if not meta: return self.reply(404, {'error':'此版本没有该附件'})
+                    file = root / meta['relative_path']
+                    return self.reply(200, file.read_bytes(), 'application/octet-stream', meta['name'])
+                except (ValueError, OSError, KeyError, TypeError) as exc:
+                    return self.reply(400, {'error':str(exc)})
             if route == '/api/state':
                 if not self.authorized():
                     return self.reply(403, {'error': '编辑会话无效，请使用启动命令输出的链接'})
@@ -57,9 +72,12 @@ def server(root, vid, port=0):
             try:
                 if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
                     raise ValueError('需要 JSON 请求')
+                route = urlsplit(self.path).path
                 length = int(self.headers.get('Content-Length', '0'))
-                if not 0 < length <= 4_000_000:
-                    raise ValueError('请求大小无效（最多 4MB）')
+                maximum = 16_000_000 if route == '/api/upload' else 4_000_000
+                if not 0 < length <= maximum:
+                    raise ValueError('请求大小超限；附件最多 10MB，其他请求最多 4MB')
+                self.connection.settimeout(15)
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
                     raise ValueError('请求必须为对象')
@@ -70,6 +88,10 @@ def server(root, vid, port=0):
                     result = save(root, vid, payload)
                 elif route == '/api/undo':
                     result = undo(root, vid, payload)
+                elif route == '/api/upload':
+                    result = upload(root, vid, payload)
+                elif route == '/api/notes':
+                    result = publish(root,vid,payload['notes'],payload.get('revision'))
                 else:
                     return self.reply(404, {'error': '不存在'})
                 self.reply(200, result)

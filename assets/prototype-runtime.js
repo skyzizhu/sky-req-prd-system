@@ -25,9 +25,17 @@
     }
     if (p.width) el.style.width = {auto: 'auto', compact: '160px', full: '100%'}[p.width];
   });
-  var notes = window.PSAnnotationStore ? window.PSAnnotationStore({project:data.project, version:data.version, page:pid, requirement_ids:page.requirement_ids}, interactions, {
-    getItem: function (k) { return localStorage.getItem(k); }, setItem: function (k, v) { localStorage.setItem(k, v); }
+  var savedNotes=(data.spec.review_notes || {})[pid];
+  var savedFrom=savedNotes && savedNotes.version;
+  if(savedNotes){savedNotes=JSON.parse(JSON.stringify(savedNotes));savedNotes.project=data.project;savedNotes.version=data.version;}
+  var noteContext={project:data.project, version:data.version, page:pid, requirement_ids:page.requirement_ids,saved:savedNotes};
+  var draftBaseRevision=(data.noteRevisions || {})[pid] || null;
+  var notes = window.PSAnnotationStore ? window.PSAnnotationStore(noteContext, interactions, {
+    getItem: function (k) { var local=localStorage.getItem(k);if(local)draftBaseRevision=JSON.parse(localStorage.getItem(k+'.base') || 'null');return local; }, setItem: function (k, v) { localStorage.setItem(k, v);localStorage.setItem(k+'.base',JSON.stringify(draftBaseRevision)); }
   }) : null;
+  var draftNotes=notes, editingMode=false, movingId=null, hoverTarget=null, formOriginal='', returnFocus=null;
+  var sharedNotes=window.PSAnnotationStore?window.PSAnnotationStore(noteContext,interactions,{getItem:function(){return null;},setItem:function(){}}):null;
+  notes=sharedNotes;
   var key = 'ps.demo.' + data.project + '.' + data.version;
   var memoryState = {};
   // PS_REPLAY_V1: URLs carry only a named synthetic fixture, never user data.
@@ -65,6 +73,10 @@
   tools.className = 'ps-tools';
   tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
   document.body.prepend(tools);
+  var pageIdentity = document.createElement('code'); pageIdentity.id = 'ps-page-id';
+  pageIdentity.textContent = '页面：' + pid;
+  pageIdentity.title = '稳定页面编号；修改时同时提供项目和版本 ' + data.version;
+  tools.querySelector('strong').after(pageIdentity);
   if (cases.length || replayId !== null) {
     var caseLabel = document.createElement('label'); caseLabel.textContent = '复现场景 ';
     var caseSelect = document.createElement('select'); caseSelect.id = 'ps-replay-case';
@@ -98,6 +110,7 @@
   }
   var editToggle = document.createElement('button'); editToggle.type = 'button'; editToggle.id = 'ps-edit-notes'; editToggle.textContent = '编辑标记';
   if (notes) tools.querySelector('#ps-open').after(editToggle);
+  var manageButton=document.createElement('button');manageButton.type='button';manageButton.id='ps-note-manage';manageButton.textContent='管理批注';manageButton.hidden=true;editToggle.after(manageButton);manageButton.onclick=function(){if(editingMode && closeNote()){editor.hidden=false;refreshEditor();}};
   var panel = document.createElement('aside');
   panel.className = 'ps-panel'; panel.hidden = true; panel.setAttribute('aria-label', '本页需求');
   panel.innerHTML = '<div class="ps-panel-head"><strong>本页需求 · 拖动此处</strong><button type="button" id="ps-dock">停靠</button><button type="button" id="ps-close" aria-label="收起本页需求">收起</button></div><div class="ps-panel-content"></div>';
@@ -196,7 +209,9 @@
     this.textContent = docked ? '浮动' : '停靠';
   };
   tools.querySelector('#ps-mode').onclick = function () {
-    var active = document.body.classList.toggle('ps-annotate'); this.setAttribute('aria-pressed', String(active)); this.textContent = active ? '返回演示' : '标注模式';
+    if(!closeNote())return;
+    editingMode=false;manageButton.hidden=true;notes=sharedNotes;editToggle.textContent='编辑标记';rebuildMarkers();
+    var active = document.body.classList.toggle('ps-annotate'); this.setAttribute('aria-pressed', String(active)); this.textContent = active ? '返回演示' : '查看说明';
     if (active) show(); else if (notes) { stopAdding(); editor.hidden = true; }
   };
   tools.querySelector('#ps-scenario').onchange = function () {
@@ -211,7 +226,7 @@
     if (it) { highlight(it); if (button.dataset.interaction) show(it); }
   });
   var markers = document.createElement('div'); markers.className = 'ps-markers'; document.body.appendChild(markers);
-  function visibleNotes() { return notes ? notes.list().filter(function (i) { return !i.hidden; }) : interactions.map(function (i, n) { return Object.assign({}, i, {number:String(n+1)}); }); }
+  function visibleNotes() { return notes ? notes.list().filter(function (i) { return !i.manual || !i.hidden; }).map(function(i){return i.manual?i:Object.assign({},i,interactions.find(function(original){return original.id===i.id;}),{hidden:false});}) : interactions.map(function (i, n) { return Object.assign({}, i, {number:String(n+1)}); }); }
   function targetOf(item) { try { var el = document.querySelector(item.selector); return el && !el.closest('.ps-tools,.ps-panel,.ps-note-editor,.ps-note-popover,.ps-markers,.ps-dialog-review') ? el : null; } catch (_) { return null; } }
   function rebuildMarkers() {
     markers.textContent = '';
@@ -248,7 +263,7 @@
     dialog.appendChild(review);
     if (notes) {
       var editDialog = document.createElement('button'); editDialog.type = 'button'; editDialog.className = 'ps-dialog-review'; editDialog.textContent = '编辑弹框标记';
-      editDialog.onclick = function () { if (editor.hidden) editToggle.onclick(); dialog.appendChild(editor); editor.hidden = false; };
+      editDialog.onclick = function () { if (!editingMode) editToggle.onclick(); dialog.appendChild(editor); editor.hidden = false; };
       dialog.appendChild(editDialog);
     }
     dialog.addEventListener('close', function () { document.body.appendChild(panel); positionMarkers(); });
@@ -261,6 +276,7 @@
       if (!(target instanceof Element) || target === document.body || target === document.documentElement) return;
       var rect = target.getBoundingClientRect();
       pendingAnchor = {selector: selectorFor(target), x: Math.max(0, Math.min(1, (event.clientX - rect.left) / (rect.width || 1))), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / (rect.height || 1)))};
+      if(movingId){notes.relocate(movingId,pendingAnchor);movingId=null;pendingAnchor=null;stopAdding();editor.hidden=false;refreshEditor('已重新定位，可撤销。');return;}
       stopAdding(); var dialog = target.closest('dialog'); if (dialog) dialog.appendChild(notePopover);
       editingId = null; openForm('新增标记', '', 'info', event.clientX, event.clientY); return;
     }
@@ -294,7 +310,14 @@
   }
   function status(message) { editor.querySelector('#ps-note-status').textContent = message; }
   function formStatus(message) { notePopover.querySelector('#ps-note-form-status').textContent = message || ''; }
-  function stopAdding() { adding = false; placement.hidden = true; document.body.classList.remove('ps-adding-note'); }
+  function stopAdding() { adding = false; placement.hidden = true; document.body.classList.remove('ps-adding-note');if(hoverTarget)hoverTarget.classList.remove('ps-placement-target');hoverTarget=null; }
+  function closeNote(){
+    var form=notePopover.querySelector('#ps-note-form');
+    if(!notePopover.hidden && !form.hidden && formOriginal!==JSON.stringify([notePopover.querySelector('#ps-note-text').value,notePopover.querySelector('#ps-note-level').value]) && !window.confirm('放弃尚未保存的标注内容？'))return false;
+    notePopover.hidden=true;pendingAnchor=null;editingId=null;movingId=null;
+    if(hoverTarget)hoverTarget.classList.remove('ps-placement-target');hoverTarget=null;
+    if(returnFocus && returnFocus.isConnected)returnFocus.focus();return true;
+  }
   function positionPopover(x, y) {
     notePopover.hidden = false;
     var width = Math.min(360, innerWidth - 24), left = Number.isFinite(x) ? x + 14 : innerWidth / 2 - width / 2;
@@ -304,16 +327,20 @@
     notePopover.style.top = Math.max(48, Math.min(innerHeight - notePopover.offsetHeight - 12, top)) + 'px';
   }
   function openForm(title, text, level, x, y) {
+    returnFocus=document.activeElement;
     reviewForm.hidden=true;
     deleteSelected.hidden = !editingId;
     notePopover.querySelector('#ps-note-view').hidden = true;
     var form = notePopover.querySelector('#ps-note-form'); form.hidden = false;
     notePopover.querySelector('#ps-note-heading').textContent = title;
     notePopover.querySelector('#ps-note-text').value = text; notePopover.querySelector('#ps-note-level').value = level;
+    formOriginal=JSON.stringify([text,level]);
     form.querySelector('button[type="submit"]').textContent = editingId ? '确认修改' : '确认增加';
     formStatus(''); positionPopover(x, y); notePopover.querySelector('#ps-note-text').focus();
   }
   function openEdit(it) {
+    if(!editingMode)return;
+    if(!it.manual){window.prompt('正式规则请交给 Agent 局部修改，不能用批注覆盖 PRD。复制以下上下文：','项目：'+data.project+'\n版本：'+data.version+'\n页面：'+pid+'\n控件：'+it.id+'\n需求：'+it.requirement_ids.join(',')+'\n链接：'+location.href);return;}
     stopAdding(); pendingAnchor = null; editingId = it.id;
     panel.hidden = true; document.body.classList.remove('ps-panel-docked');
     var target = targetOf(it), dialog = target && target.closest('dialog'); if (dialog && dialog.open) dialog.appendChild(notePopover);
@@ -324,24 +351,35 @@
     return {crit:'P0 · 核心', warn:'P1 · 重要/待确认', info:'P2 · 一般说明', ok:'参考信息'}[level] || 'P2 · 一般说明';
   }
   function openView(it, x, y) {
+    if(!closeNote())return;
+    returnFocus=document.activeElement;
     reviewForm.hidden=true;
     stopAdding(); editingId = it.id; pendingAnchor = null;
     editor.hidden = true;
     var target = targetOf(it), dialog = target && target.closest('dialog'); if (dialog && dialog.open) dialog.appendChild(notePopover);
     notePopover.querySelector('#ps-note-form').hidden = true;
     var view = notePopover.querySelector('#ps-note-view'); view.hidden = false;
+    view.querySelector('.ps-note-actions').hidden=!editingMode;
+    reviewButton.hidden=!editingMode;
+    notePopover.querySelector('#ps-note-view-edit').textContent=it.manual?'编辑':'交给 Agent 修改正式规则';
+    notePopover.querySelector('#ps-note-view-delete').hidden=!it.manual;
+    var move=view.querySelector('#ps-note-move');
+    if(!move){move=document.createElement('button');move.type='button';move.id='ps-note-move';move.textContent='重新定位';view.querySelector('.ps-note-actions').appendChild(move);}
+    move.hidden=!it.manual;move.onclick=function(){movingId=it.id;adding=true;placement.hidden=false;document.body.classList.add('ps-adding-note');notePopover.hidden=true;};
     var level = notePopover.querySelector('#ps-note-view-level'); level.textContent = priorityLabel(it.level); level.dataset.level = it.level || 'info';
     notePopover.querySelector('#ps-note-view-text').textContent = it.description;
     notePopover.querySelector('#ps-note-view-meta').textContent = (it.manual ? '手动标注' : '需求标注') + (it.requirement_ids && it.requirement_ids.length ? ' · ' + it.requirement_ids.join('、') : '');
     var review=it.review || {status:'pending',history:[]};
     reviewRead.textContent=reviewNames[review.status]+' · '+(review.note || '尚未处理')+(review.requirement_ids && review.requirement_ids.length?' · 关联 '+review.requirement_ids.join('、'):'')+(review.change_ref?' · 修改记录 '+review.change_ref:'')+(review.evidence?' · 验证：'+review.evidence:'');
+    if(savedFrom && savedFrom!==data.version)reviewRead.textContent+=' · 继承自 '+savedFrom+'，本版适用性与完成证据需重新复核';
     var history=document.createElement('details'), summary=document.createElement('summary'); summary.textContent='处理历史（本机记录）';history.appendChild(summary);(review.history || []).forEach(function(e){var p=document.createElement('p');p.textContent=e.at+' '+reviewNames[e.from]+' → '+reviewNames[e.to]+'：'+e.note;history.appendChild(p);});reviewRead.appendChild(history);
     reviewButton.onclick=function(){view.hidden=true;reviewForm.hidden=false;reviewForm.querySelector('#ps-review-state').value=review.status;reviewForm.querySelector('#ps-review-note').value=review.note || '';reviewForm.querySelector('#ps-review-refs').value=(review.requirement_ids || []).join(',');reviewForm.querySelector('#ps-review-change').value=review.change_ref || '';reviewForm.querySelector('#ps-review-evidence').value=review.evidence || '';reviewForm.querySelector('#ps-review-error').textContent='';positionPopover();};
     notePopover.querySelector('#ps-note-view-edit').onclick = function () { openEdit(it); };
-    notePopover.querySelector('#ps-note-view-delete').onclick = function () { notes.hide(it.id); notePopover.hidden = true; editingId = null; refreshEditor('标记已删除，可撤销；对应需求仍保留。'); };
+    notePopover.querySelector('#ps-note-view-delete').onclick = function () { if(!editingMode || !it.manual)return;notes.hide(it.id); notePopover.hidden = true; editingId = null; editor.hidden=false;refreshEditor('批注已删除，可撤销；对应需求仍保留。'); };
     var rect = target && target.getBoundingClientRect(); positionPopover(Number.isFinite(x) ? x : rect && rect.right, Number.isFinite(y) ? y : rect && rect.top);
   }
   function refreshEditor(message) {
+    manageButton.hidden=!editingMode;
     var all = notes.list(), showDeleted = editor.querySelector('#ps-note-show-deleted').checked;
     editor.querySelector('#ps-note-items').innerHTML = all.filter(function (it) { return (showDeleted || !it.hidden) && (reviewFilter.value==='all' || it.review.status===reviewFilter.value); }).map(function (it) {
       var target = targetOf(it);
@@ -349,17 +387,30 @@
     }).join('') || '<p>暂无标记。点击“新增标记”后在原型中选择位置。</p>';
     editor.querySelector('#ps-note-undo').disabled = !notes.canUndo();
     rebuildMarkers(); status(notes.warning() || message || '修改自动保存在当前浏览器。');
+    editor.querySelectorAll('[data-note-action="delete"]').forEach(function(button){var it=all.find(function(i){return i.id===button.dataset.id;});if(it && !it.manual)button.hidden=true;});
   }
   if (notes) {
+    tools.querySelector('#ps-mode').textContent='查看说明';
+    var publishButton=document.createElement('button');publishButton.type='button';publishButton.id='ps-note-publish';publishButton.textContent='保存到项目…';editor.querySelector('.ps-note-actions').appendChild(publishButton);
+    var loadSaved=document.createElement('button');loadSaved.type='button';loadSaved.id='ps-note-load-saved';loadSaved.textContent='载入项目已保存批注';editor.querySelector('.ps-note-actions').appendChild(loadSaved);
+    loadSaved.onclick=function(){
+      if(!window.confirm('将先导出当前草稿备份，再用此页面加载的项目批注替换草稿，清空撤销历史。需要最新保存内容请先刷新页面。继续？'))return;
+      editor.querySelector('#ps-note-export').click();draftBaseRevision=(data.noteRevisions || {})[pid] || null;
+      notes.importData(sharedNotes.exportData());
+      if(!notes.warning())draftNotes=window.PSAnnotationStore(noteContext,interactions,{getItem:function(k){return localStorage.getItem(k);},setItem:function(k,v){localStorage.setItem(k,v);localStorage.setItem(k+'.base',JSON.stringify(draftBaseRevision));}});
+      notes=draftNotes;refreshEditor('已载入项目批注，原草稿已导出备份。请继续编辑。');
+    };
+    publishButton.onclick=function(){editor.querySelector('#ps-note-export').click();status('已导出保存包，尚未落盘到项目。请在本机 PRD 编辑器选择“原型批注 · 保存到项目”，导入此文件并确认；或交给 Agent 使用 save_notes.py。');};
+    document.addEventListener('pointermove',function(event){if(!adding)return;var target=event.target.closest('button,input,select,textarea,a,[role="button"],[id]') || event.target;if(hoverTarget && hoverTarget!==target)hoverTarget.classList.remove('ps-placement-target');hoverTarget=target;if(!target.closest('.ps-tools,.ps-note-editor,.ps-note-popover,.ps-placement'))target.classList.add('ps-placement-target');});
     reviewForm.querySelector('#ps-review-cancel').onclick=function(){openView(notes.list().find(function(i){return i.id===editingId;}));};
     reviewForm.onsubmit=function(event){event.preventDefault();try{notes.review(editingId,{status:reviewForm.querySelector('#ps-review-state').value,note:reviewForm.querySelector('#ps-review-note').value,requirement_ids:reviewForm.querySelector('#ps-review-refs').value.split(/[,，]/).map(function(s){return s.trim();}).filter(Boolean),change_ref:reviewForm.querySelector('#ps-review-change').value,evidence:reviewForm.querySelector('#ps-review-evidence').value});refreshEditor();openView(notes.list().find(function(i){return i.id===editingId;}));}catch(e){reviewForm.querySelector('#ps-review-error').textContent=e.message;}};
-    notePopover.querySelectorAll('[data-note-close]').forEach(function (button) { button.onclick = function () { notePopover.hidden = true; pendingAnchor = null; editingId = null; }; });
+    notePopover.querySelectorAll('[data-note-close]').forEach(function (button) { button.onclick = closeNote; });
     deleteSelected.onclick = function () { if (!editingId) return; notes.hide(editingId); editingId = null; notePopover.hidden = true; refreshEditor('标记已删除，可撤销；对应需求仍保留。'); };
-    editToggle.onclick = function () { editor.hidden = !editor.hidden; if (!editor.hidden) { document.body.classList.add('ps-annotate'); tools.querySelector('#ps-mode').textContent = '返回演示'; tools.querySelector('#ps-mode').setAttribute('aria-pressed', 'true'); panel.hidden = true; document.body.classList.remove('ps-panel-docked'); refreshEditor(); } else stopAdding(); };
+    editToggle.onclick = function () { if(!closeNote())return;editingMode=!editingMode;manageButton.hidden=!editingMode;notes=editingMode?draftNotes:sharedNotes;editor.hidden=!editingMode;editToggle.textContent=editingMode?'退出编辑 · 查看已保存':'编辑标记';stopAdding();if(editingMode){document.body.classList.add('ps-annotate');tools.querySelector('#ps-mode').textContent='返回演示';panel.hidden=true;document.body.classList.remove('ps-panel-docked');refreshEditor('产品编辑模式：当前为浏览器草稿，开发查看模式仅展示项目已保存批注。');}else rebuildMarkers(); };
     editor.querySelector('#ps-notes-close').onclick = function () { stopAdding(); editor.hidden = true; };
     editor.querySelector('#ps-note-add').onclick = function () { adding = true; editingId = null; pendingAnchor = null; notePopover.hidden = true; document.body.classList.add('ps-adding-note'); var dialog = editor.closest('dialog'); (dialog || document.body).appendChild(placement); placement.hidden = false; editor.hidden = true; };
-    placement.querySelector('button').onclick = function () { stopAdding(); editor.hidden = false; status('已取消新增标记。'); };
-    notePopover.querySelector('#ps-note-cancel').onclick = function () { stopAdding(); pendingAnchor = null; editingId = null; notePopover.hidden = true; };
+    placement.querySelector('button').onclick = function () { movingId=null;stopAdding(); editor.hidden = false; status('已取消放置。'); };
+    notePopover.querySelector('#ps-note-cancel').onclick = function () { if(closeNote())stopAdding(); };
     notePopover.querySelector('#ps-note-form').onsubmit = function (event) {
       event.preventDefault();
       var text = notePopover.querySelector('#ps-note-text').value.trim(), level = notePopover.querySelector('#ps-note-level').value;
@@ -368,7 +419,7 @@
         if (editingId) notes.edit(editingId, text, level);
         else if (pendingAnchor) notes.add(Object.assign({id: 'manual-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)), description:text, level:level}, pendingAnchor));
         else { status('请先选择原型上的标记位置。'); return; }
-        pendingAnchor = null; editingId = null; notePopover.hidden = true; refreshEditor('标记已保存到当前浏览器。');
+        pendingAnchor = null; editingId = null; notePopover.hidden = true; editor.hidden=false;refreshEditor('标记已保存到当前浏览器草稿，尚未保存到项目。');
       } catch (error) { formStatus(error.message); }
     };
     editor.querySelector('#ps-note-items').onclick = function (event) {
@@ -380,16 +431,18 @@
     editor.querySelector('#ps-note-show-deleted').onchange = function () { refreshEditor(); };
     editor.querySelector('#ps-note-undo').onclick = function () { notes.undo(); notePopover.hidden = true; pendingAnchor = null; editingId = null; refreshEditor('已撤销上一步标记修改。'); };
     editor.querySelector('#ps-note-export').onclick = function () {
-      var blob = new Blob([JSON.stringify(notes.exportData(), null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob);
+      var exported=notes.exportData();exported.base_revision=draftBaseRevision;
+      var blob = new Blob([JSON.stringify(exported, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob);
       var a = document.createElement('a'); a.href = url; a.download = data.version + '-' + pid + '-annotations.json'; a.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); status('已导出本页标记，原型和需求文件未修改。');
     };
     editor.querySelector('#ps-note-import').onclick = function () { editor.querySelector('#ps-note-file').click(); };
     editor.querySelector('#ps-note-file').onchange = async function () {
       var file = this.files[0]; this.value = ''; if (!file) return;
       if (file.size > 1024 * 1024) { status('标记文件不能超过 1MB。'); return; }
-      try { var value = JSON.parse(await file.text()); notes.importData(value); notePopover.hidden = true; refreshEditor('已导入并替换本页标记，可点“撤销”恢复导入前状态。'); } catch (error) { status('导入失败：' + error.message); }
+      var oldBase=draftBaseRevision;
+      try { var value = JSON.parse(await file.text()); if((value.base_revision || null)!==draftBaseRevision)throw new Error('导入文件基线不同，请先比较并合并，不直接替换当前草稿');notes.importData(value); notePopover.hidden = true; refreshEditor('已导入并替换本页标记，可点“撤销”恢复导入前状态。'); } catch (error) { draftBaseRevision=oldBase;status('导入失败：' + error.message); }
     };
-    document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && adding) { stopAdding(); editor.hidden = false; status('已取消新增标记。'); } });
+    document.addEventListener('keydown', function (event) { if (event.key !== 'Escape')return;if(adding){movingId=null;stopAdding();editor.hidden=false;status('已取消放置。');}else if(!notePopover.hidden){event.preventDefault();closeNote();} });
     document.querySelectorAll('dialog').forEach(function (dialog) { dialog.addEventListener('close', function () { if (dialog.contains(editor)) document.body.appendChild(editor); if (dialog.contains(notePopover)) document.body.appendChild(notePopover); }); });
   }
   new MutationObserver(function () { positionMarkers(); }).observe(document.body, {childList:true, subtree:true});

@@ -1,4 +1,5 @@
 /* Shared review UI. Prototype layout belongs to the page's own external CSS. */
+#ps-page-id { font:11px/1.5 ui-monospace,monospace; padding:2px 6px; background:#eef2f7; border-radius:4px; white-space:nowrap; user-select:text; }
 #ps-replay-dialog { width: min(600px, 90vw); max-height: 80vh; overflow: auto; padding: 20px; border: 1px solid #94a3b8; border-radius: 8px; font: 14px/1.6 system-ui; }
 #ps-replay-dialog label { display: block; margin: 12px 0; }
 #ps-replay-dialog textarea { display: block; width: 100%; box-sizing: border-box; resize: vertical; font: 12px/1.5 monospace; }
@@ -76,3 +77,5 @@ body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; 
 .ps-inspector label { display: block; margin: 8px 0; }
 .ps-inspector select { display: block; max-width: 100%; width: 100%; }
 .ps-inspector dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
+.ps-placement-target { outline:3px solid #2563eb !important; outline-offset:3px; cursor:crosshair !important; }
+.ps-note-popover { max-height:calc(100vh - 64px); overflow:auto; }

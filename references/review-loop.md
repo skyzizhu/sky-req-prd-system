@@ -25,4 +25,6 @@ python3 <skill>/scripts/review_notes.py <项目目录> <导出的批注.json>
 
 ## 存储与兼容
 
-批注仍按项目/版本/页面存在当前浏览器 localStorage，可导出/导入迁移；没有自动多人同步。新导出 schema_version=2，含 reviews 数组；新 runtime 接受旧 schema_version=1 并默认为待处理。旧 runtime 会拒绝新版文件，避免静默丢失处理历史。冻结版本资源不自动更新；需要新功能时在规划版本升级。正式需求文件和冻结快照不因批注处理而改变。
+产品编辑模式的批注是浏览器草稿，开发查看模式显示项目已保存批注；不自动多人同步。新导出 schema_version=2，含 reviews 与导出基线 base_revision。通过本机编辑器“原型批注 · 保存到项目”，或 `python3 <skill>/scripts/save_notes.py <项目> <批注.json> --version v1.1 --revision <maintain 查询得到的指纹>` 保存。共享保存复用预览验证、备份、撤销、并发冲突保护；冻结版拒绝写入。正式规则字段保持不变，spec.review_notes 仅存评审覆盖层。
+
+本轮不提供跨版本批注自动同步。后续版本继承已保存批注供参考，分享/导出使用当前版本上下文，但历史完成记录的 change_ref 不会伪造为新版本已验证；仍需重新复核。旧 v1/v2 文件可导入本地；若包含对正式规则的隐藏或覆盖，必须先人工核对清理，不能直接发布为共享规则。旧 runtime 不自动升级。

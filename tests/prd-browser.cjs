@@ -1,0 +1,40 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const fs=require('node:fs');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+  const browser=await chromium.launch({headless:true});
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('https://**/*',r=>r.abort());
+  const base=pathToFileURL(path.join(process.argv[2],'site/index.html')).href;
+  try{
+    await page.goto(base+'#/v/v1.1/requirements/spec');
+    await page.locator('.prd-requirement').first().waitFor();
+    assert.equal(await page.locator('.prd-requirement').count(),3);
+    assert.equal(await page.locator('.prd-requirement h2').first().innerText(),'创建订单');
+    assert.equal(await page.locator('.prd-control[open]').count(),0);
+    await page.screenshot({path:process.argv[3],fullPage:true});
+    await page.locator('#prd-search').fill('RULE-NAME-INPUT');
+    assert.equal(await page.locator('.prd-requirement').count(),1);
+    await page.getByRole('button',{name:'交给 Agent 修改此需求',exact:true}).click();
+    assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/FR-ORDER-001/);
+    await page.locator('#prd-edit-context button').click();
+    await page.locator('.prd-control').first().locator('summary').click();
+    await page.getByRole('button',{name:'交给 Agent 修改此控件',exact:true}).first().click();
+    assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/INT-CREATE/);
+    await page.locator('#prd-edit-context button').click();
+    const download=page.waitForEvent('download');await page.locator('#prd-export').click();
+    const md=fs.readFileSync(await (await download).path(),'utf8');
+    for(const text of ['## 创建订单','## 批量完成订单','前提：','预期：','RULE-NAME-INPUT'])assert.ok(md.includes(text));
+    assert.ok(!md.includes('## FR-ORDER'));
+    await page.goto(base+'#/v/v1.0/requirements/spec?requirement=FR-ORDER-002');
+    await page.waitForFunction(()=>document.querySelector('#prd-search')?.value==='FR-ORDER-002');
+    assert.equal(await page.locator('.prd-requirement').count(),1);
+    await page.getByRole('button',{name:'交给 Agent 修改此需求',exact:true}).click();
+    assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/版本：v1.0/);
+    assert.deepEqual(errors,[]);
+    console.log('PASS PRD: business hierarchy, collapsed controls, stable-ID search, exact Agent context, full readable export, history route');
+  }finally{await browser.close();}
+})();

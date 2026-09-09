@@ -45,7 +45,7 @@
     });
     return result;
   }
-  var state = empty();
+  var state = context.saved ? validate(context.saved) : empty();
   try { var saved = storage.getItem(key); if (saved) state = validate(JSON.parse(saved)); }
   catch (_) { warning = '无法读取已存标记；当前使用原始标记。请先保留已有导出文件。'; }
   function persist() {
@@ -81,6 +81,7 @@
       var next=copy(state); next.reviews=next.reviews.filter(function(r){return r.id!==id;}); next.reviews.push(record); commit(next);
     },
     add: function (item) { var next = copy(state); next.custom.push(item); commit(next); },
+    relocate: function(id,anchor){var next=copy(state),item=next.custom.find(function(i){return i.id===id;});if(!item)throw new Error('只允许移动手动批注');Object.assign(item,anchor);commit(next);},
     edit: function (id, description, level) {
       var next = copy(state), custom = next.custom.find(function (i) { return i.id === id; });
       var before = list().find(function(i){return i.id===id;});

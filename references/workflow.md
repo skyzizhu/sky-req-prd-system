@@ -83,7 +83,7 @@ python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state 
 python3 <skill>/scripts/project.py status <项目目录> --version v1.1 --state released
 ```
 
-new-version 可加 `--from-version v1.0`，默认继承 current_version。同版本修订直接编辑，不调用 new-version。首次 init 只建最小概览；接下来按用户范围补充物料。
+new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、原 site/index.html 和旧深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
 
 freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。
 
@@ -137,5 +137,7 @@ python3 <skill>/scripts/project.py migrate <已有方案目录> --version v1.0
 项目根 outcomes/ 保存交付后的验收/指标记录，按 outcomes.md 追加，与冻结版本内容分离。构建指纹包含台账；记录后重建固定入口才能展示最新结果。复制或备份项目需包含台账；它不是防篡改审计日志。
 
 每次构建写完整项目数据并保存内容哈希，validate 检查构建是否过期或被修改。规划版本编译本地 spec-data.js；冻结版本资源不会重写。构建错误不应交付。
+
+新版本追加或物料保存后，已经打开的静态站点需要刷新才能载入最新编译数据；仅切换 hash 不会重新加载 data.js。入口路径/部署地址不变，不能把当前浏览器未刷新的旧菜单误当成新项目。托管时继续更新同一部署位置，按实际服务配置验证缓存，不自动创建新的临时链接。
 
 PRD 正式编辑可使用 editing.md 的本机服务或共享命令；原型脚本及结构调整仍由 Agent 完成。建议版本内容纳入用户自己的 Git。完整多文件工作流不是事务；中断后检查 project.json、版本目录、`.editing/` 保存记录和 validate 报错，保留已有内容，补齐缺失项后重新构建。不要反复运行 init 覆盖现有项目。

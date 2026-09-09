@@ -1,0 +1,52 @@
+const {chromium}=require('playwright'),{spawn,execFileSync}=require('node:child_process');
+const path=require('node:path'),fs=require('node:fs'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url');
+(async()=>{
+ const root=path.resolve(process.argv[2]),browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));let proc;
+ const proto=pathToFileURL(path.join(root,'versions/v1.1/content/prototype/list.html')).href;
+ try{
+  await page.goto(proto);await page.locator('#ps-mode').click();await page.locator('#ps-close').click();
+  await page.locator('.ps-marker[data-note-id="INT-CREATE"]').click();
+  assert.equal(await page.locator('#ps-note-view-edit').isVisible(),false);
+  await page.locator('#ps-note-view [data-note-close]').click();await page.locator('#ps-edit-notes').click();
+  await page.locator('#ps-note-add').click();await page.locator('#create').hover();assert.ok(await page.locator('#create').evaluate(e=>e.classList.contains('ps-placement-target')));
+  await page.locator('#create').click();assert.equal(await page.locator('#create-dialog').evaluate(e=>e.open),false);
+  await page.locator('#ps-note-text').fill('新的评审批注');await page.locator('#ps-note-form button[type=submit]').click();
+  await page.locator('#ps-notes-close').click();await page.locator('.ps-marker').filter({hasText:'M1'}).click();
+  assert.equal(await page.locator('#ps-note-form').isVisible(),false);await page.locator('#ps-note-view-edit').click();
+  await page.locator('#ps-note-text').fill('未保存内容');page.once('dialog',d=>d.dismiss());await page.keyboard.press('Escape');assert.equal(await page.locator('#ps-note-text').inputValue(),'未保存内容');
+  page.once('dialog',d=>d.accept());await page.keyboard.press('Escape');
+  await page.locator('.ps-marker').filter({hasText:'M1'}).click();await page.locator('#ps-note-move').click();await page.locator('#search').click();
+  await page.locator('#ps-notes-close').click();await page.locator('.ps-marker').filter({hasText:'M1'}).click();await page.locator('#ps-note-view-delete').click();
+  assert.equal(await page.locator('.ps-marker').filter({hasText:'M1'}).count(),0);await page.locator('#ps-note-undo').click();
+  const download=page.waitForEvent('download');await page.locator('#ps-note-publish').click();const exported=JSON.parse(fs.readFileSync(await(await download).path()));
+  assert.equal(exported.custom[0].selector,'#search');assert.equal(exported.custom[0].description,'新的评审批注');
+  await page.locator('#ps-edit-notes').click();assert.equal(await page.locator('.ps-marker').filter({hasText:'M1'}).count(),0);
+  proc=spawn('python3',[path.join(__dirname,'../scripts/edit_project.py'),root,'--version','v1.1']);
+  const url=await new Promise((resolve,reject)=>{let s='';proc.stdout.on('data',d=>{s+=d;const m=s.match(/http:\/\/127\.0\.0\.1:\d+\/#token=[\w-]+/);if(m)resolve(m[0]);});proc.once('exit',c=>reject(Error('server '+c)));});
+  const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(url);await editor.locator('#material').selectOption('review-notes');
+  await editor.locator('#review-file').setInputFiles({name:'notes.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exported))});await editor.locator('#review-publish').click();
+  await editor.getByRole('status').filter({hasText:'批注已保存到项目'}).waitFor();
+  await page.reload();await page.locator('#ps-edit-notes').click();
+  const staleDownload=page.waitForEvent('download');await page.locator('#ps-note-export').click();
+  assert.equal(JSON.parse(fs.readFileSync(await(await staleDownload).path())).base_revision,null);
+  page.once('dialog',d=>d.accept());const backup=page.waitForEvent('download');await page.locator('#ps-note-load-saved').click();await backup;
+  const rebased=page.waitForEvent('download');await page.locator('#ps-note-export').click();
+  assert.match(JSON.parse(fs.readFileSync(await(await rebased).path())).base_revision,/^[a-f0-9]{64}$/);
+  const fresh=await browser.newContext(),reader=await fresh.newPage();reader.on('pageerror',e=>errors.push(e.message));await reader.goto(proto);await reader.locator('#ps-mode').click();await reader.locator('#ps-close').click();
+  await reader.locator('.ps-marker').filter({hasText:'M1'}).click();assert.match(await reader.locator('#ps-note-view-text').innerText(),/新的评审批注/);assert.equal(await reader.locator('#ps-note-view-delete').isVisible(),false);
+  await reader.screenshot({path:path.join(process.argv[3],'review.png'),fullPage:true});
+  await reader.goto(pathToFileURL(path.join(root,'site/index.html')).href+'#/v/v1.1/_prd/risks');await reader.locator('#material-context').click();await reader.locator('#material-search').fill('risks');
+  assert.match(await reader.locator('#material-copy').inputValue(),/prd\/risks.md/);assert.match(await reader.locator('#material-copy').inputValue(),/轻量维护/);
+  await reader.screenshot({path:path.join(process.argv[3],'maintenance.png'),fullPage:true});
+  await reader.locator('#material-close').click();
+  execFileSync('python3',[path.join(__dirname,'../scripts/project.py'),'new-version',root,'--version','v1.2','--from-version','v1.1']);
+  await reader.goto(pathToFileURL(path.join(root,'site/index.html')).href+'#/v/v1.2/prototype/order-list');
+  await reader.reload(); // A rebuilt static shell becomes current on refresh, not merely a hash change.
+  await reader.frameLocator('iframe').locator('#ps-page-id').waitFor();assert.equal(await reader.locator('[data-version="v1.2"]').count(),1);
+  await reader.goto(pathToFileURL(path.join(root,'site/index.html')).href+'#/v/v1.0/prototype/order-list');
+  await reader.frameLocator('iframe').locator('#ps-page-id').waitFor();assert.equal(await reader.frameLocator('iframe').locator('#batch').isVisible(),false);
+  assert.deepEqual(errors,[]);console.log('PASS maintenance: viewer/editor separation, add/edit/cancel/move/delete/undo, publish/read in clean browser, portable context, appended version and old deep link');
+  await fresh.close();
+ }finally{if(proc)proc.kill();await browser.close();}
+})();

@@ -10,11 +10,12 @@ import uuid
 SKILL = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SKILL / 'template'))
 from projectlib import read, write, safe, hashes, source_hashes, changes, compile_project, validate, check_build, ID
+import prdlib
 
 
 def install(root):
     shutil.copytree(SKILL / 'template/site', root / 'site', dirs_exist_ok=True)
-    for name in ('build.py', 'projectlib.py', 'outcomelib.py'):
+    for name in ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'notelib.py'):
         shutil.copy2(SKILL / 'template' / name, root / name)
 
 
@@ -70,6 +71,7 @@ def main():
             f = vr / 'content/overview/index.md'
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_text('# 本版范围\n\n> ⚠️ **待确认**：请填写问题、目标、范围、排除项和变更。\n', encoding='utf-8')
+            prdlib.initialize(vr / 'content')
         else:
             m = read(root / 'content/manifest.json')
             if (root / 'migration-backup').exists():
@@ -100,6 +102,11 @@ def main():
         base = a.from_version or project['current_version']
         if base not in [v['id'] for v in project['versions']]:
             p.error('来源版本不存在')
+        source_version=next(v for v in project['versions'] if v['id']==base)
+        if source_version['status']=='planning' and not a.from_version:
+            p.error('当前来源仍是规划草稿；请明确 --from-version，避免误继承未完成内容')
+        previous_identity=project['id']
+        previous_history={v['id']:hashes(root/'versions'/v['id']) for v in project['versions'] if v['status']!='planning'}
         errors, _ = validate(root)
         if errors:
             raise ValueError('\n'.join(errors))
@@ -113,6 +120,9 @@ def main():
         write(root / 'project.json', project)
         compile_project(root)
         checkpoint(vr)
+        if read(root/'project.json')['id']!=previous_identity or any(hashes(root/'versions'/key)!=value for key,value in previous_history.items()):
+            raise ValueError('版本追加后身份或历史校验失败，请检查并恢复，不要重复创建')
+        print('复用固定入口：',root/'site/index.html','；继承基线：',base)
     elif a.command == 'build':
         print('\n'.join(compile_project(root)))
     elif a.command == 'check':
@@ -147,6 +157,8 @@ def main():
             shutil.copy2(root / 'project.json', stage / 'project.json')
             shutil.copytree(root / 'versions', stage / 'versions')
             shutil.copytree(root / 'site', stage / 'site')
+            if (root / 'attachments').exists():
+                shutil.copytree(root / 'attachments', stage / 'attachments')
             snapshot = stage / 'versions' / sid
             shutil.copytree(vr / 'content', snapshot / 'content')
             entry = {'id': sid, 'title': a.name or ('交接 ' + a.revision), 'status': 'planning',

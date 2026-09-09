@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import pathlib
+import re
 import shutil
 import sys
 import uuid
@@ -70,6 +71,15 @@ def apply_upgrade(root, project, plan):
         for name in plan['tools']:
             keep(root / name)
         install(root)
+        index = root / 'site/index.html'
+        text = index.read_text(encoding='utf-8')
+        for rel in plan['shell']:
+            if not re.search(r'\.(js|css)$', rel):
+                continue
+            name = rel.split('/')[-1]
+            text = re.sub('(' + re.escape(name) + r'\?v=)(\d+)',
+                          lambda m: m.group(1) + str(int(m.group(2)) + 1), text)
+        index.write_text(text, encoding='utf-8')
     for item in plan['planning_assets']:
         assets = safe(root, 'versions/' + item['version']) / 'content/prototype/assets'
         for name in item['assets']:

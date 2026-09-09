@@ -44,7 +44,7 @@ window.PSOutcomes = {
         if (!value || value.version !== vid) throw new Error('草稿版本不匹配');
         var blob = new Blob([JSON.stringify(value,null,2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
         link.href=url; link.download='outcome-draft-'+vid+'.json'; link.click(); setTimeout(function () { URL.revokeObjectURL(url); },1000);
-        root.querySelector('#outcome-draft-status').textContent='草稿已导出，尚未入库或核验字段；请使用正式保存命令。';
+        root.querySelector('#outcome-draft-status').textContent='草稿已导出（未入库）。把文件交给 Agent 说「保存验收记录」即可入库；或自行运行 record_outcome.py 后重建站点。';
       } catch (e) { root.querySelector('#outcome-draft-status').textContent=e.message; }
     };
   }

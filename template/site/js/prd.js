@@ -1,6 +1,19 @@
 /* Business-first reading view; stable identifiers remain available for exact edits. */
 window.PSPRD = {render:function (container, data, vid, page, query, esc) {
   var spec=data.versions[vid].spec, reqs=spec.requirements || [], pages=spec.pages || [], interactions=spec.interactions || [];
+  var acLatest={};
+  (data.outcomes || []).forEach(function (record) {
+    var payload=record.payload || {};
+    if (payload.kind !== 'execution' || record.superseded || payload.version !== vid || !payload.acceptance_id) return;
+    if (!acLatest[payload.acceptance_id] || String(record.recorded_at || '') > String(acLatest[payload.acceptance_id].recorded_at || '')) acLatest[payload.acceptance_id]=record;
+  });
+  function acBadge(id) {
+    var record=acLatest[id]; if (!record) return '';
+    var names={passed:'通过',failed:'失败',blocked:'阻塞',not_run:'未执行'};
+    var scope=record.payload.scope==='prototype'?'原型验证':'产品验收';
+    var stale=record.stale?' · 基线已变化，需复核':'';
+    return '<p class="prd-ac-badge'+(record.stale?' stale':'')+'">验证记录：'+esc(names[record.payload.result] || record.payload.result)+'（'+scope+'）· '+esc(String(record.payload.observed_at || '').slice(0,10))+stale+'；取自台账，有记录不代表当前仍通过</p>';
+  }
   var category={validation:'输入校验',permission:'权限规则',state:'状态规则',data:'数据口径',feedback:'操作反馈'};
   function p(text) { return '<p>'+esc(text || '')+'</p>'; }
   function meta(item) { return (item.source==='ai-inferred'?'AI 推断':'原始需求')+' · '+(item.status==='confirmed'?'已确认':'待确认')+((item.rule_details || []).some(function(r){return r.status!=='confirmed';})?' · 含待确认规则':''); }
@@ -17,7 +30,7 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
       Object.keys(r.rules || {}).forEach(function(k){html+='<section class="prd-rule"><h4>'+esc(k)+'</h4>'+p(r.rules[k])+'</section>';});
       (r.rule_details || []).forEach(function(rule){html+='<section class="prd-rule"><h4>'+esc(category[rule.category] || rule.category)+'</h4>'+p(rule.statement)+'<p class="prd-meta">'+esc(rule.id+' · '+meta(rule))+'</p>'; (rule.examples || []).forEach(function(e){html+=p('例：'+e.input+' → '+e.expected);}); html+='</section>';});
       html+='<h3>验收标准</h3><ol class="prd-acceptance">';
-      (r.acceptance || []).forEach(function(a){html+='<li>'+p('前提：'+a.given)+p('操作：'+a.when)+p('预期：'+a.then)+'<small>'+esc(a.id)+'</small></li>';});
+      (r.acceptance || []).forEach(function(a){html+='<li>'+p('前提：'+a.given)+p('操作：'+a.when)+p('预期：'+a.then)+acBadge(a.id)+'<small>'+esc(a.id)+'</small></li>';});
       html+='</ol><h3>页面与控件</h3>';
       interactions.filter(function(i){return i.requirement_ids.includes(r.id);}).forEach(function(i){var pg=pages.find(function(x){return x.id===i.page;}); html+='<details class="prd-control"><summary>'+esc((pg?pg.title:i.page)+' · '+i.description)+'</summary><p class="prd-meta">'+esc(i.id+' · '+i.selector)+'</p>'+p('动作：'+i.action+(i.target?' → '+i.target:'')); Object.keys(i.properties || {}).forEach(function(k){html+=p(k+'：'+JSON.stringify(i.properties[k]));}); html+='<button data-edit="'+esc(r.id)+'" data-control="'+esc(i.id)+'">交给 Agent 修改此控件</button></details>';});
       return html+'</article>';

@@ -60,6 +60,21 @@
     lines.push('## 相关文件变化', pack.changed_files.join('\n') || '无记录');
     return lines.join('\n\n');
   }
+  function acBadges(data, vid) {
+    var latest={};
+    (data.outcomes || []).forEach(function (record) {
+      var payload=record.payload || {};
+      if (payload.kind !== 'execution' || record.superseded || payload.version !== vid || !payload.acceptance_id) return;
+      if (!latest[payload.acceptance_id] || String(record.recorded_at || '') > String(latest[payload.acceptance_id].recorded_at || '')) latest[payload.acceptance_id]=record;
+    });
+    return function (id) {
+      var record=latest[id]; if (!record) return '';
+      var names={passed:'通过',failed:'失败',blocked:'阻塞',not_run:'未执行'};
+      var scope=record.payload.scope==='prototype'?'原型验证':'产品验收';
+      var stale=record.stale?' · 基线已变化，需复核':'';
+      return '<p class="prd-ac-badge'+(record.stale?' stale':'')+'">验证记录：'+esc(names[record.payload.result] || record.payload.result)+'（'+scope+'）· '+esc(String(record.payload.observed_at || '').slice(0,10))+stale+'</p>';
+    };
+  }
   function render(container, data, vid, esc) {
     var pack = model(data, vid), selected = null;
     var names = {added:'新增',modified:'修改',removed:'移除',review:'关联变化待复核',unchanged:'未变化'};
@@ -77,7 +92,7 @@
       t.rule_details.forEach(function(r){html+='<div class="scope-rule">'+para(r.statement)+'<small>'+esc(r.id+' · '+r.category+' · '+(r.status==='confirmed'?'已确认':'待确认')+' · 来源：'+(r.source==='ai-inferred'?'AI 推断':'原始需求'))+'</small>';(r.examples || []).forEach(function(e){html+=para('实例：'+e.input+' → '+e.expected);});html+=para('关联验收：'+(r.acceptance_ids || []).join('、'))+'</div>';});
       if(!Object.keys(t.rules).length && !t.rule_details.length)html+=para('尚未登记业务规则，需补充。');
       html+='</section><section><h4>验收标准</h4><ol>';
-      t.acceptance.forEach(function(a){html+='<li>'+para('前提：'+a.given)+para('操作：'+a.when)+para('预期：'+a.then)+'<small>'+esc(a.id)+'</small></li>';});
+      var acBadge=acBadges(data, vid);t.acceptance.forEach(function(a){html+='<li>'+para('前提：'+a.given)+para('操作：'+a.when)+para('预期：'+a.then)+acBadge(a.id)+'<small>'+esc(a.id)+'</small></li>';});
       html+='</ol>'+(t.acceptance.length?'':para('尚未登记验收标准。'))+'</section><section><h4>控件与显示规则</h4>';
       t.interactions.forEach(function(i){html+='<details class="scope-control"><summary>'+esc(i.description)+'</summary>'+para('页面：'+i.page+' · 控件：'+i.id+' · '+i.selector)+para('动作：'+i.action+' → '+(i.target || '本页'));Object.keys(i.properties || {}).forEach(function(k){html+=para(k+'：'+JSON.stringify(i.properties[k]));});html+='</details>';});
       html+='</section><section><h4>分工与依赖</h4>'+para('关注方向：'+roleText(t))+para('依赖：'+(t.dependencies.join('；') || '未登记，需评审'))+'</section><section><h4>相关物料</h4><p>'+t.links.map(function(l){return '<a href="'+esc(l.route)+'">'+esc(l.title)+'</a>';}).join(' · ')+'</p></section></article>';

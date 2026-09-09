@@ -229,3 +229,8 @@ body.sidebar-collapsed .sidebar-expand { display: block; }
 }
 
 .loading { color: var(--ink-3); }
+
+/* 开发重点物料（功能索引 / 功能需求与页面规则 / spec 页）：琥珀星标 + 加粗 */
+.menu-item.key-material { color: var(--ink); font-weight: 650; }
+.menu-item.key-material::before { content: "★"; flex: none; font-size: 10px; color: var(--warn); }
+.menu-item.key-material.active { color: var(--accent); }

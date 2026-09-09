@@ -15,24 +15,46 @@ PS.bootProject = function () {
     if (v.handoff_parent) return;
     html += '<details class="version-group" data-version="' + esc(v.id) + '"><summary><span class="version-label">' + esc(v.id + ' · ' + v.title) + '</span>' +
       ' <span class="version-status">' + labels[v.status] + '</span></summary>' +
-      '<a class="menu-item version-report" href="' + link(v.id, '_changes', 'report') + '">本版变更与待确认</a>';
-    html += '<a class="menu-item" href="'+link(v.id,'_delivery','tasks')+'">需求范围与交接</a>';
-    html += '<a class="menu-item" href="'+link(v.id,'_outcomes','results')+'">验收结果与上线复盘</a>';
+      '<details class="menu-group" data-scope-group><summary class="menu-title">版本与需求范围</summary>' +
+      '<a class="menu-item" href="' + link(v.id, '_changes', 'report') + '">本版变更与待确认</a>' +
+      '<a class="menu-item" href="'+link(v.id,'_delivery','tasks')+'">需求范围与交接</a>' +
+      '</details>';
     var handoffs = project.versions.filter(function (h) { return h.handoff_parent === v.id; });
     if (handoffs.length) html += '<details class="menu-group"><summary>交接修订</summary>' + handoffs.map(function (h) { return '<a class="menu-item" href="' + link(h.id, '_changes', 'report') + '">' + esc(h.revision + (v.current_handoff === h.id ? ' · 当前开发依据' : ' · 历史交接')) + '</a>'; }).join('') + '</details>';
     var standard = data.versions[v.id].prd_sections;
     var prdSources = standard ? standard.reduce(function(all,s){return all.concat(s.sources);},[]) : [];
-    if(standard) html += '<details class="menu-group" data-module="standard-prd" open><summary class="menu-title">需求文档</summary>'+standard.map(function(s){return '<a class="menu-item page-link" href="'+link(v.id,'_prd',s.id)+'">'+esc(s.title)+'<small class="prototype-page-id">'+({provided:'已提供',pending:'待补充',not_applicable:'不适用'}[s.status])+'</small></a>';}).join('')+'</details>';
+    var requirementExtras=[];
+    if(standard) data.versions[v.id].manifest.modules.forEach(function (m) {
+      if (m.special || m.id !== 'requirements') return;
+      m.pages.forEach(function (p) { if (p.type !== 'spec' && !prdSources.includes(p.file)) requirementExtras.push(p); });
+    });
+    if(standard) {
+      var chapterLinks = standard.map(function(s){return '<a class="menu-item page-link'+(s.id==='functions'?' key-material':'')+'" href="'+link(v.id,'_prd',s.id)+'">'+esc(s.title)+'<small class="prototype-page-id">'+({provided:'已提供',pending:'待补充',not_applicable:'不适用'}[s.status])+'</small></a>';});
+      var idxExtras = [], otherExtras = [];
+      requirementExtras.forEach(function (p) {
+        var linkHtml = '<a class="menu-item page-link key-material" aria-label="' + esc(p.title) + '" title="' + esc(p.title) + '" href="' + link(v.id, 'requirements', p.id) + '">' + esc(p.title) + '</a>';
+        (('/' + p.id + (p.file || '')).toLowerCase().includes('index') ? idxExtras : otherExtras).push(linkHtml);
+      });
+      var fnAt = standard.findIndex(function (s) { return s.id === 'functions'; });
+      var at = fnAt < 0 ? chapterLinks.length : fnAt;
+      chapterLinks.splice.apply(chapterLinks, [at, 0].concat(idxExtras));
+      chapterLinks.splice.apply(chapterLinks, [at + idxExtras.length, 0].concat(otherExtras));
+      html += '<details class="menu-group" data-module="standard-prd" open><summary class="menu-title">需求文档</summary>' + chapterLinks.join('') + '</details>';
+    }
     data.versions[v.id].manifest.modules.forEach(function (m) {
       if (m.special) return;
       var visiblePages=m.pages.filter(function(p){return !standard || p.type!=='spec' && !prdSources.includes(p.file);});
       if(!visiblePages.length)return;
+      if(standard && m.id === 'requirements') return;
+
       html += '<details class="menu-group" data-module="' + esc(m.id) + '" open><summary class="menu-title">' + esc(m.title) + '</summary>';
       visiblePages.forEach(function (p) {
-        html += '<a class="menu-item page-link" aria-label="' + esc(p.title) + '" title="' + esc(p.title + (p.type === 'prototype' ? ' · 页面编号：' + p.id : '')) + '" href="' + link(v.id, m.id, p.id) + '">' + esc(p.title) + (p.type === 'prototype' ? '<small class="prototype-page-id">页面 · ' + esc(p.id) + '</small>' : '') + '</a>';
+        var key = (!standard && p.type === 'spec') || /index/i.test(p.id + (p.file || ''));
+        html += '<a class="menu-item page-link' + (key ? ' key-material' : '') + '" aria-label="' + esc(p.title) + '" title="' + esc(p.title + (p.type === 'prototype' ? ' · 页面编号：' + p.id : '')) + '" href="' + link(v.id, m.id, p.id) + '">' + esc(p.title) + (p.type === 'prototype' ? '<small class="prototype-page-id">页面 · ' + esc(p.id) + '</small>' : '') + '</a>';
       });
       html += '</details>';
     });
+    html += '<a class="menu-item" href="'+link(v.id,'_outcomes','results')+'">验收结果与上线复盘</a>';
     html += '</details>';
   });
   nav.innerHTML = html;

@@ -89,6 +89,8 @@ new-version 可加 `--from-version v1.0`，默认继承 current_version；若来
 
 **继承版本的九章补齐义务**：new-version 继承的九章（用户/埋点/非功能/验收/里程碑/风险/附录）可能仍是「待补充」占位——新版本交付前，Agent 必须按本版业务逐章补写或显式标注不适用及原因，不得原样留白交付；补写内容标「AI 推断 + 待确认」走评审转正。
 
+**交付后必须**：启动 `serve.py` 并验证可访问，向用户汇报服务地址（`http://localhost:端口/site/index.html`）与本地文件路径（项目目录绝对路径 + `/site/index.html`），确保用户能立即打开。
+
 upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime / annotation-store），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
 
 freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。

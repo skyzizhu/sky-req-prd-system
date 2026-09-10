@@ -4,7 +4,7 @@
 #ps-replay-dialog label { display: block; margin: 12px 0; }
 #ps-replay-dialog textarea { display: block; width: 100%; box-sizing: border-box; resize: vertical; font: 12px/1.5 monospace; }
 #ps-replay-dialog::backdrop { background: #0005; }
-.ps-tools { position: sticky; top: 0; z-index: 100; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; height: 40px; padding: 4px 10px; background: #fff; border-bottom: 1px solid #ccc; font: 12px system-ui; overflow-x: auto; }
+.ps-tools { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; height: 40px; padding: 4px 10px; background: #fff; border-bottom: 1px solid #ccc; font: 12px system-ui; overflow-x: auto; }
 .ps-tools > * { flex-shrink: 0; }
 .ps-tools > label { display: flex; flex-direction: row; gap: 4px; align-items: center; margin: 0; }
 .ps-tools > strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-shrink: 1; min-width: 60px; }
@@ -39,7 +39,7 @@ body.ps-annotate .ps-markers { display: block; }
 .ps-annotation-list button[data-level=ok] { border-left-color: #2f8652; }
 .ps-hint { color: #555; font-size: 12px; }
 .ps-notice { position: fixed; bottom: 20px; left: 20px; z-index: 250; background: #222; color: white; padding: 12px 18px; border-radius: 8px; }
-body.ps-panel-docked { padding-right: min(440px, 40vw); }
+/* 停靠面板为 fixed overlay，不压缩页面内容（开发反馈全宽更可读） */
 @media (max-width: 700px) { body.ps-panel-docked { padding-right: 0; } }
 @media (max-width: 820px) { .ps-tools > .ps-hint { display: none; } }
 .ps-note-editor { position: fixed; z-index: 220; top: 48px; right: 12px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 60px); overflow: auto; background: #fff; color: #222; border: 1px solid #aaa; border-radius: 8px; box-shadow: 0 8px 30px #0003; padding: 14px; font: 13px/1.5 system-ui; }
@@ -105,3 +105,16 @@ body.ps-annotate .ps-declared:hover { outline-color: #1d4ed8; background: #eff6f
 body.ps-host .ps-error-surface { background: #fdecea; color: #8a1f1c; }
 body.ps-host .ps-tools { background: #fff; border-bottom-color: #d0d4da; }
 body.ps-host .ps-tools strong { color: #1f2937; }
+
+/* 点击控件定位需求时的增强反馈 */
+@keyframes ps-locate-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(37,99,235,.4); }
+  50% { box-shadow: 0 0 0 8px rgba(37,99,235,.15); }
+}
+.ps-highlight { outline: 3px solid #2563eb !important; outline-offset: 3px; animation: ps-locate-pulse 1.2s ease-in-out 2; border-radius: 4px; }
+
+/* 标注模式：点击控件后短暂 toast 提示找到了哪条规则 */
+.ps-locate-toast { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 300; background: #1d4ed8; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 13px; pointer-events: none; }
+
+/* 面板中 FR 标签 */
+.ps-req-tag { display:inline-block; padding:2px 8px; margin:2px; background:#dbeafe; color:#1e40af; border-radius:4px; font-size:12px; font-weight:600; }

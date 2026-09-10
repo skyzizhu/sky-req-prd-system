@@ -209,6 +209,8 @@
         html += '<p>' + esc(ac.id + ' · Given ' + ac.given + '；When ' + ac.when + '；Then ' + ac.then) + '</p>';
       });
     });
+    var reqTags = it.requirement_ids.map(function(id){ return '<span style="display:inline-block;padding:2px 8px;margin:2px;background:#dbeafe;color:#1e40af;border-radius:4px;font-size:12px;font-weight:600">'+esc(id)+'</span>'; }).join(' ');
+    html = '<div style="margin:0 0 10px">'+reqTags+'</div>'+html;
     if (!matched) html += '<p>当前筛选下没有规则；未填写不代表无约束。</p>';
     inspectBox.querySelector('#ps-inspect-detail').innerHTML = html;
     body.scrollTop = 0;
@@ -223,6 +225,7 @@
       if (dialog && !dialog.open) dialog.showModal();
       if (dialog) dialog.appendChild(panel);
       el.classList.add('ps-highlight'); el.scrollIntoView({block: 'center', behavior: 'smooth'});
+      clearTimeout(el._psFlash); el._psFlash = setTimeout(function(){ el.classList.remove('ps-highlight'); }, 2000);
     }
   }
   function show(it) {

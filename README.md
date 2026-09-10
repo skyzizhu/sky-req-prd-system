@@ -4,21 +4,23 @@
 
 ## 安装到 Agent
 
-在 Agent 的技能目录下执行一条命令即可安装：
+> 你说：「给我安装这个技能：https://github.com/skyzizhu/sky-req-prd-system.git」
 
-**ZCode**（技能目录 `~/.agents/skills/`）：
+Agent 会自动完成：clone 到对应技能目录 → 运行 install.sh → 验证安装 → 重启后生效。**无需手动执行任何命令。**
 
-```bash
-git clone https://github.com/skyzizhu/sky-req-prd-system.git ~/.agents/skills/sky-req-prd-system && bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh
-```
-
-**Claude Code**（技能目录 `~/.claude/skills/`）：
+<details>
+<summary>手动安装（不用 Agent 时）</summary>
 
 ```bash
+# ZCode（~/.agents/skills/）
+git clone https://github.com/skyzizhu/sky-req-prd-system.git ~/.agents/skills/sky-req-prd-system
+bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh
+
+# Claude Code（~/.claude/skills/）
 git clone https://github.com/skyzizhu/sky-req-prd-system.git ~/.claude/skills/sky-req-prd-system
 ```
 
-安装后重启 Agent，技能自动被发现。无需额外配置——SKILL.md 是入口，Agent 会自动读取并遵循其中的交付流程与规范。
+</details>
 
 ## 在 Agent 中怎么用（案例）
 

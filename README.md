@@ -2,6 +2,24 @@
 
 > **一句话**：把产品经理手里零散的产品需求，变成开发直接能用的完整交付物——结构化需求文档、可交互原型、测试用例、上线计划，沉淀为一个长期维护、变更可追溯的项目站点。
 
+## 安装到 Agent
+
+在 Agent 的技能目录下执行一条命令即可安装：
+
+**ZCode**（技能目录 `~/.agents/skills/`）：
+
+```bash
+git clone https://github.com/skyzizhu/sky-req-prd-system.git ~/.agents/skills/sky-req-prd-system && bash ~/.agents/skills/sky-req-prd-system/scripts/install.sh
+```
+
+**Claude Code**（技能目录 `~/.claude/skills/`）：
+
+```bash
+git clone https://github.com/skyzizhu/sky-req-prd-system.git ~/.claude/skills/sky-req-prd-system
+```
+
+安装后重启 Agent，技能自动被发现。无需额外配置——SKILL.md 是入口，Agent 会自动读取并遵循其中的交付流程与规范。
+
 ## 在 Agent 中怎么用（案例）
 
 本技能由 Agent（ZCode / Claude Code 等）加载执行。你用自然语言说需求，Agent 负责定位项目、结构化、生成、验证与交付——以下是七个真实工作流案例。

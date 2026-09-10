@@ -85,7 +85,7 @@ python3 <skill>/scripts/project.py upgrade-shell <项目目录>            # 预
 python3 <skill>/scripts/project.py upgrade-shell <项目目录> --apply   # 应用升级
 ```
 
-new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、原 site/index.html 和旧深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
+new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。版本追加到列表末尾（时间正序），左侧菜单旧版在上、新版在下。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、原 site/index.html 和旧深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
 
 **继承版本的九章补齐义务**：new-version 继承的九章（用户/埋点/非功能/验收/里程碑/风险/附录）可能仍是「待补充」占位——新版本交付前，Agent 必须按本版业务逐章补写或显式标注不适用及原因，不得原样留白交付；补写内容标「AI 推断 + 待确认」走评审转正。
 

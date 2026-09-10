@@ -11,7 +11,10 @@ PS.bootProject = function () {
   var nav = document.getElementById('menu');
   function link(vid, mid, pid) { return '#/v/' + [vid, mid, pid].map(encodeURIComponent).join('/'); }
   var html = '<a class="menu-item project-home" href="#/project">项目总览与版本计划</a>';
-  project.versions.forEach(function (v) {
+  var sortedVersions = project.versions.slice().sort(function (a, b) {
+    return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
+  });
+  sortedVersions.forEach(function (v) {
     if (v.handoff_parent) return;
     html += '<details class="version-group" data-version="' + esc(v.id) + '"><summary><span class="version-label">' + esc(v.id + ' · ' + v.title) + '</span>' +
       ' <span class="version-status">' + labels[v.status] + '</span></summary>' +

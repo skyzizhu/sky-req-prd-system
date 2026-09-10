@@ -1,0 +1,44 @@
+{
+  "pages": [
+    {
+      "id": "select",
+      "title": "选择页",
+      "purpose": "选择 NCM 文件",
+      "requirement_ids": [
+        "FR-UPLOAD-001"
+      ]
+    },
+    {
+      "id": "file-selected",
+      "title": "文件已选页",
+      "purpose": "确认所选文件",
+      "requirement_ids": [
+        "FR-UPLOAD-001"
+      ]
+    },
+    {
+      "id": "converting",
+      "title": "转换中页",
+      "purpose": "显示转换进度",
+      "requirement_ids": [
+        "FR-CONVERT-001"
+      ]
+    },
+    {
+      "id": "success",
+      "title": "转换成功页",
+      "purpose": "显示成功结果",
+      "requirement_ids": [
+        "FR-DL-001"
+      ]
+    },
+    {
+      "id": "failure",
+      "title": "转换失败页",
+      "purpose": "显示失败原因",
+      "requirement_ids": [
+        "FR-CONVERT-001"
+      ]
+    }
+  ]
+}

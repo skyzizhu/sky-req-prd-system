@@ -1,0 +1,44 @@
+{
+  "pages": [
+    {
+      "id": "select",
+      "title": "选择页",
+      "type": "prototype",
+      "file": "prototype/select.html",
+      "source": "ai-inferred",
+      "status": "pending"
+    },
+    {
+      "id": "file-selected",
+      "title": "文件已选页",
+      "type": "prototype",
+      "file": "prototype/file-selected.html",
+      "source": "ai-inferred",
+      "status": "pending"
+    },
+    {
+      "id": "converting",
+      "title": "转换中页",
+      "type": "prototype",
+      "file": "prototype/converting.html",
+      "source": "ai-inferred",
+      "status": "pending"
+    },
+    {
+      "id": "success",
+      "title": "转换成功页",
+      "type": "prototype",
+      "file": "prototype/success.html",
+      "source": "ai-inferred",
+      "status": "pending"
+    },
+    {
+      "id": "failure",
+      "title": "转换失败页",
+      "type": "prototype",
+      "file": "prototype/failure.html",
+      "source": "ai-inferred",
+      "status": "pending"
+    }
+  ]
+}

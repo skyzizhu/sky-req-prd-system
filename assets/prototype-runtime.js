@@ -64,6 +64,19 @@
   var sharedNotes=window.PSAnnotationStore?window.PSAnnotationStore(noteContext,interactions,{getItem:function(){return null;},setItem:function(){}}):null;
   notes=sharedNotes;
   var key = 'ps.demo.' + data.project + '.' + data.version;
+  var MK_KEY = key + '.mkdisp';
+  var mkExpanded = {};
+  function mkDisp() {
+    if (document.body.classList.contains('ps-annotate')) return 'all';
+    var v = 'all';
+    try { v = localStorage.getItem(MK_KEY) || 'all'; } catch (_) {}
+    return ['all', 'collapsed', 'hidden'].indexOf(v) >= 0 ? v : 'all';
+  }
+  function groupOf(it) {
+    var el = targetOf(it);
+    var sec = el && el.closest ? el.closest('[data-ps-state]') : null;
+    return sec ? (sec.getAttribute('data-ps-state') || '页面级') : '页面级';
+  }
   var memoryState = {};
   // PS_REPLAY_V1: URLs carry only a named synthetic fixture, never user data.
   var replayParams = new URLSearchParams(location.hash.slice(1));
@@ -101,7 +114,7 @@
   document.body.classList.add('ps-host');
   var tools = document.createElement('div');
   tools.className = 'ps-tools';
-  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
+  tools.innerHTML = '<strong>' + esc(data.version + ' · ' + page.title) + '</strong><span class="ps-hint">模拟数据演示' + ((data.build && data.build.template) ? ' · 模板 v' + esc(data.build.template) : '') + ((data.build && data.build.generated_at) ? ' · 构建 ' + esc(String(data.build.generated_at).slice(0, 10)) : '') + '</span><button type="button" id="ps-mode" aria-pressed="false">标注模式</button><button type="button" id="ps-open">本页需求</button><label>标注 <select id="ps-mkdisp" aria-label="标注显示"><option value="all">全部</option><option value="collapsed">折叠</option><option value="hidden">隐藏</option></select></label><label>场景 <select id="ps-scenario"><option value="normal">正常</option><option value="empty">空数据</option><option value="loading">加载中</option><option value="error">请求失败</option><option value="forbidden">无权限</option></select></label><button type="button" id="ps-reset">重置演示</button>';
   document.body.prepend(tools);
   var pageIdentity = document.createElement('code'); pageIdentity.id = 'ps-page-id';
   pageIdentity.textContent = '页面：' + pid;
@@ -186,7 +199,15 @@
   inspectBox.innerHTML = '<h3>控件与数据规则</h3><label>查看元素 <select id="ps-inspect-select"><option value="">选择元素（含隐藏或禁用控件）</option></select></label><label><input type="checkbox" id="ps-inspect-pending">仅看待确认规则</label><div id="ps-inspect-detail" aria-live="polite"></div>';
   body.prepend(inspectBox);
   var inspectSelect = inspectBox.querySelector('select');
-  interactions.forEach(function (it) { var option = document.createElement('option'); option.value = it.id; option.textContent = it.id + ' · ' + it.description; inspectSelect.appendChild(option); });
+  (function () {
+  var gOrder = [], byG = {};
+  interactions.forEach(function (it) { var g = groupOf(it); if (gOrder.indexOf(g) < 0) gOrder.push(g); (byG[g] = byG[g] || []).push(it); });
+  gOrder.forEach(function (g) {
+    var og = document.createElement('optgroup'); og.label = g;
+    byG[g].forEach(function (it) { var option = document.createElement('option'); option.value = it.id; option.textContent = it.id + ' · ' + it.description; og.appendChild(option); });
+    inspectSelect.appendChild(og);
+  });
+})();
   function inspect(it) {
     inspectSelect.value = it.id;
     var pending = inspectBox.querySelector('input').checked;
@@ -248,6 +269,7 @@
     editingMode=false;manageButton.hidden=true;notes=sharedNotes;editToggle.textContent='编辑标记';rebuildMarkers();
     var active = document.body.classList.toggle('ps-annotate'); this.setAttribute('aria-pressed', String(active)); this.textContent = active ? '演示模式' : '标注模式';
     if (active) show(); else if (notes) { stopAdding(); editor.hidden = true; }
+    rebuildMarkers();
   };
   // PS_SCENARIO_URL_V1: 普通演示支持 ?scenario= 深链直达（复现模式保持自身预设，不生效）。
   var scenarioSelect = tools.querySelector('#ps-scenario');
@@ -256,6 +278,13 @@
   if (urlScenario !== null) {
     var linked = api.readState(); linked.scenario = urlScenario; api.writeState(linked);
   }
+  var mkSel = tools.querySelector('#ps-mkdisp');
+  try { mkSel.value = localStorage.getItem(MK_KEY) || 'all'; } catch (_) {}
+  mkSel.addEventListener('change', function () {
+    try { localStorage.setItem(MK_KEY, this.value); } catch (_) {}
+    mkExpanded = {};
+    rebuildMarkers();
+  });
   scenarioSelect.value = api.readState().scenario || 'normal';
   scenarioSelect.addEventListener('change', function () {
     var state = api.readState(); state.scenario = this.value; api.writeState(state);
@@ -268,19 +297,58 @@
     if (it) { highlight(it); if (button.dataset.interaction) show(it); }
   });
   var markers = document.createElement('div'); markers.className = 'ps-markers'; document.body.appendChild(markers);
+  var mkGlyph = { crit: '\u25CF', warn: '\u25B2', info: '\u25A0', ok: '\u271A' };
+  var mkLevelName = { crit: '核心', warn: '待确认', info: '说明', ok: '参考' };
+  var groupBadges = [];
+  var individual = [];
+  function targetOf(it) { try { var el = document.querySelector(it.selector); return el && !el.closest('.ps-tools,.ps-panel,.ps-note-editor,.ps-note-popover,.ps-markers,.ps-dialog-review') ? el : null; } catch (_) { return null; } }
   function visibleNotes() { return notes ? notes.list().filter(function (i) { return !i.manual || !i.hidden; }).map(function(i){return i.manual?i:Object.assign({},i,interactions.find(function(original){return original.id===i.id;}),{hidden:false});}) : interactions.map(function (i, n) { return Object.assign({}, i, {number:String(n+1)}); }); }
-  function targetOf(item) { try { var el = document.querySelector(item.selector); return el && !el.closest('.ps-tools,.ps-panel,.ps-note-editor,.ps-note-popover,.ps-markers,.ps-dialog-review') ? el : null; } catch (_) { return null; } }
   function rebuildMarkers() {
+    markers.style.display = (document.body.classList.contains('ps-annotate') || mkDisp() !== 'hidden') ? 'block' : 'none';
     markers.textContent = '';
+    groupBadges = [];
+    individual = [];
     document.querySelectorAll('[data-ps-number]').forEach(function (el) { delete el.dataset.psNumber; });
+    var disp = mkDisp();
+    var groups = [];
+    var byGroup = {};
+    visibleNotes().forEach(function (it) {
+      var g = groupOf(it);
+      it._psGroup = g;
+      if (groups.indexOf(g) < 0) groups.push(g);
+      (byGroup[g] = byGroup[g] || []).push(it);
+    });
     visibleNotes().forEach(function (it) {
       var el = targetOf(it); if (el) el.dataset.psNumber = it.number;
+      var show = disp !== 'hidden' && (disp === 'all' || mkExpanded[it._psGroup]);
       var mark = document.createElement('button'); mark.type = 'button'; mark.className = 'ps-marker'; mark.dataset.level = it.level || 'info'; mark.dataset.noteId = it.id;
-      mark.textContent = it.number; mark.title = it.description; mark.setAttribute('aria-label', '标注 ' + it.number + '：' + it.description);
-      mark.onclick = function (event) { if (notes) openView(it, event.clientX, event.clientY); else show(it); }; markers.appendChild(mark);
+      mark.textContent = (mkGlyph[it.level || 'info'] || '\u25A0') + it.number;
+      mark.title = it.description;
+      mark.setAttribute('aria-label', '标注 ' + it.number + '（' + (mkLevelName[it.level || 'info'] || '说明') + '）：' + it.description);
+      mark.hidden = !show;
+      mark._psShow = show;
+      mark.onclick = function (event) { if (notes) openView(it, event.clientX, event.clientY); else show(it); };
+      markers.appendChild(mark); individual.push(mark);
     });
+    if (disp === 'collapsed') {
+      groups.forEach(function (g) {
+        var secEl = document.querySelector('[data-ps-state="' + g + '"]');
+        if (!secEl) { var first = targetOf(byGroup[g][0]); secEl = first && first.closest ? first.closest('[data-ps-state]') : null; }
+        var badge = document.createElement('button'); badge.type = 'button'; badge.className = 'ps-mgroup';
+        badge.textContent = g + ' · ' + byGroup[g].length + ' 条标注';
+        badge.setAttribute('aria-label', '展开分组标注：' + g + '，共 ' + byGroup[g].length + ' 条');
+        badge.onclick = function () { mkExpanded[g] = true; rebuildMarkers(); };
+        badge.hidden = true;
+        markers.appendChild(badge);
+        groupBadges.push({ badge: badge, sec: secEl });
+      });
+    }
     var list = body.querySelector('.ps-annotation-list');
-    list.innerHTML = visibleNotes().map(function (it) { return '<button type="button" data-note-id="' + esc(it.id) + '" data-level="' + esc(it.level || 'info') + '">' + esc(it.number + ' · ' + it.description) + '</button>'; }).join('');
+    list.innerHTML = groups.map(function (g) {
+      return '<div class="ps-list-group">' + esc(g) + '</div>' + byGroup[g].map(function (it) {
+        return '<button type="button" data-note-id="' + esc(it.id) + '" data-level="' + esc(it.level || 'info') + '">' + esc(it.number + ' · ' + it.description) + '</button>';
+      }).join('');
+    }).join('');
     positionMarkers();
   }
   body.querySelector('.ps-annotation-list').addEventListener('click', function (event) {
@@ -289,11 +357,27 @@
     if (it) { if (notes) openView(it); else show(it); }
   });
   function positionMarkers() {
+    var shown = [];
+    var disp = mkDisp();
     visibleNotes().forEach(function (it, index) {
-      var el = targetOf(it), mark = markers.children[index]; if (!mark) return;
-      var rect = el && el.getBoundingClientRect();
-      mark.hidden = !rect || !rect.width || !rect.height || rect.bottom < 40 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth;
-      if (!mark.hidden) { mark.style.left = Math.max(0, rect.left + rect.width * (it.manual ? it.x : 1) - 9) + 'px'; mark.style.top = Math.max(40, rect.top + rect.height * (it.manual ? it.y : 0) - 11) + 'px'; }
+      var mark = individual[index]; if (!mark) return;
+      var el = targetOf(it), rect = el && el.getBoundingClientRect();
+      var vis = rect && rect.width && rect.height && !(rect.bottom < 40 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth);
+      mark.hidden = !(mark._psShow && vis);
+      if (vis) { mark.style.left = Math.max(0, rect.left + rect.width - 9) + 'px'; mark.style.top = Math.max(40, rect.top - 11) + 'px'; shown.push(mark); }
+    });
+    shown.sort(function (a, b) { return parseFloat(a.style.top) - parseFloat(b.style.top) || parseFloat(a.style.left) - parseFloat(b.style.left); });
+    for (var i = 1; i < shown.length; i++) {
+      var prev = shown[i - 1], cur = shown[i];
+      var pt = parseFloat(prev.style.top), ct = parseFloat(cur.style.top);
+      var pl = parseFloat(prev.style.left), cl = parseFloat(cur.style.left);
+      if (Math.abs(pl - cl) < 26 && ct - pt < 22) cur.style.top = (pt + 22) + 'px';
+    }
+    groupBadges.forEach(function (gb) {
+      var rect = gb.sec && gb.sec.getBoundingClientRect();
+      var vis = disp === 'collapsed' && rect && rect.height && rect.bottom > 40 && rect.top < innerHeight;
+      gb.badge.hidden = !vis;
+      if (vis) { gb.badge.style.left = Math.max(0, rect.right - 150) + 'px'; gb.badge.style.top = Math.max(40, rect.top + 6) + 'px'; }
     });
   }
   rebuildMarkers();

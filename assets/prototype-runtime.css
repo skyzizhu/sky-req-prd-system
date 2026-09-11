@@ -87,7 +87,7 @@ body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; 
 
 /* PS_HOST_LAYOUT_V1：宿主 body 必须保持块级流——工具栏通栏吸顶、无顶部间隙；
    画布居中由页面用容器 margin auto 实现（见 prototype.md）。 */
-body.ps-host { display: block !important; padding-top: 0 !important; }
+body.ps-host { display: block !important; padding-top: 48px !important; }
 
 /* PS_DISCOVER_V1：查看说明模式下，带规则的控件虚线现形——开发不必盲点试探 */
 body.ps-annotate .ps-declared { outline: 1.5px dashed #2563eb; outline-offset: 2px; cursor: help; }
@@ -118,3 +118,10 @@ body.ps-host .ps-tools strong { color: #1f2937; }
 
 /* 面板中 FR 标签 */
 .ps-req-tag { display:inline-block; padding:2px 8px; margin:2px; background:#dbeafe; color:#1e40af; border-radius:4px; font-size:12px; font-weight:600; }
+
+/* 标注显示：分组汇总徽章 + 面板分组标题（PS_MARKER_GROUP_V1） */
+.ps-marker[hidden] { display: none; }
+.ps-mgroup { position: fixed; z-index: 2147482000; background: #2f3b47; color: #fff; border: 0; border-radius: 12px; padding: 3px 10px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.ps-mgroup:hover { background: #1f6feb; }
+.ps-mgroup[hidden] { display: none; }
+.ps-list-group { font-weight: 700; font-size: 12px; color: #52616b; margin: 10px 0 4px; padding-bottom: 2px; border-bottom: 1px solid #e6eaed; }

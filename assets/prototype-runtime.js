@@ -273,6 +273,11 @@
   };
   // PS_SCENARIO_URL_V1: 普通演示支持 ?scenario= 深链直达（复现模式保持自身预设，不生效）。
   var scenarioSelect = tools.querySelector('#ps-scenario');
+  // PS_STATIC_PAGE_V1: 纯静态状态页（仅 navigate/inspect 且无复现场景）没有页面脚本响应场景切换，隐藏无效选择器。
+  if (!cases.length && interactions.length && interactions.every(function (i) { return ['navigate', 'inspect'].indexOf(i.action) >= 0; })) {
+    var scenarioLabel = scenarioSelect.closest('label');
+    if (scenarioLabel) scenarioLabel.hidden = true;
+  }
   var urlScenario = replayId === null ? new URLSearchParams(location.search).get('scenario') : null;
   if (urlScenario !== null && ['normal', 'empty', 'loading', 'error', 'forbidden'].indexOf(urlScenario) === -1) urlScenario = null;
   if (urlScenario !== null) {

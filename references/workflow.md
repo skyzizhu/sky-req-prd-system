@@ -64,7 +64,7 @@ project/
 }
 ```
 
-其他 type：markdown、mermaid、prototype、html-embed。file 相对本版 content，禁止越界。多端沿用 product.ends，各端原型按模块分组，ID 带端前缀避免碰撞。
+其他 type：markdown、mermaid、prototype、html-embed。file 相对本版 content，禁止越界。多端沿用 product.ends；多端一致的状态合入一张详情页双画布并排（见 prototype.md），仅结构分叉的端单独成页。
 
 ## 命令
 

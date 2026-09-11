@@ -51,6 +51,23 @@ action：
 
 selector 使用稳定的 #元素ID，不能依赖 DOM 顺序。所有业务 button/input/select/textarea/a 要有对应交互；范围外控件用 data-out-of-scope 写明原因，并禁用。脚本动态创建的交互控件也必须实际测试，静态校验无法穷尽动态 DOM。
 
+### spec 字段契约（校验器强制，生成时一次写对）
+
+以下约束由 validate 静态检查，违反会阻塞交付；写 spec 前对照，避免生成后返工：
+
+| 字段 | 合法值 / 约束 | 常见错误 |
+|---|---|---|
+| requirements[].source、rule_details[].source | `origin`（用户原文依据）/ `ai-inferred`（推断） | 写成 `user` 不合法 |
+| requirements[].status、rule_details[].status | `confirmed` / `pending`，与发布状态是两个字段 | — |
+| interactions[].action | `inspect` `navigate` `dialog` `close` `toggle` `input` `submit` `custom`；静态状态页仅用 navigate/inspect | — |
+| interactions[].rule_ids | 只能引用**本交互 requirement_ids 内**的 rule_details 规则 ID | 引用了本页其他需求的规则会被拒 |
+| interactions[].properties | 白名单：text/placeholder/defaultValue/maxLength/required/options/width/min/max/step/unit/pattern/accept；**不含 multiple 等原生属性**——原生属性直接写 HTML | properties 里写 multiple |
+| pages[].requirement_ids | 每页必填且指向存在的需求 | 空列表被拒 |
+| interactions[].selector | 必须是本页 HTML 中真实存在的 `#id` | — |
+| 详情页内元素 id | 一个 HTML 页含多个状态区块时，同语义元素（feedback/列表/汇总等）必须加区块前缀（如 `si-w-feedback`、`sa-w-feedback`），全页唯一 | 两个区块都用 `#feedback` 会撞 id |
+
+**ID 命名约定**（跨项目一致，便于检索与交接）：需求 `FR-<域>-<序号>`、规则 `RULE-<域>-<名称>`、验收 `AC-<域>-<序号>`、交互 `INT-<页面ID>-<控件>`；域用 2～5 位大写字母（如 FILE/CORE/OUT）。版本内不重编号，新增顺延。
+
 ## 接入
 
 原型 HTML 放在 content/prototype/ 一级，样式和脚本放 assets/。复制 Skill 的 assets/prototype-runtime.css、prototype-runtime.js、annotation-store.js 到本版本 assets；可复用 wireframe.css。页面自己的布局与业务行为分离为独立 CSS/JS。
@@ -100,7 +117,7 @@ interactions 可带 properties（控件文案 text、placeholder、defaultValue�
 - **原型按「真实页面 → 状态」分组，一组一张可下拉的详情页**：菜单以真实产品页面为一个原型详情分组（例如「音频选择页」），每个分组只挂**一个详情入口（一张 HTML 页）**；组内各状态的原型图在同一页内按流程顺序**上下堆叠（下拉结构）**，每个区块标注状态名，Web 与移动端画布并排。分组数量与每组内状态区块数量由 Agent 挖掘状态机后判定——核心交互状态出原型图区块；结构相同、仅文案或徽标不同的状态在该区块内展示，或仅在「状态机说明」中说明并给出理由。状态机说明置于详情页顶部区块，列出全部挖掘状态、来源规则、呈现方式（原型图区块/区块内展示/仅说明）与判定理由。**页面为纯静态快照：禁止用定时器、模拟进度动画或 input/submit/custom 交互来"演示"状态流转；区块间仅保留跳转按钮（开始/重试/返回等）串联阅读顺序；真实实现中才可执行的动作（如下载）以禁用 + data-out-of-scope 原因标注。interactions 仅声明 navigate 与 inspect 两类。多端一致的状态在一张原型图内并排展示各端画布，不为每端复制区块。**
 - **浅色主题默认**：原型默认使用浅色背景 + 深色文字；深色主题为可选增强而非默认。
 
-### 状态机全覆盖标准（每个原型页必须逐项核对，缺则补，宁多勿漏）
+### 状态机全覆盖标准（每个状态区块逐项核对，缺则补，宁多勿漏；下拉详情页按区块核对而非按整页）
 
 产品经理不可能把所有小颗粒度的状态都写出来——Agent 的职责就是替 PM 把这些状态全部想到并展示。以下十二类状态逐项核对，每个维度至少产出一条 rule_details 和一条可见的原型状态：
 
@@ -120,7 +137,8 @@ interactions 可带 properties（控件文案 text、placeholder、defaultValue�
 | ⑫ | **后台恢复** | 切后台 / 来电 / 崩溃后恢复 | 状态完整恢复；已填内容不丢失；进度继续 |
 
 **执行要求**：
-- 每个维度产出至少一条 `rule_details`（category 按上表选择或自定义），并在原型中有对应的可见状态
+- 挖掘状态时以本表十二类维度为 checklist 逐项过一遍，结论落到详情页顶部的**状态机说明表**（每行：状态、来源规则、呈现方式、判定理由）；「仅说明」行就是该维度不适用的留痕，静默省略必须改为显式说明
+- 每个维度产出至少一条 `rule_details`（category 按上表选择或自定义），并在状态区块中有对应的可见状态
 - 每条 `rule_details` 的 `examples` 至少含一个具体输入 → 预期的实例
 - 验收标准（AC）覆盖所有 ⑦⑧⑨⑩⑪⑫ 类状态（异常与边界最容易被遗漏）
 - 若某维度确实不适用（如离线工具无网络异常），须在 spec 中标注说明而非静默省略

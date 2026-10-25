@@ -14,7 +14,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'template')
 from projectlib import read, write, safe, hashes, pages, validate, compile_project, HTMLCheck, property_errors
 import prdlib
 import attachmentlib
-import notelib
 
 
 class Conflict(ValueError):
@@ -116,9 +115,8 @@ def candidate(current, payload):
             raise ValueError('请先通过需求工作流建立结构化 PRD')
         # Only declarative properties/targets of existing interactions are editable.
         for key in spec.keys() | current['spec'].keys():
-            if key not in {'requirements', 'interactions', 'review_notes'} and spec.get(key) != current['spec'].get(key):
+            if key not in {'requirements', 'interactions'} and spec.get(key) != current['spec'].get(key):
                 raise ValueError('此编辑器仅修改需求，页面与交互结构请走原型变更流程')
-        notelib.validate(spec.get('review_notes',{}),spec)
         old_interactions = current['spec'].get('interactions', [])
         interactions = spec.get('interactions', [])
         if not isinstance(interactions, list) or [i['id'] for i in interactions] != [i['id'] for i in old_interactions]:
@@ -162,7 +160,7 @@ def prepare(root, vid, payload):
         for old, new in zip(current['spec'].get('interactions', []), spec.get('interactions', [])):
             if old.get('properties') != new.get('properties'):
                 resource = safe(root, f'versions/{vid}/content/prototype/assets/prototype-runtime.js')
-                if not resource.exists() or 'PS_PROPERTY_RUNTIME_V1' not in resource.read_text(encoding='utf-8'):
+                if not resource.exists() or 'PS_STATIC_PROPERTIES' not in resource.read_text(encoding='utf-8'):
                     raise ValueError('此版本原型运行时尚不支持属性编辑；先在规划版本升级共享 runtime 并验证')
     return current, spec, documents, impact(current['spec'], spec, current['documents'], documents)
 

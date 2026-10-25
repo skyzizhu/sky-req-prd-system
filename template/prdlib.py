@@ -2,6 +2,7 @@
 import json
 import pathlib
 import re
+import diagramlib
 
 CHAPTERS = [
     ('scope', '版本说明和范围', 'overview/index.md', '问题、目标用户、目标、包含/排除范围、版本变化与待决策。'),
@@ -69,21 +70,75 @@ def document(text):
     return {'status': state, 'reason': explanation, 'markdown': body}
 
 
-def compile_sections(content, spec, functional_markdown):
+def chapter_body(markdown):
+    """Sources have document titles; compiled chapters already supply that title."""
+    lines=markdown.strip().splitlines()
+    if lines and re.match(r'^# ',lines[0]):lines=lines[1:]
+    return re.sub(r'^(#+)(?= )',r'#\1','\n'.join(lines).strip(),flags=re.M)
+
+
+def feature_list(spec, baseline=None):
+    """Version overview index. Confirmation metadata is not a functional change."""
+    def business(item,source):
+        keys=('title','module','description','rules','rule_details','acceptance')
+        def clean(value):
+            if isinstance(value,dict):return {k:clean(v) for k,v in value.items() if k not in ('source','status','blocking')}
+            if isinstance(value,list):return [clean(v) for v in value]
+            return value
+        value={key:item.get(key) for key in keys}
+        value['diagrams']=[d for d in (source or {}).get('diagrams',[]) if d.get('requirement_id')==item['id']]
+        return clean(value)
+    before={item['id']:item for item in (baseline or {}).get('requirements',[])}
+    after={item['id']:item for item in (spec or {}).get('requirements',[])}
+    def confirmation(item):
+        return 'pending' if item.get('status')!='confirmed' or any(rule.get('status')!='confirmed' for rule in item.get('rule_details',[])) else 'confirmed'
+    rows=[]
+    for rid,item in after.items():
+        change='新增' if rid not in before else '沿用' if business(item,spec)==business(before[rid],baseline) else '修改'
+        rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change=change,priority=item.get('priority') or '待定',status=confirmation(item)))
+    for rid,item in before.items():
+        if rid not in after:rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change='移除',priority=item.get('priority') or '待定',status=confirmation(item)))
+    return rows
+
+
+def feature_markdown(items):
+    def cell(value):return str(value).replace('|','\\|').replace('\n',' ')
+    rows=['### 本版功能清单','按模块列出本版功能；类型区分新增、修改、移除和沿用。此处仅列范围摘要，具体规则见功能章节。',
+          '| 模块 | 功能 | 变更类型 | 范围摘要 | 优先级 | 确认状态 | 编号 |','| --- | --- | --- | --- | --- | --- | --- |']
+    for item in items:
+        rows.append('| '+' | '.join(cell(v) for v in (item['module'],item['title'],item['change'],item['summary'],item['priority'],'已确认' if item['status']=='confirmed' else '待确认',item['id']))+' |')
+    if not items:rows.append('尚未登记功能，不能据此判断本版没有功能。')
+    return '\n\n'.join(rows[:2])+'\n\n'+'\n'.join(rows[2:])
+
+
+def compile_sections(content, spec, functional_markdown, feature_items=None):
     value = registry(content)
     if not value: return None
     sections = []
     for entry in value['sections']:
         docs = [document(within(content, f).read_text(encoding='utf-8')) for f in entry['sources']]
         status = 'pending' if not docs or any(d['status']=='pending' for d in docs) else 'not_applicable' if all(d['status']=='not_applicable' for d in docs) else 'provided'
-        body = '\n\n'.join(d['markdown'] for d in docs)
+        body = '\n\n'.join(chapter_body(d['markdown']) for d in docs)
+        if entry['id'] == 'scope':
+            overview_index=feature_markdown(feature_items if feature_items is not None else feature_list(spec))
+            first_section=re.search(r'^#{1,6} ',body,re.M)
+            at=first_section.start() if first_section else len(body)
+            body=body[:at].rstrip()+'\n\n'+overview_index+'\n\n'+body[at:]
+        if entry['id'] == 'users':
+            diagrams=(spec or {}).get('diagrams',[])
+            for diagram in diagrams:
+                if diagram.get('level')=='module':body+='\n\n'+diagramlib.markdown(diagram,diagrams,3)
         if entry['id'] == 'functions':
             status = 'provided' if (spec or {}).get('requirements') else 'pending'
-            body = functional_markdown if status == 'provided' else '尚未提供功能需求，不代表没有功能范围。'
+            if status == 'provided':
+                lines=functional_markdown.splitlines()
+                if lines and lines[0]=='# 产品需求文档':lines=lines[1:]
+                # This is chapter 3 inside a complete PRD: module h3, feature h4, group h5.
+                body=re.sub(r'^(#+)(?= )',r'#\1','\n'.join(lines).strip(),flags=re.M)
+            else:body='尚未提供功能需求。'
         if entry['id'] == 'acceptance':
-            body += '\n\n## 功能验收引用（与页面需求同源）\n\n'
+            body += '\n\n### 功能验收索引\n\n完整条件在功能章节维护，此处仅引用编号：\n\n'
             for req in (spec or {}).get('requirements', []):
-                for ac in req.get('acceptance', []):
-                    body += f"### {req['title']} · {ac['id']}\n\n前提：{ac['given']}\n\n操作：{ac['when']}\n\n预期：{ac['then']}\n\n"
+                body += '- '+req['title']+'：'+ '、'.join(ac['id'] for ac in req.get('acceptance', []))+'\n'
         sections.append(dict(entry, status=status, reason='；'.join(d['reason'] for d in docs) if docs else '正文存在不代表需求已确认', markdown=body))
     return sections

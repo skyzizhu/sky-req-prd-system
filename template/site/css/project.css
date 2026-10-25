@@ -115,3 +115,28 @@
 
 /* PRD 目录锚点选中态：当前阅读中的需求高亮 */
 #prd-toc button.on { background:#1d4ed8; color:#fff; font-weight:600; }
+
+/* V2: module > feature > rule group. */
+.prd-module{margin:6px 0 18px!important;font-size:14px!important;color:#728097}
+#prd-toc h3{font-size:12px;color:#728097;margin:18px 8px 3px;border:0;padding:0}
+.prd-rule h3{font-size:14px;margin:0 0 8px;border:0;padding:0}.prd-rule ul{margin:0;padding-left:18px}.prd-rule li{margin:9px 0}
+.prd-rule-evidence{font-size:12px;color:#7a8495;margin-top:4px}.prd-rule-evidence summary,.prd-fold summary{cursor:pointer}
+.prd-fold{border-top:1px solid #edf0f4;padding:14px 0}.prd-fold>summary{font-weight:600;font-size:14px}.prd-reader .sr-pending{font-size:10px;color:#946413;background:#fff4d6;border-radius:3px;padding:2px 5px}
+
+.prd-tools{margin:18px 0 10px;gap:12px}.prd-tools label{font-size:12px;color:#697386}.prd-tools input,.prd-tools select{border:1px solid #dbe1ea;border-radius:6px;background:white;color:#273247;padding:7px 9px;font:inherit}.prd-reader button{font:inherit;cursor:pointer}.prd-tools button,.prd-requirement header>button{border:1px solid #dbe1ea;border-radius:6px;background:#fff;color:#627087;font-size:12px;padding:7px 10px}.prd-requirement header>button{float:right;margin-top:-38px}.prd-reader #prd-count{font-size:12px;color:#8390a2;margin:8px 0 18px}.prd-requirement{margin-bottom:16px}.prd-supplement>summary{font-size:12px;padding:8px 14px;color:#8390a2;cursor:pointer}
+
+/* Narrow reading should not require a manual focus-mode detour. */
+.project-shell.sidebar-collapsed .topbar{padding-left:48px}.project-shell .sidebar-expand{top:5px;padding:4px 10px}.project-shell.project-focus .topbar{padding-left:12px}
+@media(max-width:800px){.project-shell .sidebar{position:fixed;left:0;top:0;z-index:70;width:min(300px,85vw);box-shadow:4px 0 20px #273b5925}.project-shell .main{width:100%}.project-shell .breadcrumb{display:none}.project-shell .project-actions{flex:1;justify-content:flex-end;min-width:0}.project-shell #material-context{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-shell #project-focus{display:none}.project-shell .content:not(.embed-mode){padding:16px}.project-shell .doc{padding:18px}}
+
+.prd-reader .prd-feature-title{font-size:21px;margin:0 0 12px;border:0;padding:0}.prd-rule h4{font-size:14px;margin:0 0 8px}.prd-fold .prd-acceptance p{margin:4px 0}
+.prd-boundary-scroll{overflow-x:auto;margin-top:12px;border:1px solid #e2e8f0;border-radius:6px}
+.prd-boundaries table{width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px}
+.prd-boundaries th,.prd-boundaries td{padding:10px 12px;vertical-align:top;border-bottom:1px solid #e2e8f0;min-width:150px}
+.prd-boundaries thead{background:#f8fafc}.prd-boundaries small{color:#64748b;font-size:11px}
+
+.prd-diagram{margin:18px 0;padding:14px;border:1px solid #e2e8f0;border-radius:7px;background:#fff}
+.mermaid-inline{overflow-x:auto;margin:16px 0}.mermaid-box{min-width:0;text-align:center;padding:12px}.mermaid-box svg{max-width:100%;height:auto}
+
+.prd-diagram .mermaid-box{min-width:460px}
+#prd-sections,.prd-diagram{min-width:0}.prd-requirement{min-width:0;max-width:100%;box-sizing:border-box}

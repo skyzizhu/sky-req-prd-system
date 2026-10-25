@@ -11,6 +11,18 @@ window.PSStandardPRD = {
     var labels={provided:'已提供（不代表需求已确认）',pending:'待补充',not_applicable:'不适用'};
     container.className='content';
     container.innerHTML='<div class="doc standard-prd"><header><h1>'+esc(section.title)+'</h1><p class="chapter-status">'+esc(labels[section.status]+' · '+section.reason)+'</p><button id="standard-prd-export">导出完整 PRD（Markdown）</button></header><div>'+window.PS.mdToHtml(section.markdown)+'</div>'+(cid==='appendix'?'<h2>文件附件</h2><p>静态查阅模式：可下载已保存文件。需要上传时，请通过 Agent 启动本机 PRD 编辑器，在“附录 · 文件附件”中操作；此页面不会假装把文件保存到磁盘。</p><div id="standard-attachments"></div>':'')+'</div>';
+    if(cid==='users'){
+      (bundle.spec.diagrams || []).filter(function(d){return d.level==='module';}).forEach(function(d){
+        var heading=Array.from(container.querySelectorAll('h3')).find(function(h){return h.textContent===d.title;});
+        if(!heading)return;heading.id='diagram-'+d.id;
+        var children=(bundle.spec.diagrams || []).filter(function(child){return child.parent_id===d.id;});
+        if(children.length){var links=document.createElement('p');links.className='diagram-links';links.innerHTML='展开节点：'+children.map(function(child){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(child.requirement_id)+'&amp;diagram='+encodeURIComponent(child.id)+'">'+esc(child.title)+'</a>';}).join(' · ');heading.after(links);}
+      });
+    }
+    window.PS.renderDiagrams(container).then(function(){
+      var wanted=new URLSearchParams(query).get('diagram');
+      if(wanted){var target=document.getElementById('diagram-'+wanted);if(target && container.contains(target))target.scrollIntoView({block:'start'});}
+    });
     var repeated=container.querySelector('.standard-prd > div > h1:first-child');
     if(repeated && repeated.textContent===section.title)repeated.remove();
     if(cid==='appendix'){

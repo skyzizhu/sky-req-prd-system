@@ -9,7 +9,6 @@ from urllib.parse import urlsplit, parse_qs, quote
 
 from editlib import Conflict, state, prepare, save, undo
 from attachments import upload
-from save_notes import publish
 import attachmentlib
 
 ASSETS = pathlib.Path(__file__).resolve().parents[1] / 'assets/editor'
@@ -90,8 +89,6 @@ def server(root, vid, port=0):
                     result = undo(root, vid, payload)
                 elif route == '/api/upload':
                     result = upload(root, vid, payload)
-                elif route == '/api/notes':
-                    result = publish(root,vid,payload['notes'],payload.get('revision'))
                 else:
                     return self.reply(404, {'error': '不存在'})
                 self.reply(200, result)

@@ -157,7 +157,7 @@ PS.bootProject = function () {
     var turn = ++serial;
     var parts;
     var routeHash = location.hash.split('?')[0];
-    var replayQuery = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
+    var routeQuery = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
     try { parts = routeHash.slice(2).split('/').map(decodeURIComponent); } catch (_) { parts = []; }
     content.className = 'content';
     document.getElementById('page-badges').textContent = '';
@@ -177,8 +177,6 @@ PS.bootProject = function () {
       }).join('') + '</div></div>';
       return;
     }
-    // Preserve old #/module/page links after migrating a single-version project.
-    if (parts[0] !== 'v') { location.hash = link(project.current_version, parts[0], parts[1] || 'index'); return; }
     var v = project.versions.find(function (item) { return item.id === parts[1]; });
     if (!v) { content.innerHTML = '<div class="doc"><h1>版本不存在</h1><a href="#/project">返回项目总览</a></div>'; return; }
     var group = Array.from(nav.querySelectorAll('.version-group')).find(function (g) { return g.dataset.version === v.id; });
@@ -192,7 +190,7 @@ PS.bootProject = function () {
     if (v.handoff_parent) context.textContent += project.versions.find(function (parent) { return parent.id === v.handoff_parent; }).current_handoff === v.id ? ' · 当前开发依据' : ' · 历史交接';
     context.title = '当前工作版本：' + project.current_version;
     var banner = '';
-    if (parts[2] === '_prd') { document.getElementById('breadcrumb').textContent += ' / 需求文档'; window.PSStandardPRD.render(content,data,v.id,parts[3],replayQuery,esc); return; }
+    if (parts[2] === '_prd') { var chapter=(bundle.prd_sections || []).find(function(section){return section.id===parts[3];});document.title=(chapter?chapter.title:'需求文档')+' · '+v.id+' · '+project.name;document.getElementById('breadcrumb').textContent += ' / 需求文档'; window.PSStandardPRD.render(content,data,v.id,parts[3],routeQuery,esc); return; }
     if (parts[2] === '_delivery') { window.PSDelivery.render(content,data,v.id,esc); return; }
     if (parts[2] === '_outcomes') { window.PSOutcomes.render(content,data,v.id,esc); return; }
     if (v.handoff_parent && parts[2] === '_changes') banner = '<p><a href="'+link(v.id,'_delivery','tasks')+'">需求范围与交接</a> · <a href="'+link(v.id,'_outcomes','results')+'">验收结果与复盘</a></p>';
@@ -206,8 +204,8 @@ PS.bootProject = function () {
     document.getElementById('breadcrumb').textContent += ' / ' + page.title + (page.type === 'prototype' ? ' · 页面编号：' + page.id : '');
     document.getElementById('page-badges').innerHTML = PS.badgesHtml(page);
     document.getElementById('breadcrumb').title = document.getElementById('breadcrumb').textContent;
-    if (page.type === 'spec' && bundle.spec) { window.PSPRD.render(content,data,v.id,page,replayQuery,esc); return; }
-    function url(p) { return '../versions/' + v.id + '/content/' + p.file + (p.id === page.id && p.type === 'prototype' && replayQuery ? '#' + replayQuery : ''); }
+    if (page.type === 'spec' && bundle.spec) { window.PSPRD.render(content,data,v.id,page,routeQuery,esc); return; }
+    function url(p) { return '../versions/' + v.id + '/content/' + p.file + (p.id === page.id && p.type === 'prototype' && routeQuery ? '#' + routeQuery : ''); }
     function pageHtml(p) {
       var embedded = p.type === 'prototype' || p.type === 'html-embed';
       var body = embedded ? '' : '<h2>' + esc(p.title) + '</h2>';

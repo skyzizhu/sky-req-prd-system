@@ -16,12 +16,12 @@ import prdlib
 
 def install(root):
     shutil.copytree(SKILL / 'template/site', root / 'site', dirs_exist_ok=True)
-    for name in ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'notelib.py'):
+    for name in ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'qualitylib.py', 'diagramlib.py'):
         shutil.copy2(SKILL / 'template' / name, root / name)
 
 
-BUILD_TOOLS = ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'notelib.py')
-SHARED_ASSETS = ('prototype-runtime.js', 'prototype-runtime.css', 'annotation-store.js')
+BUILD_TOOLS = ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'qualitylib.py', 'diagramlib.py')
+SHARED_ASSETS = ('prototype-runtime.js', 'prototype-runtime.css')
 
 
 def plan_upgrade(root, project):
@@ -104,7 +104,7 @@ def checkpoint(vr):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'migrate', 'handoff', 'upgrade-shell'])
+    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'handoff', 'upgrade-shell'])
     p.add_argument('root', type=pathlib.Path)
     p.add_argument('--version', default=None)
     p.add_argument('--name')
@@ -121,40 +121,28 @@ def main():
         for f in sorted(root.rglob('project.json')):
             try:
                 d = read(f)
-                if d.get('schema_version') == 2:
+                if d.get('schema_version') == 3:
                     print(d['id'], d['name'], d['current_version'], str(f.parent))
             except (ValueError, KeyError):
                 continue
         return
-    if a.command in {'init', 'migrate'}:
+    if a.command == 'init':
         if (root / 'project.json').exists():
             p.error('项目已存在，请使用 new-version 或修改当前版本')
         vid = a.version or 'v1.0'
-        if a.command == 'init':
-            if root.exists() and any(root.iterdir()):
-                p.error('初始化目标必须为空目录')
-            if not a.name or not a.form:
-                p.error('初始化需要 --name 和 --form')
-            m = manifest(a.name, a.form, vid)
-            vr = root / 'versions' / vid
-            write(vr / 'content/manifest.json', m)
-            f = vr / 'content/overview/index.md'
-            f.parent.mkdir(parents=True, exist_ok=True)
-            f.write_text('# 本版范围\n\n> ⚠️ **待确认**：请填写问题、目标、范围、排除项和变更。\n', encoding='utf-8')
-            prdlib.initialize(vr / 'content')
-        else:
-            m = read(root / 'content/manifest.json')
-            if (root / 'migration-backup').exists():
-                p.error('migration-backup 已存在，请先检查上次迁移')
-            backup = root / 'migration-backup'
-            backup.mkdir()
-            for name in ('content', 'site'):
-                shutil.copytree(root / name, backup / name)
-            if (root / 'build.py').exists():
-                shutil.copy2(root / 'build.py', backup / 'build.py')
-            vr = root / 'versions' / vid
-            shutil.copytree(root / 'content', vr / 'content')
-        write(root / 'project.json', {'schema_version': 2, 'id': str(uuid.uuid4()),
+        if root.exists() and any(root.iterdir()):
+            p.error('初始化目标必须为空目录')
+        if not a.name or not a.form:
+            p.error('初始化需要 --name 和 --form')
+        m = manifest(a.name, a.form, vid)
+        vr = root / 'versions' / vid
+        write(vr / 'content/manifest.json', m)
+        write(vr / 'content/spec.json', {'schema_version': 2, 'requirements': [], 'pages': [], 'interactions': []})
+        f = vr / 'content/overview/index.md'
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text('# 本版范围\n\n> ⚠️ **待确认**：请填写问题、目标、范围、排除项和变更。\n', encoding='utf-8')
+        prdlib.initialize(vr / 'content')
+        write(root / 'project.json', {'schema_version': 3, 'id': str(uuid.uuid4()),
               'name': a.name or m['product']['name'], 'current_version': vid,
               'versions': [{'id': vid, 'title': a.name or m['product']['name'], 'status': 'planning', 'base': None}]})
         install(root)
@@ -163,6 +151,8 @@ def main():
         print('项目入口：', root / 'site/index.html')
         return
     project = read(root / 'project.json')
+    if project.get('schema_version') != 3:
+        p.error('需要 V2 项目（schema_version=3），不支持旧项目升级或迁移')
     vid = a.version or project['current_version']
     vr = safe(root, 'versions/' + vid)
     version = next((v for v in project['versions'] if v['id'] == vid), None)

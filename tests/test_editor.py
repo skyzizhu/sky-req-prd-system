@@ -169,17 +169,5 @@ class EditorTests(unittest.TestCase):
         next(i for i in draft['spec']['interactions'] if i['id'] == 'INT-NAME')['properties'] = {'maxLength': 60}
         with self.assertRaisesRegex(ValueError, '尚不支持'): prepare(self.root, 'v1.1', draft)
 
-    def test_review_reconciles_actual_edit_record(self):
-        from review_notes import reconcile
-        result=save(self.root,'v1.1',self.draft)
-        notes={'schema_version':1,'project':read(self.root/'project.json')['id'],'version':'v1.1','page':'order-list',
-               'reviews':[{'id':'INT-CREATE','status':'completed','requirement_ids':['FR-ORDER-001'],'change_ref':result['undo_id'],'evidence':'人工验证记录'}]}
-        report=reconcile(self.root,notes)
-        self.assertTrue(report['reviews'][0]['change_record_verified'])
-        notes['reviews'][0]['change_ref']='external-ticket'
-        self.assertFalse(reconcile(self.root,notes)['reviews'][0]['change_record_verified'])
-        notes['project']='other'
-        with self.assertRaises(ValueError): reconcile(self.root,notes)
-
 
 if __name__ == '__main__': unittest.main()

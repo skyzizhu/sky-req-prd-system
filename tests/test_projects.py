@@ -83,7 +83,7 @@ class ProjectTests(unittest.TestCase):
 
     def test_inline_attributes_rejected(self):
         path = self.root / 'versions/v1.1/content/prototype/list.html'
-        path.write_text(path.read_text().replace('<main ', "<main STYLE='color:red' "), encoding='utf-8')
+        path.write_text(path.read_text().replace('<main>', "<main STYLE='color:red'>"), encoding='utf-8')
         self.assertTrue(any('内联' in e for e in validate(self.root)[0]))
 
     def test_path_escape_rejected(self):
@@ -99,28 +99,6 @@ class ProjectTests(unittest.TestCase):
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/project.py'), 'freeze', str(self.root)], capture_output=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(read(self.root / 'project.json')['versions'][0]['status'], 'planning')
-
-    def test_migration_preserves_legacy_content_and_backup(self):
-        legacy = pathlib.Path(self.temp.name) / 'legacy'
-        shutil.copytree(self.root / 'versions/v1.0/content', legacy / 'content')
-        shutil.copytree(ROOT / 'template/site', legacy / 'site')
-        original = hashes(legacy / 'content')
-        subprocess.run([sys.executable, str(ROOT / 'scripts/project.py'), 'migrate', str(legacy)], check=True, capture_output=True)
-        self.assertEqual(original, hashes(legacy / 'content'))
-        self.assertEqual(original, hashes(legacy / 'migration-backup/content'))
-        self.assertEqual(validate(legacy)[0], [])
-
-    def test_legacy_duplicate_page_ids_across_modules(self):
-        legacy = pathlib.Path(self.temp.name) / 'old'
-        (legacy / 'content').mkdir(parents=True)
-        (legacy / 'content/a.md').write_text('# Old document', encoding='utf-8')
-        page = {'id': 'index', 'title': 'Index', 'type': 'markdown', 'file': 'a.md', 'source': 'origin', 'status': 'confirmed'}
-        write(legacy / 'content/manifest.json', {'product': {'name': 'old', 'form': 'web'}, 'modules': [
-            {'id': 'overview', 'title': 'Overview', 'pages': [page]},
-            {'id': 'testing', 'title': 'Testing', 'pages': [page]}]})
-        shutil.copytree(ROOT / 'template/site', legacy / 'site')
-        subprocess.run([sys.executable, str(ROOT / 'scripts/project.py'), 'migrate', str(legacy)], check=True, capture_output=True)
-        self.assertEqual(validate(legacy)[0], [])
 
     def test_impact_detects_revision_after_checkpoint(self):
         path = self.root / 'versions/v1.1/content/spec.json'

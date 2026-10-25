@@ -1,127 +1,20 @@
-/* Shared review UI. Prototype layout belongs to the page's own external CSS. */
-#ps-page-id { font:11px/1.5 ui-monospace,monospace; padding:2px 6px; background:#eef2f7; border-radius:4px; white-space:nowrap; user-select:text; }
-#ps-replay-dialog { width: min(600px, 90vw); max-height: 80vh; overflow: auto; padding: 20px; border: 1px solid #94a3b8; border-radius: 8px; font: 14px/1.6 system-ui; }
-#ps-replay-dialog label { display: block; margin: 12px 0; }
-#ps-replay-dialog textarea { display: block; width: 100%; box-sizing: border-box; resize: vertical; font: 12px/1.5 monospace; }
-#ps-replay-dialog::backdrop { background: #0005; }
-.ps-tools { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; height: 40px; padding: 4px 10px; background: #fff; border-bottom: 1px solid #ccc; font: 12px system-ui; overflow-x: auto; }
-.ps-tools > * { flex-shrink: 0; }
-.ps-tools > label { display: flex; flex-direction: row; gap: 4px; align-items: center; margin: 0; }
-.ps-tools > strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-shrink: 1; min-width: 60px; }
-.ps-tools button, .ps-tools select { white-space: nowrap; }
-.ps-tools button, .ps-tools select, .ps-panel button { font: inherit; border: 1px solid #aaa; border-radius: 5px; background: #fff; padding: 6px 10px; cursor: pointer; color: #222; }
-.ps-tools strong { margin-right: auto; }
-.ps-tools button, .ps-tools select { padding: 4px 7px; min-height: 28px; }
-.ps-panel { position: fixed; z-index: 200; right: 16px; top: 65px; width: min(430px, 94vw); height: min(600px, 80vh); min-width: 270px; min-height: 220px; resize: both; overflow: hidden; border: 1px solid #999; border-radius: 10px; background: #fff; color: #222; box-shadow: 0 12px 45px #0003; font: 14px/1.6 system-ui; display: flex; flex-direction: column; }
-.ps-panel[hidden] { display: none; }
-.ps-panel.ps-docked { inset: 40px 0 0 auto !important; width: min(440px, 95vw); height: auto; resize: none; border-radius: 0; }
-.ps-panel-head { padding: 10px; background: #f1f2f4; display: flex; gap: 6px; align-items: center; cursor: move; touch-action: none; }
-.ps-panel-head strong { flex: 1; }
-.ps-panel-content { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
-.ps-panel-content article { border-top: 1px solid #ddd; padding: 12px 0; }
-.ps-panel-content h3 { margin: 0 0 8px; }
-.ps-panel-content dt { font-weight: 650; margin-top: 8px; }
-.ps-panel-content dd { margin: 2px 0 10px; white-space: pre-wrap; }
-.ps-panel-content p { white-space: pre-wrap; }
-.ps-highlight { outline: 3px solid #2563eb !important; outline-offset: 4px; }
-body.ps-annotate [data-ps-number] { outline: 2px dashed #2563eb; outline-offset: 3px; }
-.ps-markers { display: none; position: fixed; inset: 0; z-index: 150; pointer-events: none; }
-body.ps-annotate .ps-markers { display: block; }
-.ps-marker { position: absolute; width: 22px; height: 22px; border: 2px solid white; border-radius: 50%; color: white; background: #2563eb; font: bold 11px system-ui; padding: 0; pointer-events: auto; cursor: pointer; }
-.ps-marker[data-level=crit] { background: #c93434; }
-.ps-marker[data-level=warn] { background: #986c00; }
-.ps-marker[data-level=ok] { background: #2f8652; }
-.ps-dialog-review { margin-top: 12px; }
-.ps-annotation-list { margin-top: 12px; display: grid; gap: 8px; }
-.ps-annotation-list button { text-align: left; border-left: 4px solid #2563eb; }
-.ps-annotation-list button[data-level=crit] { border-left-color: #c93434; }
-.ps-annotation-list button[data-level=warn] { border-left-color: #b8860b; }
-.ps-annotation-list button[data-level=ok] { border-left-color: #2f8652; }
-.ps-hint { color: #555; font-size: 12px; }
-.ps-notice { position: fixed; bottom: 20px; left: 20px; z-index: 250; background: #222; color: white; padding: 12px 18px; border-radius: 8px; }
-/* 停靠面板为 fixed overlay，不压缩页面内容（开发反馈全宽更可读） */
-@media (max-width: 700px) { body.ps-panel-docked { padding-right: 0; } }
-@media (max-width: 820px) { .ps-tools > .ps-hint { display: none; } }
-.ps-note-editor { position: fixed; z-index: 220; top: 48px; right: 12px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 60px); overflow: auto; background: #fff; color: #222; border: 1px solid #aaa; border-radius: 8px; box-shadow: 0 8px 30px #0003; padding: 14px; font: 13px/1.5 system-ui; }
-.ps-note-editor[hidden], .ps-note-editor [hidden] { display: none; }
-.ps-note-editor header { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; padding: 0; border: 0; }
-.ps-note-editor button, .ps-note-editor select { font: inherit; padding: 5px 8px; border: 1px solid #aaa; background: #fff; color: #222; border-radius: 4px; cursor: pointer; }
-.ps-note-editor button:disabled { opacity: .45; cursor: default; }
-.ps-note-editor label { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; }
-.ps-note-editor textarea { resize: vertical; width: 100%; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #999; border-radius: 4px; min-height: 80px; }
-.ps-note-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.ps-note-item { padding: 12px 0; border-top: 1px solid #ddd; }
-.ps-note-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 10px; }
-.ps-note-editor .ps-note-deleted { flex-direction: row; align-items: center; }
-#ps-note-status { color: #475569; font-size: 12px; min-height: 18px; }
-#ps-note-form { padding: 10px; background: #f2f5f9; border: 1px solid #d8e0ea; border-radius: 5px; }
-body.ps-adding-note, body.ps-adding-note main * { cursor: crosshair !important; }
-.ps-note-editor :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.ps-note-placement { position: fixed; bottom: 14px; left: 14px; z-index: 250; background: #1e293b; color: #fff; border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; font: 13px system-ui; }
-.ps-note-placement[hidden] { display: none; }
-.ps-note-placement button { font: inherit; border: 1px solid #94a3b8; background: transparent; color: #fff; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
-.ps-note-popover { position: fixed; z-index: 260; max-height: min(520px, calc(100vh - 60px)); overflow: auto; padding: 14px; background: #fff; color: #222; border: 1px solid #94a3b8; border-radius: 8px; box-shadow: 0 12px 36px #0004; font: 13px/1.5 system-ui; }
-.ps-note-popover[hidden], .ps-note-popover [hidden] { display: none; }
-.ps-note-popover header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 0; border: 0; }
-.ps-note-popover button, .ps-note-popover select { font: inherit; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; color: #222; padding: 6px 9px; cursor: pointer; }
-.ps-note-popover label { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; }
-.ps-note-popover textarea { box-sizing: border-box; width: 100%; min-height: 92px; padding: 8px; resize: vertical; border: 1px solid #94a3b8; border-radius: 4px; font: inherit; }
-.ps-note-popover :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.ps-note-level { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; background: #2563eb; font-weight: 650; }
-.ps-note-level[data-level=crit] { background: #c93434; }
-.ps-note-level[data-level=warn] { background: #986c00; }
-.ps-note-level[data-level=ok] { background: #2f8652; }
-#ps-note-view-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
-#ps-note-form-status { color: #a21b1b; min-height: 18px; margin: 8px 0 0; }
-.ps-inspector { border-bottom: 1px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; }
-.ps-inspector label { display: block; margin: 8px 0; }
-.ps-inspector select { display: block; max-width: 100%; width: 100%; }
-.ps-inspector dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
-.ps-placement-target { outline:3px solid #2563eb !important; outline-offset:3px; cursor:crosshair !important; }
-.ps-note-popover { max-height:calc(100vh - 64px); overflow:auto; }
+body.sr-host{margin:0;background:#f6f7f9;color:#202631;font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.sr-host *{box-sizing:border-box}.sr-host [hidden]{display:none!important}
+.sr-host button{font:inherit;cursor:pointer}.sr-host button:focus-visible,.sr-host summary:focus-visible{outline:3px solid #4769db;outline-offset:3px}
+.sr-header{height:88px;background:#fff;border-bottom:1px solid #e4e7ed;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.sr-eyebrow{font-size:11px;letter-spacing:.08em;color:#788293}.sr-header h1{font-size:21px;margin:0}.sr-actions{display:flex;align-items:center;gap:20px}.sr-actions button{background:white;border:1px solid #d8dde6;border-radius:7px;padding:7px 12px}
+.sr-tabs{padding:0 28px;display:flex;gap:26px;background:#fff;border-bottom:1px solid #e4e7ed;overflow:auto}
+.sr-tabs button{white-space:nowrap;border:0;border-bottom:2px solid transparent;background:none;color:#697386;padding:13px 0}.sr-tabs button[aria-pressed=true]{color:#345acb;border-color:#345acb;font-weight:600}
+.sr-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;height:calc(100vh - 139px)}.sr-view{overflow:auto;padding:28px}.sr-view main{max-width:1000px;margin:auto}
+.sr-state{position:relative;margin-bottom:28px}.sr-state>h2{font-size:13px;margin:0 0 14px;color:#5a6577}.sr-snapshot{background:#fff;border:1px solid #dfe4ec;border-radius:10px;overflow:hidden;min-height:420px}
+.sr-pins{position:absolute;inset:0;pointer-events:none}.sr-pin{position:absolute;pointer-events:auto;width:25px;height:25px;padding:0;border:2px solid white;border-radius:50%;background:#345acb;color:white;box-shadow:0 1px 5px #23365b30;font-size:12px!important;font-weight:600}
+.sr-rules{overflow:auto;background:#fff;border-left:1px solid #e4e7ed;padding:24px}.sr-rules header h2{font-size:19px;margin:4px 0}.sr-rules header p{color:#697386;margin:8px 0 24px}.sr-group{font-size:12px;color:#8992a2;margin:24px 0 12px;font-weight:500}
+.sr-card{padding:16px 0;border-top:1px solid #edf0f4;scroll-margin:20px}.sr-card h3{margin:0 0 10px;font-size:14px}.sr-card h3 button{display:flex;gap:9px;align-items:center;text-align:left;background:none;border:0;padding:0;color:#202631;font-weight:600}.sr-number{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:22px;height:22px;border-radius:6px;background:#edf1fc;color:#345acb;font-size:11px}
+.sr-card ul{padding-left:18px;margin:0}.sr-card li{margin:6px 0}.sr-card details{margin-top:12px;font-size:12px;color:#7a8495}.sr-card summary{cursor:pointer}.sr-pending{font-size:10px;color:#9a6815;background:#fff5d8;padding:2px 5px;border-radius:4px;white-space:nowrap}.sr-selected{background:#f3f6ff;box-shadow:0 0 0 10px #f3f6ff;border-radius:2px}.sr-highlight{outline:3px solid #4769db!important;outline-offset:4px}
+@media(max-width:900px){.sr-layout{grid-template-columns:minmax(0,1fr) 300px}.sr-view{padding:18px}.sr-rules{padding:18px}.sr-header{padding:12px 18px}.sr-actions{gap:10px}}
+@media(max-width:640px){.sr-header{height:auto;align-items:flex-start;flex-direction:column;gap:10px}.sr-layout{display:block;height:auto}.sr-view{overflow:visible}.sr-rules{overflow:visible;border-left:0;border-top:1px solid #e4e7ed}.sr-tabs{padding:0 18px}.sr-snapshot{min-height:300px}}
+@media print{.sr-layout{display:block;height:auto}.sr-rules,.sr-view{overflow:visible}.sr-actions,.sr-tabs,.sr-pins{display:none}}
 
-/* PS_ERROR_SURFACE_V1：脚本错误以底部固定条显式展示，不静默失败 */
-.ps-error-surface { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; max-height: 30vh; overflow: auto; background: #fdecea; color: #8a1f1c; border-top: 2px solid #c93434; font: 12px/1.5 system-ui, sans-serif; padding: 6px 12px; }
-.ps-error-surface[hidden] { display: none; }
-.ps-error-surface div { margin: 1px 0; overflow-wrap: anywhere; }
-
-/* PS_HOST_LAYOUT_V1：宿主 body 必须保持块级流——工具栏通栏吸顶、无顶部间隙；
-   画布居中由页面用容器 margin auto 实现（见 prototype.md）。 */
-body.ps-host { display: block !important; padding-top: 48px !important; }
-
-/* PS_DISCOVER_V1：查看说明模式下，带规则的控件虚线现形——开发不必盲点试探 */
-body.ps-annotate .ps-declared { outline: 1.5px dashed #2563eb; outline-offset: 2px; cursor: help; }
-body.ps-annotate .ps-declared:hover { outline-color: #1d4ed8; background: #eff6ff33; }
-
-/* 工具栏窄窗口换行：所有控件保持可点，不横向溢出 */
-.ps-tools { flex-wrap: wrap; height: auto; min-height: 40px; row-gap: 4px; }
-.ps-tools > * { flex-shrink: 0; }
-
-/* 标记查看卡片中的 FR 跳转按钮 */
-.ps-req-jump { border: 1px solid #94a3b8; border-radius: 4px; background: #f8fafc; color: #2563eb; padding: 1px 6px; font: inherit; font-size: 12px; cursor: pointer; }
-.ps-req-jump:hover { background: #eff6ff; border-color: #2563eb; }
-
-/* PS_LIGHT_THEME_V1 */
-body.ps-host .ps-error-surface { background: #fdecea; color: #8a1f1c; }
-body.ps-host .ps-tools { background: #fff; border-bottom-color: #d0d4da; }
-body.ps-host .ps-tools strong { color: #1f2937; }
-
-/* 点击控件定位需求时的增强反馈 */
-@keyframes ps-locate-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(37,99,235,.4); }
-  50% { box-shadow: 0 0 0 8px rgba(37,99,235,.15); }
-}
-.ps-highlight { outline: 3px solid #2563eb !important; outline-offset: 3px; animation: ps-locate-pulse 1.2s ease-in-out 2; border-radius: 4px; }
-
-/* 标注模式：点击控件后短暂 toast 提示找到了哪条规则 */
-.ps-locate-toast { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 300; background: #1d4ed8; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 13px; pointer-events: none; }
-
-/* 面板中 FR 标签 */
-.ps-req-tag { display:inline-block; padding:2px 8px; margin:2px; background:#dbeafe; color:#1e40af; border-radius:4px; font-size:12px; font-weight:600; }
-
-/* 标注显示：分组汇总徽章 + 面板分组标题（PS_MARKER_GROUP_V1） */
-.ps-marker[hidden] { display: none; }
-.ps-mgroup { position: fixed; z-index: 2147482000; background: #2f3b47; color: #fff; border: 0; border-radius: 12px; padding: 3px 10px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
-.ps-mgroup:hover { background: #1f6feb; }
-.ps-mgroup[hidden] { display: none; }
-.ps-list-group { font-weight: 700; font-size: 12px; color: #52616b; margin: 10px 0 4px; padding-bottom: 2px; border-bottom: 1px solid #e6eaed; }
+.sr-host{display:flex;flex-direction:column;height:100vh;overflow:hidden}.sr-header{height:auto;min-height:88px;flex-shrink:0}.sr-caption{font-size:11px;color:#677487;margin:3px 0 0}.sr-tabs{flex-shrink:0}.sr-layout{height:auto;flex:1;min-height:0}.sr-actions{flex-wrap:wrap;justify-content:flex-end}.sr-pin{width:30px;height:30px;font-size:12px!important}.sr-handoff{background:white;border-bottom:1px solid #e4e7ed;padding:9px 28px;flex-shrink:0;max-height:45vh;overflow:auto;font-size:12px;color:#5d697b}.sr-handoff summary{cursor:pointer}.sr-handoff-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding:12px 0}.sr-handoff h2{font-size:13px;margin:0 0 10px;color:#28354a}.sr-handoff h3{font-size:12px;margin:12px 0 5px}.sr-handoff ul{padding-left:16px;margin:6px 0}.sr-handoff li{margin:6px 0}.sr-link-dialog{width:min(600px,92vw);border:1px solid #d4dce8;border-radius:10px;padding:24px;color:#26334b}.sr-link-dialog label{display:block;font-size:12px;margin:14px 0}.sr-link-dialog input{display:block;box-sizing:border-box;width:100%;padding:8px;border:1px solid #d4dce8;border-radius:5px;margin-top:5px}.sr-link-dialog button{padding:6px 14px;background:white;border:1px solid #d4dce8;border-radius:5px}.sr-link-dialog::backdrop{background:#16284940}.sr-live{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.sr-error{padding:20px;background:#fff0ed;color:#9d3f32}.sr-card a{color:#345acb;text-decoration:none}.sr-card a:hover{text-decoration:underline}
+@media(max-width:900px){.sr-handoff-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sr-header{align-items:flex-start;gap:12px}.sr-actions{gap:8px}.sr-actions button{font-size:12px}.sr-handoff{padding:9px 18px}}
+@media(max-width:640px){.sr-host{height:auto;overflow:auto;min-height:100vh}.sr-layout{flex:none;min-height:auto}.sr-header{flex-direction:column;padding:16px 18px}.sr-actions{justify-content:flex-start;font-size:12px}.sr-handoff-grid{grid-template-columns:1fr}.sr-rules header p{margin-bottom:12px}}

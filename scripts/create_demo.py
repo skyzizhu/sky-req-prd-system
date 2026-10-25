@@ -23,12 +23,12 @@ def generate(root):
     command(root, 'init', '--name', '订单管理 · 交付演示', '--form', 'web', '--version', 'v1.0')
     vr = root / 'versions/v1.0/content'
     assets = vr / 'prototype/assets'
-    assets.mkdir(parents=True)
-    for name in ('prototype-runtime.js', 'prototype-runtime.css', 'annotation-store.js'):
+    assets.mkdir(parents=True,exist_ok=True)
+    for name in ('prototype-runtime.js', 'prototype-runtime.css'):
         shutil.copy2(SKILL / 'assets' / name, assets / name)
     for name in ('list.html', 'detail.html'):
         shutil.copy2(SKILL / 'examples/order-demo' / name, vr / 'prototype' / name)
-    for name in ('demo.js', 'demo.css'):
+    for name in ('demo.css',):
         shutil.copy2(SKILL / 'examples/order-demo' / name, assets / name)
     m = read(vr / 'manifest.json')
     def page(pid, title, kind, file=None):
@@ -56,7 +56,7 @@ def generate(root):
     ]
     interactions = []
     def interaction(iid, pid, selector, rid, action, description, target=None):
-        it = {'id': iid, 'page': pid, 'selector': '#' + selector, 'requirement_ids': [rid], 'action': action, 'description': description, 'level': 'crit' if action in {'submit', 'dialog'} else 'info'}
+        it = {'id': iid, 'page': pid, 'selector': '#' + selector, 'requirement_ids': [rid], 'action': 'inspect', 'description': description, 'level': 'crit' if action in {'submit', 'dialog'} else 'info'}
         if target: it['target'] = target
         interactions.append(it)
     interaction('INT-SEARCH', 'order-list', 'search', 'FR-ORDER-002', 'input', '输入名称即时筛选订单')
@@ -69,24 +69,11 @@ def generate(root):
     # V1.0 excludes the future batch action, visibly disabled if inspected.
     html = (vr / 'prototype/list.html').read_text(encoding='utf-8').replace('id="batch" type="button" hidden', 'id="batch" type="button" hidden disabled data-out-of-scope="V1.1 批量完成"')
     (vr / 'prototype/list.html').write_text(html, encoding='utf-8')
-    spec = {'requirements': reqs, 'pages': [
-        {'id': 'order-list', 'title': '订单列表', 'purpose': '查阅并创建订单。', 'requirement_ids': ['FR-ORDER-001', 'FR-ORDER-002']},
-        {'id': 'order-detail', 'title': '订单详情', 'purpose': '查阅当前订单，返回列表。', 'requirement_ids': ['FR-ORDER-002']}
+    spec = {'schema_version': 2, 'requirements': reqs, 'pages': [
+        {'id': 'order-list', 'title': '订单列表', 'states': [{'id':'normal','title':'默认','summary':'订单管理静态画面'}], 'purpose': '查阅并创建订单。', 'requirement_ids': ['FR-ORDER-001', 'FR-ORDER-002']},
+        {'id': 'order-detail', 'title': '订单详情', 'states': [{'id':'normal','title':'默认','summary':'订单详情静态画面'}], 'purpose': '查阅当前订单，返回列表。', 'requirement_ids': ['FR-ORDER-002']}
     ], 'interactions': interactions}
     reqs[0]['rules']['角色权限（合成演示）'] = 'operator 可创建；viewer 仅查看，不可创建或批量修改；guest 使用无权限场景。非真实产品权限决策。'
-    spec['replay_cases'] = [
-        {'id': cid, 'title': title, 'role': role, 'scenario': scenario,
-         'pages': ['order-list', 'order-detail'], 'requirement_ids': ['FR-ORDER-002'],
-         'source': 'ai-inferred', 'status': 'pending',
-         'state': {'orders': orders, 'filter': ''}}
-        for cid, title, role, scenario, orders in [
-            ('operator-ready', '待处理订单', 'operator', 'normal', [{'name': '合成订单 A', 'status': '待处理'}]),
-            ('viewer-ready', '只读查看', 'viewer', 'normal', [{'name': '合成订单 A', 'status': '待处理'}]),
-            ('operator-empty', '空数据', 'operator', 'empty', []),
-            ('operator-error', '请求失败', 'operator', 'error', []),
-            ('guest-denied', '无权限', 'guest', 'forbidden', [])
-        ]
-    ]
     write(vr / 'spec.json', spec)
     command(root, 'build')
     command(root, 'checkpoint')

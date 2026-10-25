@@ -34,7 +34,7 @@ project/
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "稳定项目标识",
   "name": "订单管理",
   "summary": "项目定位与长期范围",
@@ -46,7 +46,7 @@ project/
 }
 ```
 
-版本顺序即导航顺序，通常最新在前。版本 ID 只允许小写字母、数字、连字符与点。状态与需求 confirmed/pending 不共用字段。
+版本顺序即导航顺序，按追加时间正序。版本 ID 只允许小写字母、数字、连字符与点。状态与需求 confirmed/pending 不共用字段。
 
 各版 manifest 保留 1.0 的 product/modules/pages 结构。页面 ID 在**同一版本全局唯一**，跨版本保持相同 ID 便于比较；模块 id 不随标题改动。页面 type 增加 `spec`，无需 file，由 spec.json 自动生成正文。
 
@@ -85,13 +85,13 @@ python3 <skill>/scripts/project.py upgrade-shell <项目目录>            # 预
 python3 <skill>/scripts/project.py upgrade-shell <项目目录> --apply   # 应用升级
 ```
 
-new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。版本追加到列表末尾（时间正序），左侧菜单旧版在上、新版在下。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、原 site/index.html 和旧深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
+new-version 可加 `--from-version v1.0`，默认继承 current_version；若来源仍是 planning 必须明确 --from-version，避免无意继承未完成草稿。版本按时间正序展示，左侧菜单旧版在上、新版在下。同版本修订直接编辑，不调用 new-version。新增版本复用项目 ID、site/index.html 和当前系统的版本深链接，只追加菜单及变化物料；命令检查冻结历史哈希未变，并回报原固定入口。首次 init 创建概览与九章登记，缺失内容标待补；接下来按用户范围补充物料。
 
-**继承版本的九章补齐义务**：new-version 继承的九章（用户/埋点/非功能/验收/里程碑/风险/附录）可能仍是「待补充」占位——新版本交付前，Agent 必须按本版业务逐章补写或显式标注不适用及原因，不得原样留白交付；补写内容标「AI 推断 + 待确认」走评审转正。
+继承内容按本版范围复核：适用内容补齐，不适用写理由；不为填九章编造无关内容。
 
 **交付后必须**：启动 `serve.py` 并验证可访问，向用户汇报服务地址（`http://localhost:端口/site/index.html`）与本地文件路径（项目目录绝对路径 + `/site/index.html`），确保用户能立即打开。
 
-upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime / annotation-store），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
+upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
 
 freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。
 
@@ -135,15 +135,6 @@ python3 <skill>/scripts/project.py handoff <项目目录> --version v1.1 --revis
 
 完成本次修改、构建、检查及业务验证后才 checkpoint。它只更新源文件基线，不清除任何快照保护。命令不会自动推断用户确认了需求。
 
-## 迁移 1.0 方案
-
-```bash
-python3 <skill>/scripts/project.py migrate <已有方案目录> --version v1.0
-```
-
-迁移先把原 content、site、build.py 复制到 migration-backup，再把 content 复制到 versions/v1.0/content，安装新外壳，固定 site/index.html 不变。旧 content 保留；不要主动删除备份。旧 `#/模块/页面` 链接映射至当前工作版本。
-
-迁移不编造需求关联。缺 spec 的旧版可展示、会发出关联未建立警告；需要交互能力时，在新版本补建 spec、外部 JS 和需求面板。迁移不代表已经冻结或发布，请依据用户对该产品历史状态的说明执行。
 
 ## 导航与详情空间
 

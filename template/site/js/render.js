@@ -65,7 +65,7 @@ PS.mdToHtml = function (md) {
       while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       i++;
       if (lang === "mermaid") {
-        out.push('<div class="mermaid-inline">' + PS.escapeHtml(buf.join("\n")) + "</div>");
+        out.push('<div class="mermaid-inline" role="region" aria-label="流程图，窄屏可横向滚动" tabindex="0">' + PS.escapeHtml(buf.join("\n")) + "</div>");
       } else {
         out.push('<pre class="code"><code>' + PS.escapeHtml(buf.join("\n")) + "</code></pre>");
       }
@@ -153,7 +153,7 @@ PS.renderMermaid = async function (el, code) {
   if (window.mermaid) {
     try {
       if (!PS.__mmdInit) {
-        window.mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "loose" });
+        window.mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
         PS.__mmdInit = true;
       }
       var id = "mmd-" + Math.random().toString(36).slice(2, 9);
@@ -210,3 +210,9 @@ PS.pendingReportHtml = function (manifest) {
 };
 
 window.PS = PS;
+
+// Standard PRD and functional chapters share the same diagram renderer.
+PS.renderDiagrams = async function(root) {
+  var nodes=Array.from(root.querySelectorAll('.mermaid-inline'));
+  for(var node of nodes){if(!node.isConnected)continue;await PS.renderMermaid(node,node.textContent);}
+};

@@ -121,15 +121,7 @@
   function render() {
     var form = el('form'); form.replaceChildren();
     var value = el('material').value;
-    if(value==='review-notes'){
-      form.innerHTML='<h2>保存原型批注到项目</h2><p>选择原型导出的批注 JSON。将替换该页已保存批注，可撤销；其他页、PRD 规则不变。仅规划版允许保存。上传前请核对文件版本和已有批注。</p><input id="review-file" type="file" accept=".json"><button id="review-publish" type="button">确认保存到项目</button>';
-      form.querySelector('#review-publish').disabled=!current.editable;
-      form.querySelector('#review-publish').onclick=function(){
-        if(dirty){el('status').textContent='请先保存或放弃当前正文草稿。';return;}
-        var file=form.querySelector('#review-file').files[0];if(!file || file.size>1024*1024){el('status').textContent='请选择不超过 1MB 的批注 JSON';return;}
-        run(async function(){var result=await request('notes',{revision:current.revision,notes:JSON.parse(await file.text())});adopt(result.state);undoId=result.undo_id;el('undo').disabled=!undoId;el('status').textContent='批注已保存到项目；重新打开原型可查看，未修改正式需求规则。';});
-      };return;
-    }
+
     if (value === 'attachments') { attachmentsForm(form); return; }
     if (value.startsWith('it:')) { prototypeForm(form, draft.spec.interactions.find(function (i) { return i.id === value.slice(3); })); return; }
     if (value.startsWith('doc:')) { field(form, '正文（Markdown）', draft.documents, value.slice(4)); return; }
@@ -156,7 +148,6 @@
     Object.keys(s.documents).forEach(function (path) { el('material').add(new Option(path, 'doc:' + path)); });
     (s.spec && s.spec.interactions || []).forEach(function (it) { if (s.prototype_elements[it.page] && s.prototype_elements[it.page][it.selector.slice(1)]) el('material').add(new Option('原型 · ' + it.description, 'it:' + it.id)); });
     el('material').add(new Option('附录 · 文件附件（上传/下载）', 'attachments'));
-    el('material').add(new Option('原型批注 · 保存到项目', 'review-notes'));
     if (Array.from(el('material').options).some(function (o) { return o.value === selected; })) el('material').value = selected;
     render();
   }

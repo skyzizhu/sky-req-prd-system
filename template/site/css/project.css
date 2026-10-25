@@ -140,3 +140,5 @@
 
 .prd-diagram .mermaid-box{min-width:460px}
 #prd-sections,.prd-diagram{min-width:0}.prd-requirement{min-width:0;max-width:100%;box-sizing:border-box}
+/* Long metadata and the edit action need separate lines in narrow PRD cards. */
+@media(max-width:680px){.prd-requirement header>button{float:none;display:inline-block;margin:10px 0 0}.prd-requirement header .prd-meta{margin-bottom:0}}

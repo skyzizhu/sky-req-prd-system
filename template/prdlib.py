@@ -129,6 +129,33 @@ def feature_markdown(items):
     return '\n\n'.join(rows[:2])+'\n\n'+'\n'.join(rows[2:])
 
 
+def scope_with_features(body, overview_index):
+    """Lead with the complete background section, then the generated scope index."""
+    headings=[]
+    offset=0
+    fence=None
+    for line in body.splitlines(keepends=True):
+        marker=re.match(r'^ {0,3}(`{3,}|~{3,})',line)
+        if marker:
+            token=marker.group(1)
+            if fence is None:fence=token
+            elif token[0]==fence[0] and len(token)>=len(fence):fence=None
+        elif fence is None:
+            heading=re.match(r'^(#{1,6}) +(.+?) *#*\s*$',line)
+            if heading:headings.append((offset,len(heading.group(1)),heading.group(2)))
+        offset+=len(line)
+    background=next((h for h in headings if h[2] in ('背景与目标','背景和目标')),None)
+    if background:
+        start,level,_=background
+        end=next((pos for pos,depth,_ in headings if pos>start and depth<=level),len(body))
+        lead=body[start:end].strip()
+        rest=(body[:start].rstrip()+'\n\n'+body[end:].lstrip()).strip()
+        return '\n\n'.join(part for part in (lead,overview_index,rest) if part)
+    # Missing background remains visible as missing; do not invent its contents.
+    at=headings[0][0] if headings else len(body)
+    return '\n\n'.join(part for part in (body[:at].strip(),overview_index,body[at:].strip()) if part)
+
+
 def compile_sections(content, spec, functional_markdown, feature_items=None, version=None):
     value = registry(content)
     if not value: return None
@@ -139,9 +166,7 @@ def compile_sections(content, spec, functional_markdown, feature_items=None, ver
         body = '\n\n'.join(chapter_body(d['markdown']) for d in docs)
         if entry['id'] == 'scope':
             overview_index=feature_markdown(feature_items if feature_items is not None else feature_list(spec))
-            first_section=re.search(r'^#{1,6} ',body,re.M)
-            at=first_section.start() if first_section else len(body)
-            body=body[:at].rstrip()+'\n\n'+overview_index+'\n\n'+body[at:]
+            body=scope_with_features(body,overview_index)
         if entry['id'] == 'users':
             diagrams=(spec or {}).get('diagrams',[])
             for diagram in diagrams:

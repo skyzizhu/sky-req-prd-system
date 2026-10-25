@@ -20,6 +20,7 @@
 .project-shell .topbar { height: 40px; padding: 0 12px; gap: 8px; flex-wrap: nowrap; }
 .project-shell .breadcrumb { flex: 1; display: block; text-overflow: ellipsis; color: #57606a; font-size: 12px; }
 .project-shell .content { min-height: 0; padding: 16px 24px 28px; }
+.project-shell .content:not(.embed-mode) > :is(.doc, .prd-reader, .scope-reader) { width: 100%; max-width: none; box-sizing: border-box; }
 .project-shell .content.embed-mode { padding: 0; overflow: hidden; }
 .project-shell .content.embed-mode > iframe.embed { width: 100%; flex: 1 1 0; min-height: 0; height: 100%; border: 0; border-radius: 0; }
 .project-shell .doc > h2:first-child { margin-top: 0; font-size: 20px; }

@@ -121,6 +121,13 @@ def generate(root):
       'risks':('风险与待决策','| 待决策 | 影响 | 建议确认角色 |\n| --- | --- | --- |\n| 名称长度、金额上限及负数是否允许 | 校验与错误提示 | 产品 |\n| 请求超时、幂等和重复订单判定 | 接口及失败重试 | 技术负责人 |\n| 创建页关闭与返回后的数据刷新 | 页面状态一致性 | 产品、开发、测试 |\n\n以上均为演示方案的待确认项；未确认前不作为开工已就绪的证明。'),
       'appendix':('附录与参考资料','术语：订单金额以人民币元展示；request_id 用于关联一次创建请求。\n\n本示例为 AI 合成方案，用于评审技能产物；没有关联正式设计稿或已签署接口契约。画面用于布局与状态示意，视觉细节由设计交付。')
     }
+    # Example context is synthetic; do not invent research evidence or a realized benefit.
+    overview=content/'overview/index.md'
+    overview.write_text(overview.read_text()+'\n## 背景、目标与决策\n\n项目与版本见站点；产品负责人待指定，文档待人工评审，“规划中”仅表示版本进度。来源为脚本中的合成输入，真实现状、用户访谈和问题数据未提供。目标是让产品运营完成订单创建并理解成功/失败反馈；真实收益尚未验证。候选观察指标为创建成功率，口径见第四章，基线与目标值待确认。\n\n本次采用单页表单及明确反馈，依据是合成输入范围；未提供真实备选及选择理由，不编造方案比较。既有登录身份和订单列表能力需实际项目核实，不能把示例画面当作已具备的系统。\n',encoding='utf-8')
+    title,body=documents['users']
+    documents['users']=(title,body+'\n\n典型场景：产品运营需要登记一笔订单，任务是填写名称、金额和备注，提交后确认结果并返回列表。此场景由方案归纳，不作为用户调研结论。')
+    title,body=documents['acceptance']
+    documents['acceptance']=(title,body+'\n\n## 上线后效果验证\n\n真实上线后可按第四章口径观察创建成功率，目标是确认创建任务能稳定完成；它不代表营收或效率提升。试用对象、版本、观察窗口、比较基线、目标及实际复盘负责人待产品/数据确认。无可比基线时只报告观察值；发现失败集中先核对原因，再决定修复或继续观察。结果和决策进入复盘台账，示例不预填收益。')
     for name,(title,body) in documents.items():
       (content/'prd'/ (name+'.md')).write_text('<!-- prd-status: provided -->\n<!-- prd-reason: 合成方案，业务细节待评审确认 -->\n# '+title+'\n\n'+body+'\n',encoding='utf-8')
     subprocess.run([sys.executable,str(root/'build.py')],check=True)

@@ -86,6 +86,8 @@ def generate(root):
     cases=[('NAME','位于创建页','输入仅含空格的名称并提交','拒绝提交，提示名称必填'),('AMOUNT','金额输入为 1280','提交并展示订单金额','显示 1,280.00 元'),('INVALID','名称为空','点击创建订单','显示“请输入订单名称”并定位该字段'),('SUBMITTING','请求正在处理中','再次点击提交','按钮不可用，不发起重复请求'),('SUCCESS','信息有效且请求成功','完成创建','关闭创建页，列表首行显示新订单'),('FAILURE','已填写有效信息','创建请求失败','保留全部输入，显示失败提示并允许重试')]
     ac=[{'id':'AC-ORDER-'+key,'given':given,'when':when,'then':then} for key,given,when,then in cases]
     req={'id':'FR-ORDER-001','title':'创建订单','module':'订单管理','description':'填写订单信息并创建订单。','source':'ai-inferred','status':'pending','blocking':False,'rule_details':[{'id':'RULE-ORDER-'+key,'category':cat,'statement':statement,'source':'ai-inferred','status':'pending','acceptance_ids':['AC-ORDER-'+key]} for key,cat,statement in rules],'acceptance':ac}
+    req['rule_details'][0]['category']='fields'
+    req['rule_details'][0]['table']={'columns':['字段','来源 / 初值','编辑性'], 'rows':[['订单名称','新建为空','可编辑；校验见本规则']]}
     interactions=[]
     def area(key, selector, title, state=None):
         it={'id':'INT-ORDER-'+key,'page':'create-order','selector':'#'+selector,'title':title,'description':title,'action':'inspect','requirement_ids':[req['id']],'rule_ids':['RULE-ORDER-'+key]}

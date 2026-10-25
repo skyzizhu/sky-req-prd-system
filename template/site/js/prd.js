@@ -14,7 +14,8 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     var stale=record.stale?' · 基线已变化，需复核':'';
     return '<p class="prd-ac-badge'+(record.stale?' stale':'')+'">验证记录：'+esc(names[record.payload.result] || record.payload.result)+'（'+scope+'）· '+esc(String(record.payload.observed_at || '').slice(0,10))+stale+'；取自台账，有记录不代表当前仍通过</p>';
   }
-  var category={validation:'输入校验',permission:'权限规则',state:'状态规则',data:'数据口径',feedback:'操作反馈'};
+  var category={entry:'入口与前提',fields:'数据与字段',display:'内容与展示',behavior:'操作与结果',validation:'输入校验',permission:'权限规则',state:'状态规则',data:'数据口径',feedback:'操作反馈',recovery:'异常与恢复',content:'固定内容'};
+  function ruleTable(rule){var t=rule.table;if(!t)return '';return '<div class="prd-boundary-scroll" role="region" aria-label="规则明细表，窄屏可横向滚动" tabindex="0"><table><thead><tr>'+t.columns.map(function(c){return '<th scope="col">'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+t.rows.map(function(row){return '<tr>'+row.map(function(v){return '<td>'+esc(v)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
   function p(text) { return '<p>'+esc(text || '')+'</p>'; }
   function meta(item) { return (item.source==='ai-inferred'?'AI 推断':'原始需求')+' · '+(item.status==='confirmed'?'已确认':'待确认')+((item.rule_details || []).some(function(r){return r.status!=='confirmed';})?' · 含待确认规则':''); }
   container.className='content';
@@ -53,7 +54,8 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
   }
   function draw() {
     var pageId=container.querySelector('#prd-page').value, search=container.querySelector('#prd-search').value.toLowerCase();
-    var selected=reqs.filter(function(r){return (!pageId || pages.some(function(pg){return pg.id===pageId && pg.requirement_ids.includes(r.id);})) && (!search || JSON.stringify(r).toLowerCase().includes(search) || interactions.some(function(i){return i.requirement_ids.includes(r.id) && JSON.stringify(i).toLowerCase().includes(search);}));});
+    var exact=reqs.find(function(r){return r.id.toLowerCase()===search;});
+    var selected=reqs.filter(function(r){return (!pageId || pages.some(function(pg){return pg.id===pageId && pg.requirement_ids.includes(r.id);})) && (!search || (exact?r.id===exact.id:JSON.stringify(r).toLowerCase().includes(search) || interactions.some(function(i){return i.requirement_ids.includes(r.id) && JSON.stringify(i).toLowerCase().includes(search);})));});
     container.querySelector('#prd-count').textContent='显示 '+selected.length+' / '+reqs.length+' 条需求；导出始终包含完整文档。';
     var modules=[]; selected.forEach(function(r){var name=r.module || '功能需求';if(!modules.includes(name))modules.push(name);});
     selected=modules.flatMap(function(name){return selected.filter(function(r){return (r.module || '功能需求')===name;});});
@@ -61,12 +63,14 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     var lastModule=null;
     container.querySelector('#prd-sections').innerHTML=selected.map(function(r){
       var module=r.module || '功能需求';var groupTitle=module!==lastModule?'<h2 class="prd-module">'+esc(module)+'</h2>':'';lastModule=module;
-      var html=groupTitle+'<article class="prd-requirement" id="prd-'+esc(r.id)+'"><header><h3 class="prd-feature-title">'+esc(r.title)+'</h3><p class="prd-meta">'+esc(r.id+' · '+meta(r)+(r.blocking?' · 阻塞开发':''))+'</p><button data-edit="'+esc(r.id)+'">交给 Agent 修改此需求</button></header>'+p(r.description);
-      (spec.diagrams || []).filter(function(d){return d.level==='detail' && d.requirement_id===r.id;}).forEach(function(d){html+='<section class="prd-diagram" id="diagram-'+esc(d.id)+'">'+(d.parent_id?'<p><a href="'+parentDiagramLink(d)+'">查看上层流程</a></p>':'')+window.PS.mdToHtml((data.versions[vid].diagrams || {})[d.id] || '')+'</section>';});
+      var html=groupTitle+'<article class="prd-requirement" id="prd-'+esc(r.id)+'"><header><h3 class="prd-feature-title">'+esc(r.title)+'</h3><p class="prd-meta">'+esc(r.id+' · '+meta(r)+(r.blocking || (r.review && r.review.checks || []).some(function(c){return c.status==='pending' && c.blocking;})?' · 阻塞开发':''))+'</p><button data-edit="'+esc(r.id)+'">交给 Agent 修改此需求</button></header>'+p(r.description);
+      var questions=(r.review && r.review.checks || []).filter(function(c){return c.status==='pending';});
+      if(questions.length)html+='<section class="prd-rule"><h4>待明确的实现口径</h4><ul>'+questions.map(function(c){return '<li>'+esc(c.question)+'<p class="prd-meta">'+esc(c.blocking?'影响实现/验收，需先明确':'不阻塞当前范围')+'</p></li>';}).join('')+'</ul></section>';
       var ruleKeys=Object.keys(r.rules || {});
       if(ruleKeys.length){html+='<h3>业务规则</h3>';ruleKeys.forEach(function(k){html+='<section class="prd-rule"><h4>'+esc(k)+'</h4>'+p(r.rules[k])+'</section>';});}
       var groups={};(r.rule_details || []).forEach(function(rule){var key=rule.category || '业务规则';(groups[key] || (groups[key]=[])).push(rule);});
-      Object.keys(groups).forEach(function(key){html+='<section class="prd-rule"><h4>'+esc(category[key] || key)+'</h4><ul>'+groups[key].map(function(rule){return '<li>'+esc(rule.statement)+(rule.status==='pending'?' <span class="sr-pending">待确认</span>':'')+'<details class="prd-rule-evidence"><summary>依据'+((rule.examples || []).length?'与实例':'')+'</summary><small>'+esc(rule.id+' · '+meta(rule))+'</small>'+(rule.examples || []).map(function(e){return p(e.input+' → '+e.expected);}).join('')+'</details></li>';}).join('')+'</ul></section>';});
+      Object.keys(groups).sort(function(a,b){var keys=Object.keys(category);return (keys.includes(a)?keys.indexOf(a):keys.length)-(keys.includes(b)?keys.indexOf(b):keys.length);}).forEach(function(key){html+='<section class="prd-rule"><h4>'+esc(category[key] || key)+'</h4><ul>'+groups[key].map(function(rule){return '<li>'+esc(rule.statement)+(rule.status==='pending'?' <span class="sr-pending">待确认</span>':'')+ruleTable(rule)+'<details class="prd-rule-evidence"><summary>依据'+((rule.examples || []).length?'与实例':'')+'</summary><small>'+esc(rule.id+' · '+meta(rule))+'</small>'+(rule.examples || []).map(function(e){return p(e.input+' → '+e.expected);}).join('')+'</details></li>';}).join('')+'</ul></section>';});
+      (spec.diagrams || []).filter(function(d){return d.level==='detail' && d.requirement_id===r.id;}).forEach(function(d){html+='<section class="prd-diagram" id="diagram-'+esc(d.id)+'">'+(d.parent_id?'<p><a href="'+parentDiagramLink(d)+'">查看上层流程</a></p>':'')+window.PS.mdToHtml((data.versions[vid].diagrams || {})[d.id] || '')+'</section>';});
       if((r.boundary_cases || []).length){
         html+='<details class="prd-fold prd-boundaries"><summary>边界与异常用例（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="边界与异常用例表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>输入 / 触发</th><th>预期结果</th><th>表达方式</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){return '<tr><td>'+esc(c.input)+'<br><small>'+esc(c.id)+'</small></td><td>'+esc(c.expected)+'</td><td>'+caseView(c)+'</td></tr>';}).join('')+'</tbody></table></div></details>';
       }

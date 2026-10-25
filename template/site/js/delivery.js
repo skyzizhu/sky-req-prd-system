@@ -24,10 +24,11 @@
       bundle.manifest.modules.forEach(function (m) { m.pages.forEach(function (p) {
         if (p.type === 'spec' || mappings.some(function (page) { return page.id === p.id; })) links.push({title:p.title, type:p.type, route:p.type==='spec' ? ((bundle.prd_sections || []).some(function(s){return s.id==='functions';})?'#/v/'+encodeURIComponent(linkVersion)+'/_prd/functions':'#/v/'+[linkVersion,m.id,p.id].map(encodeURIComponent).join('/'))+'?requirement='+encodeURIComponent(id) : '#/v/' + [linkVersion,m.id,p.id].map(encodeURIComponent).join('/')});
       }); });
-      var pending = r.status !== 'confirmed' || (r.rule_details || []).some(function (rule) { return rule.status !== 'confirmed'; });
+      var openChecks=(r.review && r.review.checks || []).filter(function(c){return c.status==='pending';});
+      var pending = !!openChecks.length || r.status !== 'confirmed' || (r.rule_details || []).some(function (rule) { return rule.status !== 'confirmed'; });
       var delivery = r.delivery || {};
       return {id:id, title:r.title, change:removed ? 'removed' : !before[id] ? 'added' : stable(before[id]) !== stable(r) ? 'modified' : stable(interactions) !== stable(oldInteractions) || stable(mappings) !== stable(oldMappings) || files.length ? 'review' : 'unchanged',
-        confirmation:pending ? 'pending' : 'confirmed', blocking:!!r.blocking && pending,
+        confirmation:pending ? 'pending' : 'confirmed', blocking:(!!r.blocking || openChecks.some(function(c){return c.blocking;})) && pending,
         roles:Array.isArray(delivery.roles) ? delivery.roles : [], dependencies:Array.isArray(delivery.dependencies) ? delivery.dependencies : [],
         source:r.source || 'unknown', description:r.description || '', rules:r.rules || {}, rule_details:r.rule_details || [], acceptance:r.acceptance || [], interactions:interactions, links:links};
     });

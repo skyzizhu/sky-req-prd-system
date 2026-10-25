@@ -2,6 +2,7 @@
 from collections import Counter
 from html.parser import HTMLParser
 import json
+import prdlib
 from pathlib import Path
 
 # These are review dimensions, not instructions to add functionality.
@@ -164,6 +165,9 @@ def evaluate(spec, content=None):
             if not nonempty(rule.get('statement')) or not nonempty(rule.get('category')):issue('rule_incomplete',path,'规则缺少明确说明或分类')
             if rule.get('source') not in ('origin','ai-inferred') or rule.get('status') not in ('pending','confirmed'):issue('rule_origin',path,'规则来源或确认状态无效')
             if rule.get('status')=='pending':pending_rules+=1
+            if 'table' in rule:
+                error=prdlib.rule_table_error(rule['table'])
+                if error:issue('rule_table_invalid',path,error)
             examples=rule.get('examples',[])
             if not isinstance(examples,list) or any(not isinstance(e,dict) or not nonempty(e.get('input')) or not nonempty(e.get('expected')) for e in examples):issue('example_invalid',path,'实例需有具体输入与预期；简单规则可不写实例')
             ac_refs=refs(rule.get('acceptance_ids'),acceptance,path,'验收',required=scope.get('acceptance',True));used_ac.update(ac_refs)
@@ -218,7 +222,6 @@ def evaluate(spec, content=None):
     if pending_rules:issue('rules_pending','requirements',f'{pending_rules} 条规则仍待业务确认','decision')
     if content is not None and scope.get('prd'):
         try:
-            import prdlib
             registry=prdlib.registry(Path(content))
             if not registry:issue('prd_missing','prd.json','缺少标准 PRD 登记')
             for chapter in (registry or {}).get('sections',[]):

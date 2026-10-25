@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.5'
+TEMPLATE_VERSION = '2.0.0-preview.6'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -138,7 +138,7 @@ def spec_markdown(spec, outcomes=None):
         if current is None or str(record.get('recorded_at', '')) > str(current.get('recorded_at', '')):
             latest_execution[payload['acceptance_id']] = record
     page_names = {p['id']: p['title'] for p in spec.get('pages', [])}
-    category_names = {'validation':'输入校验','permission':'权限规则','state':'状态规则','data':'数据口径','feedback':'操作反馈'}
+    category_names = prdlib.RULE_CATEGORIES
     grouped = {}
     for item in spec.get('requirements', []):
         grouped.setdefault(item.get('module') or '功能需求', []).append(item)
@@ -150,28 +150,34 @@ def spec_markdown(spec, outcomes=None):
             out += [f'## {module}']
             last_module = module
         out += [f"### {r['title']}", f"追踪编号：{r['id']}", r.get('description', ''),
-                f"来源：{'AI 推断' if r['source']=='ai-inferred' else '原始需求'} · 状态：{'已确认' if r['status']=='confirmed' else '待确认'} · 阻塞开发：{'是' if r.get('blocking') else '否'}"]
+                f"来源：{'AI 推断' if r['source']=='ai-inferred' else '原始需求'} · 状态：{'已确认' if r['status']=='confirmed' else '待确认'} · 阻塞开发：{'是' if r.get('blocking') or any(c.get('status')=='pending' and c.get('blocking') for c in r.get('review',{}).get('checks',[])) else '否'}"]
         if r['source'] == 'ai-inferred':
             out += ['> 🤖 **AI 推断**：本条需求包含待评审的补全内容。']
         if r['status'] == 'pending':
             out += ['> ⚠️ **待确认**：请评审本条规则与验收口径。']
-        for diagram in spec.get('diagrams',[]):
-            if diagram.get('level')=='detail' and diagram.get('requirement_id')==r['id']:
-                out += [diagramlib.markdown(diagram,spec.get('diagrams'),4)]
+        questions=[c for c in r.get('review',{}).get('checks',[]) if c.get('status')=='pending']
+        if questions:
+            out += ['#### 待明确的实现口径']
+            for check in questions:out += ['- '+check['question']+'（'+('影响实现/验收，需先明确' if check.get('blocking') else '不阻塞当前范围')+'）']
         for name, value in r.get('rules', {}).items():
             out += [f'#### {name}', str(value)]
         rule_groups = {}
         for rule in r.get('rule_details', []):
             key = rule.get('category') or '业务规则'
             rule_groups.setdefault(key, []).append(rule)
-        for category, rules in rule_groups.items():
+        for category in sorted(rule_groups, key=lambda key:list(category_names).index(key) if key in category_names else len(category_names)):
+            rules=rule_groups[category]
             out += [f"#### {category_names.get(category, category)}"]
             for rule in rules:
                 out += [f"- {rule['statement']}",
                         f"  - 依据：{rule['id']} · {'AI 推断' if rule.get('source')=='ai-inferred' else '原始需求'} · {'已确认' if rule.get('status')=='confirmed' else '待确认'}"]
+                if 'table' in rule:out += [prdlib.rule_table_markdown(rule['table'])]
                 for example in rule.get('examples', []):
                     out += [f"  - 实例：{example['input']} → {example['expected']}"]
                 out += ['  - 关联验收：' + '、'.join(rule.get('acceptance_ids', []))]
+        for diagram in spec.get('diagrams',[]):
+            if diagram.get('level')=='detail' and diagram.get('requirement_id')==r['id']:
+                out += [diagramlib.markdown(diagram,spec.get('diagrams'),4)]
         if r.get('boundary_cases'):
             def cell(value):return str(value).replace('|','｜').replace('\n',' ')
             out += ['#### 边界与异常用例', '| 用例 | 输入/触发 | 预期 | 表达方式 |', '| --- | --- | --- | --- |']
@@ -374,6 +380,9 @@ def validate(root):
                     ruleids.add(rule['id'])
                     if rule.get('source') not in {'origin', 'ai-inferred'} or rule.get('status') not in {'pending', 'confirmed'}:
                         errors.append(f'{vid}/{rid}: 规则来源或状态无效')
+                    if 'table' in rule:
+                        error=prdlib.rule_table_error(rule['table'])
+                        if error:errors.append(f'{vid}/{rid}/{rule["id"]}: '+error)
                     examples = rule.get('examples', [])
                     if not isinstance(examples, list) or any(not isinstance(e, dict) or not all(isinstance(e.get(k), str) and e[k].strip() for k in ('input', 'expected')) for e in examples):
                         errors.append(f'{vid}/{rid}: 规则实例格式无效')

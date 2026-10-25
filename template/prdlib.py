@@ -4,6 +4,24 @@ import pathlib
 import re
 import diagramlib
 
+# These are optional reading groups, not mandatory sections for every feature.
+RULE_CATEGORIES = {'entry':'入口与前提','fields':'数据与字段','display':'内容与展示','behavior':'操作与结果','validation':'输入校验','permission':'权限规则','state':'状态规则','data':'数据口径','feedback':'操作反馈','recovery':'异常与恢复','content':'固定内容'}
+
+def rule_table_error(table):
+    if not isinstance(table,dict):return '规则表格必须为对象'
+    columns,rows=table.get('columns'),table.get('rows')
+    if not isinstance(columns,list) or not columns or any(not isinstance(c,str) or not c.strip() for c in columns):return '规则表格需有非空列名'
+    if not isinstance(rows,list) or not rows or any(not isinstance(row,list) or len(row)!=len(columns) or any(not isinstance(cell,str) for cell in row) for row in rows):return '规则表格需有等宽的文本行'
+    return None
+
+def rule_table_markdown(table):
+    error=rule_table_error(table)
+    if error:raise ValueError(error)
+    def cell(value):return value.replace('|','｜').replace('\n',' ')
+    rows=[table['columns'],['---']*len(table['columns'])]+table['rows']
+    return '\n'.join('| '+' | '.join(cell(v) for v in row)+' |' for row in rows)
+
+
 CHAPTERS = [
     ('scope', '版本说明和范围', 'overview/index.md', '名称/版本、产品负责人、文档评审状态及关联项目；来源、现状、问题及证据出处；用户价值、业务目标与适用的成功指标；重要方案取舍、理由和假设；做/不做、已有能力影响。指标口径见第四章，无依据不编造。'),
     ('users', '用户与业务流程', 'prd/users.md', '角色、典型场景及关键任务（谁在什么情况下完成什么事）、前置条件；适用的正常/异常流程、实体关系和状态图引用。'),
@@ -91,7 +109,7 @@ def feature_list(spec, baseline=None):
     before={item['id']:item for item in (baseline or {}).get('requirements',[])}
     after={item['id']:item for item in (spec or {}).get('requirements',[])}
     def confirmation(item):
-        return 'pending' if item.get('status')!='confirmed' or any(rule.get('status')!='confirmed' for rule in item.get('rule_details',[])) else 'confirmed'
+        return 'pending' if item.get('status')!='confirmed' or any(c.get('status')=='pending' for c in item.get('review',{}).get('checks',[])) or any(rule.get('status')!='confirmed' for rule in item.get('rule_details',[])) else 'confirmed'
     rows=[]
     for rid,item in after.items():
         change='新增' if rid not in before else '沿用' if business(item,spec)==business(before[rid],baseline) else '修改'

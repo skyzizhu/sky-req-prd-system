@@ -49,6 +49,29 @@ class StaticReaderTests(unittest.TestCase):
         self.assertNotIn('extra-state-control',exported)
         self.assertEqual(exported.count('#### 关联原型'),1)
 
+    def test_structured_field_table_and_open_question_survive_export(self):
+        spec=read(self.file)
+        rule=spec['requirements'][0]['rule_details'][0]
+        rule['table']={'columns':['字段','来源'], 'rows':[['名称','身份|手填\n待明确']]}
+        check=spec['requirements'][0]['review']['checks'][0]
+        check.update(status='pending',question='初始值是什么？',blocking=True)
+        write(self.file,spec)
+        self.assertEqual(validate(self.root)[0],[])
+        compile_project(self.root)
+        exported=spec_markdown(spec)
+        self.assertIn('| 名称 | 身份｜手填 待明确 |',exported)
+        self.assertIn('待明确的实现口径',exported)
+        self.assertIn('初始值是什么？（影响实现/验收，需先明确）',exported)
+        self.assertIn('阻塞开发：是',exported)
+
+    def test_malformed_rule_table_is_rejected(self):
+        from qualitylib import evaluate
+        spec=read(self.file)
+        spec['requirements'][0]['rule_details'][0]['table']={'columns':['字段','来源'],'rows':[['少一列']]}
+        write(self.file,spec)
+        self.assertTrue(any('等宽' in error for error in validate(self.root)[0]))
+        self.assertIn('rule_table_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})
+
     def test_missing_state_canvas_and_unknown_rule_state_rejected(self):
         spec = read(self.file)
         spec['pages'][0]['states'][0]['id'] = 'missing'

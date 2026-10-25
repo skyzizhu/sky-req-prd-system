@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.3'
+TEMPLATE_VERSION = '2.0.0-preview.4'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -128,8 +128,7 @@ def pages(manifest):
 
 
 def spec_markdown(spec, outcomes=None):
-    out = ['# 产品需求文档', '## 页面与功能范围']
-    requirements = {r['id']: r for r in spec.get('requirements', [])}
+    out = ['# 产品需求文档']
     latest_execution = {}
     for record in outcomes or []:
         payload = record.get('payload', {}) if isinstance(record, dict) else {}
@@ -140,9 +139,6 @@ def spec_markdown(spec, outcomes=None):
             latest_execution[payload['acceptance_id']] = record
     page_names = {p['id']: p['title'] for p in spec.get('pages', [])}
     category_names = {'validation':'输入校验','permission':'权限规则','state':'状态规则','data':'数据口径','feedback':'操作反馈'}
-    actions = {'navigate':'页面跳转','dialog':'打开弹框','close':'关闭弹框','toggle':'显示切换','input':'输入','submit':'提交','custom':'业务操作','inspect':'只读展示'}
-    for page in spec.get('pages', []):
-        out += [f"### {page['title']}", page.get('purpose', ''), '功能：'+'、'.join(requirements.get(rid,{}).get('title',rid) for rid in page.get('requirement_ids',[]))]
     grouped = {}
     for item in spec.get('requirements', []):
         grouped.setdefault(item.get('module') or '功能需求', []).append(item)
@@ -194,12 +190,14 @@ def spec_markdown(spec, outcomes=None):
                 stale = ' · 基线已变化，需复核' if record.get('stale') else ''
                 out += [f"  - 验证记录：{result_names.get(payload.get('result'), payload.get('result'))}（{scope_name}）· {str(payload.get('observed_at', ''))[:10]}{stale}；取自台账，有记录不代表当前仍通过"]
         controls=[i for i in spec.get('interactions',[]) if r['id'] in i.get('requirement_ids',[])]
-        if controls: out += ['#### 页面控件与显示说明']
-        for it in controls:
-            out += [f"- {page_names.get(it['page'],it['page'])}：{it['description']}\n  - 动作：{actions.get(it['action'],it['action'])}" + (f" → {page_names.get(it['target'],it['target'])}" if it.get('target') else '')]
-            for key,value in it.get('properties',{}).items():
+        related=[p['title'] for p in spec.get('pages',[]) if r['id'] in p.get('requirement_ids',[])]
+        if related:out += ['#### 关联原型', '、'.join(related)]
+        configured=[it for it in controls if it.get('properties')]
+        if configured:out += ['#### 控件属性补充']
+        for it in configured:
+            out += [f"- {page_names.get(it['page'],it['page'])}：{it['description']}（{it['id']}）"]
+            for key,value in it['properties'].items():
                 out += [f"  - {PROPERTY_LABELS.get(key,key)}：{json.dumps(value,ensure_ascii=False)}"]
-            out += [f"  - 技术定位：{it['id']} · {it['selector']}"]
     rendered='\n\n'.join(out)
     return re.sub(r'(\|)\n\n(?=\|)', r'\1\n', rendered)
 
@@ -523,7 +521,7 @@ def compile_project(root):
         base_spec=read(safe(root,'versions/'+v['base'])/'content/spec.json') if v.get('base') else None
         feature_items=prdlib.feature_list(spec,base_spec)
         bundle['versions'][v['id']]['feature_list']=feature_items
-        sections = prdlib.compile_sections(vr / 'content', spec, spec_markdown(spec or {}, version_outcomes),feature_items)
+        sections = prdlib.compile_sections(vr / 'content', spec, spec_markdown(spec or {}, version_outcomes),feature_items,v['id'])
         attachments = attachmentlib.for_version(root, project, v['id'], catalog)
         current = bundle['versions'][v['id']]
         current['prd_sections'] = sections
@@ -532,7 +530,7 @@ def compile_project(root):
         for section in sections or []:
             for source in section['sources']: documents[source]=safe(vr/'content',source).read_text(encoding='utf-8')
         current['material_index']=materiallib.index(manifest,spec,documents)
-        current['material_index'] += [{'key':'project','kind':'metadata','title':'项目总览与版本计划','source':'project.json'}, {'key':'delivery','kind':'derived','title':'需求范围与交接（修改源需求）','source':'spec.json / project.json'}, {'key':'outcomes','kind':'ledger','title':'验收结果与上线复盘（追加或更正台账）','source':'outcomes/'}]
+        current['material_index'] += [{'key':'project','kind':'metadata','title':'项目总览与版本计划','source':'project.json'}, {'key':'delivery','kind':'derived','title':'交付清单（修改源需求）','source':'spec.json / project.json'}, {'key':'outcomes','kind':'ledger','title':'验收结果与上线复盘（追加或更正台账）','source':'outcomes/'}]
         current['material_index'] += [{'key':'attachment:'+a['id'],'kind':'attachment','title':a['name'],'source':a['relative_path']} for a in attachments]
         for source in documents:
             if source in files: files[source]=materiallib.MARKER.sub('',files[source])

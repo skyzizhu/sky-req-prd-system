@@ -16,7 +16,7 @@ window.PSStandardPRD = {
         var heading=Array.from(container.querySelectorAll('h3')).find(function(h){return h.textContent===d.title;});
         if(!heading)return;heading.id='diagram-'+d.id;
         var children=(bundle.spec.diagrams || []).filter(function(child){return child.parent_id===d.id;});
-        if(children.length){var links=document.createElement('p');links.className='diagram-links';links.innerHTML='展开节点：'+children.map(function(child){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(child.requirement_id)+'&amp;diagram='+encodeURIComponent(child.id)+'">'+esc(child.title)+'</a>';}).join(' · ');heading.after(links);}
+        if(children.length){var links=document.createElement('p');links.className='diagram-links';links.innerHTML='展开节点：'+children.map(function(child){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(child.requirement_id)+'&amp;diagram='+encodeURIComponent(child.id)+'">'+esc(child.title)+'</a>';}).join(' · ');var listing=heading.nextElementSibling;while(listing && !(listing.tagName==='P' && listing.textContent.startsWith('节点展开：')) && !/^H[123]$/.test(listing.tagName))listing=listing.nextElementSibling;if(listing && listing.textContent.startsWith('节点展开：'))listing.replaceWith(links);else heading.after(links);}
       });
     }
     window.PS.renderDiagrams(container).then(function(){

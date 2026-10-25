@@ -111,7 +111,7 @@ def feature_markdown(items):
     return '\n\n'.join(rows[:2])+'\n\n'+'\n'.join(rows[2:])
 
 
-def compile_sections(content, spec, functional_markdown, feature_items=None):
+def compile_sections(content, spec, functional_markdown, feature_items=None, version=None):
     value = registry(content)
     if not value: return None
     sections = []
@@ -137,8 +137,12 @@ def compile_sections(content, spec, functional_markdown, feature_items=None):
                 body=re.sub(r'^(#+)(?= )',r'#\1','\n'.join(lines).strip(),flags=re.M)
             else:body='尚未提供功能需求。'
         if entry['id'] == 'acceptance':
-            body += '\n\n### 功能验收索引\n\n完整条件在功能章节维护，此处仅引用编号：\n\n'
+            body += '\n\n### 功能验收索引\n\n完整条件在功能章节维护，按功能进入完整条件：\n\n'
             for req in (spec or {}).get('requirements', []):
-                body += '- '+req['title']+'：'+ '、'.join(ac['id'] for ac in req.get('acceptance', []))+'\n'
+                label=req['title']+'（'+str(len(req.get('acceptance', [])))+' 条）'
+                if version:
+                    from urllib.parse import quote
+                    label='['+label+'](#/v/'+quote(version,safe='')+'/_prd/functions?requirement='+quote(req['id'],safe='')+'&section=acceptance)'
+                body += '- '+label+'\n'
         sections.append(dict(entry, status=status, reason='；'.join(d['reason'] for d in docs) if docs else '正文存在不代表需求已确认', markdown=body))
     return sections

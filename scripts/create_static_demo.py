@@ -94,7 +94,7 @@ def generate(root):
     area('NAME','order-canvas','订单名称')
     area('AMOUNT','order-canvas','金额口径')
     for key, sid,title in [('INVALID','invalid','名称校验'),('SUBMITTING','submitting','提交保护'),('SUCCESS','success','成功结果'),('FAILURE','failed','失败反馈')]:area(key,sid+'-focus',title,sid)
-    spec={'schema_version':2,'requirements':[req], 'pages':[{'id':'create-order','title':'创建订单','purpose':'查看订单创建页各状态及规则。','handoff':{'role':'产品运营','preconditions':['已登录且具有创建订单权限。'],'scope':['创建订单与提交反馈。'],'out_of_scope':['支付、审批、编辑、删除。'],'design_notes':['状态和必要元素必须完整保留；布局、颜色、间距和组件由设计重新设计。']},'requirement_ids':[req['id']],'states':[{'id':sid,'title':title,'summary':summary,'elements':state_elements(sid),'next':{'default':'填写后提交；无效输入进入校验失败。','invalid':'修正名称后重新提交。','submitting':'请求成功进入成功状态，失败进入提交失败。','success':'返回订单列表，显示新订单。','failed':'保留输入；允许重试，进入提交中。'}[sid]} for sid,title,summary in states]}],'interactions':interactions}
+    spec={'schema_version':2,'requirements':[req], 'pages':[{'id':'create-order','title':'创建订单','purpose':'查看订单创建页各状态及规则。','handoff':{'role':'产品运营'},'requirement_ids':[req['id']],'states':[{'id':sid,'title':title,'summary':summary,'elements':state_elements(sid),'next':{'default':'填写后提交；无效输入进入校验失败。','invalid':'修正名称后重新提交。','submitting':'请求成功进入成功状态，失败进入提交失败。','success':'返回订单列表，显示新订单。','failed':'保留输入；允许重试，进入提交中。'}[sid]} for sid,title,summary in states]}],'interactions':interactions}
     save('spec.json',add_quality(spec))
     snapshots=[]
     for sid,title,summary in states:

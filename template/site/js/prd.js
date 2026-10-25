@@ -70,16 +70,24 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
       if((r.boundary_cases || []).length){
         html+='<details class="prd-fold prd-boundaries"><summary>边界与异常用例（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="边界与异常用例表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>输入 / 触发</th><th>预期结果</th><th>表达方式</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){return '<tr><td>'+esc(c.input)+'<br><small>'+esc(c.id)+'</small></td><td>'+esc(c.expected)+'</td><td>'+caseView(c)+'</td></tr>';}).join('')+'</tbody></table></div></details>';
       }
-      html+='<details class="prd-fold"><summary>验收标准（'+(r.acceptance || []).length+'）</summary><ol class="prd-acceptance">';
+      html+='<details class="prd-fold prd-ac-fold" id="acceptance-'+esc(r.id)+'"><summary>验收标准（'+(r.acceptance || []).length+'）</summary><ol class="prd-acceptance">';
       (r.acceptance || []).forEach(function(a){html+='<li>'+p('前提：'+a.given)+p('操作：'+a.when)+p('预期：'+a.then)+acBadge(a.id)+'<small>'+esc(a.id)+'</small></li>';});
-      html+='</ol></details><details class="prd-fold"><summary>页面与控件</summary>';
-      interactions.filter(function(i){return i.requirement_ids.includes(r.id);}).forEach(function(i){var pg=pages.find(function(x){return x.id===i.page;}); html+='<details class="prd-control"><summary>'+esc((pg?pg.title:i.page)+' · '+i.description)+'</summary><p class="prd-meta">'+esc(i.id+' · '+i.selector)+'</p>'+p('动作：'+i.action+(i.target?' → '+i.target:'')); Object.keys(i.properties || {}).forEach(function(k){html+=p(k+'：'+JSON.stringify(i.properties[k]));}); html+='<button data-edit="'+esc(r.id)+'" data-control="'+esc(i.id)+'">交给 Agent 修改此控件</button></details>';});
-      return html+'</details></article>';
+      html+='</ol></details><details class="prd-fold"><summary>关联原型</summary><p>';
+      pages.filter(function(pg){return pg.requirement_ids.includes(r.id);}).forEach(function(pg){
+        var mod=data.versions[vid].manifest.modules.find(function(m){return m.pages.some(function(p){return p.id===pg.id && p.type==='prototype';});});
+        if(mod)html+='<a href="#/v/'+encodeURIComponent(vid)+'/'+encodeURIComponent(mod.id)+'/'+encodeURIComponent(pg.id)+'">'+esc(pg.title)+'</a> · ';
+      });
+      html+='</p></details>';
+      var configured=interactions.filter(function(i){return i.requirement_ids.includes(r.id) && Object.keys(i.properties || {}).length;});
+      if(configured.length){html+='<details class="prd-fold"><summary>控件属性补充</summary>';configured.forEach(function(i){html+='<p>'+esc(i.description+' · '+i.id)+'</p>';Object.keys(i.properties).forEach(function(k){html+=p(k+'：'+JSON.stringify(i.properties[k]));});});html+='</details>';}
+      return html+'</article>';
     }).join('') || '<p>没有匹配需求，请调整筛选。编号不存在时不会自动定位到其他需求。</p>';
-    window.PS.renderDiagrams(container).then(function(){var wanted=new URLSearchParams(query).get('diagram');if(wanted){var target=document.getElementById('diagram-'+wanted);if(target && container.contains(target))target.scrollIntoView({block:'start'});}});
+    window.PS.renderDiagrams(container).then(function(){var wanted=new URLSearchParams(query).get('diagram');if(wanted){var target=document.getElementById('diagram-'+wanted);if(target && container.contains(target))target.scrollIntoView({block:'start'});}else if(new URLSearchParams(query).get('section')==='acceptance'){var ac=container.querySelector('.prd-ac-fold');if(ac)ac.scrollIntoView({block:'start',behavior:'instant'});}});
+    if(new URLSearchParams(query).get('section')==='acceptance'){container.querySelectorAll('.prd-ac-fold').forEach(function(el){el.open=true;});}
     watchSpy(selected);
     setActive((selected[0] || {}).id);
   }
+  container.querySelector('#prd-page').value=new URLSearchParams(query).get('page') || '';
   container.querySelector('#prd-search').value=new URLSearchParams(query).get('requirement') || '';
   ['prd-page','prd-search'].forEach(function(id){container.querySelector('#'+id).addEventListener('input',draw);});
   container.onclick=function(event){

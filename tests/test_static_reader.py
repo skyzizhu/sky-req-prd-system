@@ -37,6 +37,18 @@ class StaticReaderTests(unittest.TestCase):
         for rule in spec['requirements'][0]['rule_details']:
             self.assertEqual(exported.count('- '+rule['statement']), 1)
 
+    def test_export_deduplicates_controls_but_retains_configured_properties(self):
+        spec=read(self.file)
+        duplicate=dict(spec['interactions'][0],id='extra-state-control',selector='#extra',properties={})
+        spec['interactions'].extend([duplicate,dict(duplicate,id='configured',properties={'maxLength':37})])
+        exported=spec_markdown(spec)
+        self.assertNotIn('技术定位：',exported)
+        self.assertNotIn('只读展示',exported)
+        self.assertIn('最大长度：37',exported)
+        self.assertIn('configured',exported)
+        self.assertNotIn('extra-state-control',exported)
+        self.assertEqual(exported.count('#### 关联原型'),1)
+
     def test_missing_state_canvas_and_unknown_rule_state_rejected(self):
         spec = read(self.file)
         spec['pages'][0]['states'][0]['id'] = 'missing'

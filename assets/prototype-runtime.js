@@ -23,11 +23,15 @@ window.PSStaticReader = function (data, page, interactions) {
   var handoff=document.createElement('details');handoff.className='sr-handoff';
   var info=page.handoff || {};
   function bullets(items,empty){return '<ul>'+((items && items.length)?items:[empty]).map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul>';}
-  handoff.innerHTML='<summary>本页交接 · 开发前提、测试验收、状态与元素</summary><div class="sr-handoff-grid"><section><h2>开发 · 使用前提</h2><p>适用角色：'+esc(info.role || '待确认')+'</p>'+bullets(info.preconditions,'前置条件待补充')+'<h3>范围</h3>'+bullets(info.scope,'范围见 PRD')+'<h3>不做</h3>'+bullets(info.out_of_scope,'排除项待确认')+'</section><section><h2>测试 · 验收入口</h2><p>每条规则下可展开“依据与验收”。静态图用于核对状态，实际产品执行结果单独登记。</p><h3>状态覆盖</h3><p>'+esc(states.map(function(st){return st.title;}).join('、'))+'</p></section><section><h2>设计 · 状态与元素</h2>'+bullets(info.design_notes,'状态和必要元素必须完整保留；布局及视觉由设计重新设计。')+'<ul>'+states.map(function(st){return '<li><strong>'+esc(st.title)+'</strong>：'+esc((st.elements || []).map(function(el){return el.title;}).join('、') || '必要元素待核对')+'</li>';}).join('')+'</ul></section></div>';
+  var prdRoot=new URL('../../../../site/index.html',location.href);
+  function chapter(id,query){var url=new URL(prdRoot);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/'+id+(query?'?'+query:'');return url.href;}
+  handoff.innerHTML='<summary>页面补充与必要元素</summary><div class="sr-handoff-grid"><section><h2>页面补充</h2>'+(info.role?'<p>适用角色：'+esc(info.role)+'</p>':'')+['preconditions','scope','out_of_scope','design_notes','dependencies','decisions'].filter(function(k){return info[k] && info[k].length;}).map(function(k){return '<h3>'+({preconditions:'本页前提',scope:'本页范围',out_of_scope:'本页排除项',design_notes:'设计补充',dependencies:'本页依赖',decisions:'待决策'}[k])+'</h3>'+bullets(info[k],'');}).join('')+'<p><a href="'+esc(chapter('scope'))+'" target="_blank" rel="noopener">版本范围</a> · <a href="'+esc(chapter('functions','page='+encodeURIComponent(page.id)+'&section=acceptance'))+'" target="_blank" rel="noopener">本页功能与验收</a></p></section><section><h2>必要元素</h2><div id="sr-elements"></div></section></div>';
   canvas.before(header,handoff,tabs,layout);view.appendChild(canvas);layout.append(view,panel);
   document.body.classList.add('sr-host');
   sections.forEach(function(section){
     section.classList.add('sr-state');
+    var state=states.find(function(s){return s.id===section.dataset.psState;}), title=section.querySelector('h2');
+    if(title && state && title.textContent.trim()===state.title+' · '+(state.summary || ''))title.textContent=state.title;
     var snapshot=section.querySelector('.sr-snapshot');
     if (!snapshot) throw new Error('状态 '+section.dataset.psState+' 缺少 .sr-snapshot');
     snapshot.inert=true;
@@ -59,9 +63,9 @@ window.PSStaticReader = function (data, page, interactions) {
     var ac=[], provenance=[];
     reqs.filter(function(r){return it.requirement_ids.includes(r.id);}).forEach(function(r){
       var ids=(r.rule_details || []).filter(function(rule){return !ruleIds.length || ruleIds.includes(rule.id);}).flatMap(function(rule){provenance.push(rule.id+' · '+(rule.source==='origin'?'方案依据':'AI 推断')+' · '+(rule.status==='confirmed'?'已确认':'待确认'));return rule.acceptance_ids || [];});
-      (r.acceptance || []).filter(function(a){return !ruleIds.length || ids.includes(a.id);}).forEach(function(a){ac.push(a);});
+      (r.acceptance || []).filter(function(a){return !ruleIds.length || ids.includes(a.id);}).forEach(function(a){ac.push({id:a.id,requirement:r.id});});
     });
-    return '<article class="sr-card" data-rule-card="'+esc(it.id)+'"><h3><button type="button" data-locate="'+esc(it.id)+'"><span class="sr-number">'+n+'</span>'+esc(it.title || it.description)+'</button></h3><ul>'+ruleText(it)+'</ul><details><summary>依据与验收</summary><p>'+esc(it.requirement_ids.join(' · '))+'</p><p>'+esc(provenance.join('；'))+'</p><p><a href="'+esc(prdLink(it.requirement_ids[0]))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+ac.map(function(a){return '<p>'+esc(a.id+' · 前提：'+a.given+'；操作：'+a.when+'；预期：'+a.then)+'</p>';}).join('')+'</details></article>';
+    return '<article class="sr-card" data-rule-card="'+esc(it.id)+'"><h3><button type="button" data-locate="'+esc(it.id)+'"><span class="sr-number">'+n+'</span>'+esc(it.title || it.description)+'</button></h3><ul>'+ruleText(it)+'</ul><details><summary>依据与验收</summary><p>'+esc(it.requirement_ids.join(' · '))+'</p><p>'+esc(provenance.join('；'))+'</p><p><a href="'+esc(prdLink(it.requirement_ids[0]))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+ac.map(function(a){return '<p><a href="'+esc(prdLink(a.requirement)+'&section=acceptance')+'" target="_blank" rel="noopener">验收 '+esc(a.id)+'</a></p>';}).join('')+'</details></article>';
   }
   function positionPins(){
     sections.forEach(function(section){
@@ -82,6 +86,8 @@ window.PSStaticReader = function (data, page, interactions) {
     tabs.querySelectorAll('[data-state]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.state===selected));});
     sections.forEach(function(el){el.hidden=!compare && el.dataset.psState!==selected;});
     var current=states.find(function(s){return s.id===selected;});
+    var inventories=(compare?states:[current]).map(function(st){return '<details'+(!compare?' open':'')+'><summary>'+esc(st.title)+'</summary><p>'+esc((st.elements || []).map(function(el){return el.title;}).join('、'))+'</p></details>';});
+    handoff.querySelector('#sr-elements').innerHTML=inventories.join('');
     var common=interactions.filter(function(it){return !it.state_ids || !it.state_ids.length;});
     var specific=interactions.filter(function(it){return it.state_ids && it.state_ids.length && applicable(it);});
     panel.innerHTML='<header><span class="sr-eyebrow">规则说明</span><h2>'+esc(compare?'全部状态':current.title)+'</h2><p>'+esc(compare?'按编号对照画面；共用规则只写一次。':current.summary || '')+'</p>'+(!compare && current.next?'<p><strong>后续：</strong>'+esc(current.next)+'</p>':'')+'</header>'+(!compare && specific.length?'<h2 class="sr-group">当前状态</h2>'+specific.map(card).join(''):'')+(common.length?'<h2 class="sr-group">页面共用</h2>'+common.map(card).join(''):'')+(compare && specific.length?'<h2 class="sr-group">状态差异</h2>'+specific.map(card).join(''):'');

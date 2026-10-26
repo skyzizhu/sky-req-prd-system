@@ -116,7 +116,8 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     var edit=event.target.closest('[data-edit]'); if(!edit)return;
     var r=reqs.find(function(x){return x.id===edit.dataset.edit;});
     var dialog=container.querySelector('#prd-edit-context');
-    dialog.querySelector('textarea').value='请在既有项目中增量修改，不重新生成。\n页面入口：'+location.href.split('?')[0]+'?requirement='+encodeURIComponent(r.id)+'\n版本：'+vid+'\n需求：'+r.title+'（'+r.id+'）'+(edit.dataset.control?'\n控件：'+edit.dataset.control:'')+'\n修改要求：【请填写】\n保留其他需求、编号、页面结构及历史；若此版已冻结，请先定位对应规划版，不修改冻结物料。';
+    var entry=new URL(location.href);entry.hash='/v/'+encodeURIComponent(vid)+'/_prd/functions?'+new URLSearchParams({requirement:r.id}).toString();
+    dialog.querySelector('textarea').value='请在既有项目中增量修改，不重新生成。\n项目：'+data.project.name+'（'+data.project.id+'）\n页面入口：'+entry.href+'\n版本：'+vid+'\n需求：'+r.title+'（'+r.id+'）\n定位键：req:'+r.id+'\n来源：versions/'+vid+'/content/spec.json'+(edit.dataset.control?'\n控件：'+edit.dataset.control:'')+'\n修改要求：【请填写】\n保留其他需求、编号、页面结构及历史；若此版已冻结，请先确认目标规划版本，不自动转到其他版本，也不修改冻结物料。';
     dialog.showModal();dialog.querySelector('textarea').select();
   };
   container.querySelector('#prd-edit-context button').onclick=function(){container.querySelector('#prd-edit-context').close();};

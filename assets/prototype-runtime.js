@@ -228,6 +228,13 @@ window.PSStaticReader = function (data, page, interactions) {
   }
   function prdLink(rid){var url=new URL('../../../../site/index.html',location.href);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/functions?requirement='+encodeURIComponent(rid);return url.href;}
   function updateHash(){var p=new URLSearchParams({state:selected});if(selectedRule)p.set('rule',selectedRule);history.replaceState(null,'','#'+p.toString());}
+  // Reply only to this frame's parent, on demand; supports file:// opaque origins.
+  window.addEventListener('message',function(event){
+    var msg=event.data;
+    if(window.parent===window || event.source!==window.parent || !msg || msg.type!=='ps-maintenance-context-request' || typeof msg.request!=='string')return;
+    var it=interactions.find(function(i){return i.id===selectedRule;}),section=sections.find(function(s){return s.dataset.psState===selected;}),el=it && target(it,section);
+    event.source.postMessage({type:'ps-maintenance-context',request:msg.request,project:data.project,version:data.version,page:page.id,state:selected,interaction:it?it.id:null,selector:el && el.id?'#'+el.id:null,compare:compare},'*');
+  });
   var linkDialog=document.createElement('dialog');linkDialog.className='sr-link-dialog';linkDialog.innerHTML='<h2>定位当前状态与规则</h2><p>接收者打开同一份项目即可定位。file:// 地址需有相同本地文件路径；localhost 链接只适用于当前电脑。</p><label>项目入口<input readonly id="sr-project-link"></label><label>独立页面<input readonly id="sr-direct-link"></label><button type="button">关闭</button>';document.body.appendChild(linkDialog);linkDialog.querySelector('button').onclick=function(){linkDialog.close();};
   header.querySelector('#sr-handoff-toggle').onclick=function(){handoff.hidden=!handoff.hidden;this.setAttribute('aria-expanded',String(!handoff.hidden));positionPins();};
   header.querySelector('#sr-link').onclick=function(){var direct=new URL(location.href);direct.hash=new URLSearchParams({state:selected,...(selectedRule?{rule:selectedRule}:{})}).toString();var project=new URL('../../../../site/index.html',location.href);project.hash=(data.pageRoutes || {})[page.id]+'?'+direct.hash.slice(1);linkDialog.querySelector('#sr-project-link').value=project.href;linkDialog.querySelector('#sr-direct-link').value=direct.href;linkDialog.showModal();linkDialog.querySelector('input').select();};

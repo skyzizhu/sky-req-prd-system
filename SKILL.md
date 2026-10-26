@@ -2,7 +2,7 @@
 name: sky-req-prd-system
 description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成、更新或审查产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.23"
+  version: "2.0.0-preview.24"
 ---
 
 # 产品方案 → PRD 与多状态原型

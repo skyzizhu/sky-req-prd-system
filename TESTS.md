@@ -28,6 +28,7 @@ node tests/run-browser.cjs
 | local-controls-browser.cjs | 原生选择与联动、状态重置、键盘、窄屏、编号不遮挡控件、控件/标注互不触发、提交受阻 |
 | editor-browser.cjs | 属性/正文预览保存、实际属性生效、撤销与冲突；不模拟业务提交 |
 | prd-browser.cjs | 业务层次、定位信息、关联页面去重、非空控件属性保留与完整导出 |
+| maintenance-browser.cjs | 当前控件/状态/规则上下文、目标切换、未匹配与派生视图、历史版本、预览参数链接、file/HTTP、键盘与窄屏、旧运行时降级 |
 | delivery-browser.cjs | 交接筛选、待确认子规则、JSON/Markdown 导出及原型入口 |
 | handoff-browser.cjs | 交接版本深链接、历史静态原型及独立快照 |
 | outcomes-browser.cjs | 验收记录与复盘、旧基线提示及证据展示 |

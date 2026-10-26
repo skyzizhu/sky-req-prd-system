@@ -8,6 +8,7 @@ const suites=[
   ['local-controls',null],
   ['artboard-surfaces',null],
   ['consumer-mobile',null],
+  ['maintenance',null],
   ['diagrams','scripts/create_static_demo.py'],
   ['editor','tests/fixtures/versioned_project.py'],
   ['prd','tests/fixtures/versioned_project.py'],

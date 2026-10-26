@@ -32,7 +32,46 @@
 
 ## 页面与状态
 
-一个真实页面一个 HTML。`spec.pages[]` 增加 `states: [{id,title,summary,next,elements}]`；id 是稳定短标识，summary 解释该状态的触发条件，next 说明接下来如何处理或恢复。状态由业务决定，不强制枚举不适用状态。
+### 同一详情中的多个界面画板
+
+一个原型详情涉及多个页面、弹窗或抽屉时，按阅读顺序上下展示独立画板：每个界面单独有标题栏、边框和白色内容容器，画板之间有明显灰色间隔。预约详情完整展示字段与取消按钮；其下的“取消确认弹窗”画板单独展示弹窗内容与操作，并注明“由预约详情的取消预约按钮触发”。多个画板共用当前详情和右侧标注面板，不仅为了拆画板增加菜单或路由；具有独立任务和导航的页面仍可保留自身入口。
+
+这是交付阅读布局，实际产品的覆盖、关闭、背景限制仍在规则中说明。不要把弹窗放进详情内容流，也不用模拟遮罩叠加来代替独立画板。画板并排可见不表示真实产品同时常驻；弹窗示意不设置aria-modal=true或inert封锁另一张画板。Tab继续切换数据/业务/反馈状态，不把页面标题当作状态枚举；某状态涉及多个界面时，状态内仍用多个独立画板。
+
+生成关联画面时复用基础页面结构并换唯一ID，保留其字段、数据和操作（含触发按钮），逐项对照基础状态elements和真实控件；有业务原因隐藏或改变时明确依据。弹窗内部的关键数据、关闭（若方案有）、返回/保留和确认操作独立登记并标注。所有画板的编号均可查看，点击任一编号只更新右侧对应规则，不操作业务控件。
+
+使用共享样式的HTML契约如下；只展示结构，实际元素、标注和规则按方案补齐：
+
+```html
+<section data-ps-state="confirm" data-ps-base-state="default">
+  <h2>取消确认</h2>
+  <div class="sr-snapshot" data-ps-artboards>
+    <section class="sr-artboard" data-ps-surface="page">
+      <h3 class="sr-artboard-title">预约详情</h3>
+      <div class="sr-artboard-body">
+        <p id="confirm-summary" data-ps-origin="#default-summary">预约摘要</p>
+        <button id="confirm-cancel" data-ps-origin="#default-cancel" type="button">取消预约</button>
+      </div>
+    </section>
+    <section class="sr-artboard" data-ps-surface="dialog" data-ps-trigger="#confirm-cancel">
+      <h3 class="sr-artboard-title">取消确认弹窗</h3>
+      <p class="sr-artboard-caption">由预约详情的“取消预约”按钮触发；实际产品中以弹窗打开。</p>
+      <div class="sr-artboard-body"><div class="sr-dialog-preview">
+        <h4>确认取消预约？</h4>
+        <!-- 弹窗关键数据及操作，各自关联精确data-rule-ref -->
+        <button id="confirm-keep" type="button">保留预约</button>
+        <button id="confirm-send" type="button">确认取消</button>
+      </div></div>
+    </section>
+  </div>
+</section>
+```
+
+有基础状态副本时声明data-ps-base-state，每个保留元素以data-ps-origin关联基础元素，防止换状态重新绘制时漏控件；基础状态须真实存在。data-ps-trigger指向本页真实可用的触发控件；弹窗/抽屉画板须有可读的触发说明。其他关联页面使用data-ps-surface="page"，按业务关系说明入口，不虚构点击或新路由。
+
+统一审查检测独立画板、标题/内容、弹窗触发关系与基础元素映射。浏览器必须检查画板上下排列及灰色间隔、容器不嵌套不覆盖、各画板控件和标注完整可读，桌面和窄屏都可查看。仅当前elements自洽或控件属性通过不能证明无遗漏；仍须对照原始方案反查。
+
+一个原型详情一个 HTML，内含本详情的状态及关联界面画板。`spec.pages[]` 增加 `states: [{id,title,summary,next,elements}]`；id 是稳定短标识，summary 解释该状态的触发条件，next 说明接下来如何处理或恢复。状态由业务决定，不强制枚举不适用状态。
 
 HTML 的 `main` 包含多个 `section data-ps-state="状态ID"`。每段含状态标题与 `.sr-snapshot`，里面是完整的静态画面；运行时仅放行 data-ps-local 声明的局部控件，阻止提交、业务按钮及导航；不将整张画面设为 inert。不同状态内元素 ID 全页唯一。
 

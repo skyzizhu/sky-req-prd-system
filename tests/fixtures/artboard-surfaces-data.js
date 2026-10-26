@@ -1,0 +1,9 @@
+window.PS_SPEC={schema_version:2,projectName:'独立画板校对',version:'QA',spec:{requirements:[{id:'FR',rule_details:[{id:'DATA',title:'预约摘要',statement:'展示会议室与预约时间。'},{id:'CANCEL',title:'取消入口',statement:'点击取消预约后打开确认弹窗；此原型从状态Tab查看，不发送业务请求。'},{id:'KEEP',title:'保留预约',statement:'关闭弹窗，预约不变，不发送请求。'},{id:'SEND',title:'确认取消',statement:'仅确认后发送；执行时重新校验权限与时间。'}]}],pages:[{id:'detail',title:'预约详情与确认画板',requirement_ids:['FR'],states:[{id:'default',title:'预约详情',summary:'查看预约，取消入口可用。'},{id:'confirm',title:'取消确认',summary:'由预约详情的取消按钮触发；详情和弹窗以独立画板上下展示。'}]}],interactions:[
+{id:'INT-SUMMARY',page:'detail',selector:'#default-summary',title:'预约摘要',rule_ids:['DATA'],state_ids:['default']},
+{id:'INT-CANCEL',page:'detail',selector:'#default-cancel',title:'取消入口',rule_ids:['CANCEL'],state_ids:['default']},
+{id:'INT-BACKGROUND-SUMMARY',page:'detail',selector:'#confirm-summary',title:'背景摘要',rule_ids:['DATA'],state_ids:['confirm']},
+{id:'INT-BACKGROUND-CANCEL',page:'detail',selector:'#confirm-cancel',title:'背景取消入口',rule_ids:['CANCEL'],state_ids:['confirm']},
+{id:'INT-CONTEXT',page:'detail',selector:'#confirm-context',title:'即将取消的预约',rule_ids:['DATA'],state_ids:['confirm']},
+{id:'INT-KEEP',page:'detail',selector:'#confirm-keep',title:'保留预约',rule_ids:['KEEP'],state_ids:['confirm']},
+{id:'INT-SEND',page:'detail',selector:'#confirm-send',title:'确认取消',rule_ids:['SEND'],state_ids:['confirm']}
+]}};

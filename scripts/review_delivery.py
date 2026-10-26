@@ -19,7 +19,7 @@ DIMENSIONS = {
     'annotation_scope': '逐控件/操作及状态核对必要规则：基础约束、当前可操作性、禁用原因、结果及恢复；区分关闭/确认/背景限制，不能按整个功能批量绑定',
     'redundancy': '查找重复正文、泛化标注和无关说明；保留必要的上下文投影及独立边界',
     'acceptance': '逐分支核对具体验收的前提、触发、预期，不以编号关联代替语义覆盖',
-    'browser': '实际查看独立页、iframe、状态及局部变化、编号与控件、键盘和窄屏；记录路径与观察结果',
+    'browser': '实际查看独立页、iframe、状态及局部变化、编号与控件、键盘和窄屏；对照基础页查漏控件，核对多个界面的独立画板、标题/间隔、触发关系与控件保留；记录观察证据',
 }
 BOOLEAN = {'required', 'disabled', 'multiple', 'checked', 'readonly'}
 ATTRIBUTES = {'type', 'min', 'max', 'step', 'maxlength', 'minlength', 'pattern', 'placeholder'}
@@ -38,6 +38,7 @@ class Controls(HTMLParser):
         parent = self.stack[-1] if self.stack else None
         node = {'tag': tag, 'attrs': a, 'text': '', 'children': [],
                 'state': a.get('data-ps-state', parent['state'] if parent else None),
+                'hidden': 'hidden' in a or bool(parent and parent['hidden']),
                 'option_disabled': 'disabled' in a or bool(parent and parent['tag']=='optgroup' and parent['option_disabled']),
                 'snapshot': 'sr-snapshot' in a.get('class', '').split() or bool(parent and parent['snapshot'])}
         if parent: parent['children'].append(node)
@@ -74,6 +75,52 @@ def descendants(node):
     for child in node['children']:
         yield child
         yield from descendants(child)
+
+
+def surface_review(spec, pages):
+    """Check independent delivery artboards and preserved controls; CSS needs browser review."""
+    findings = []
+    inventories = {(p['id'], s['id']): s.get('elements', []) for p in spec.get('pages', []) for s in p.get('states', [])}
+    contains = lambda parent, child: any(n is child for n in descendants(parent))
+    for pid, parser in pages.items():
+        for section in [n for n in parser.nodes if n['attrs'].get('data-ps-state')]:
+            sid=section['state']; path=pid+'/'+sid+'/surface'
+            def issue(code,message): findings.append(dict(code=code,path=path,message=message))
+            current=[n for n in descendants(section) if n['snapshot']]
+            cards=[n for n in current if 'sr-artboard' in n['attrs'].get('class','').split()]
+            dialogs=[n for n in current if n['attrs'].get('data-ps-surface') in ('dialog','drawer') or n['tag']=='dialog' or n['attrs'].get('role') in ('dialog','alertdialog')]
+            if not cards and not dialogs: continue
+            stacks=[n for n in current if 'data-ps-artboards' in n['attrs'] and 'sr-snapshot' in n['attrs'].get('class','').split()]
+            if len(cards)<2 or not any(all(any(c is card for c in stack['children']) for card in cards) for stack in stacks):
+                issue('surface_artboards_missing','多个界面须在同一画布中用至少两个上下排列的独立sr-artboard展示')
+            for card in cards:
+                if any(contains(other,card) for other in cards if other is not card):issue('surface_embedded','界面画板不能嵌入另一画板的白色容器')
+                for cls in ('sr-artboard-title','sr-artboard-body'):
+                    matches=[n for n in card['children'] if cls in n['attrs'].get('class','').split()]
+                    if len(matches)!=1 or (cls.endswith('title') and not matches[0]['text'].strip()):issue('surface_structure_missing','每个画板需独立标题和内容容器：'+cls)
+                if 'inert' in card['attrs'] or card['attrs'].get('aria-modal')=='true':issue('surface_artboard_inactive','交付画板须可独立阅读，不按真实模态封锁其他画板')
+            for dialog in dialogs:
+                if not any(dialog is card for card in cards):
+                    issue('surface_dialog_embedded','弹窗/抽屉须作为独立画板呈现，不能使用页面内嵌或覆盖效果');continue
+                trigger=dialog['attrs'].get('data-ps-trigger')
+                targets=[n for n in parser.nodes if n['snapshot'] and '#'+n['attrs'].get('id','')==trigger]
+                if len(targets)!=1 or targets[0]['tag'] not in ('button','a','input') or targets[0]['hidden'] or 'disabled' in targets[0]['attrs'] or contains(dialog,targets[0]):
+                    issue('surface_trigger_invalid','弹窗画板须关联外部真实可用的触发控件data-ps-trigger')
+                if not any('sr-artboard-caption' in n['attrs'].get('class','').split() and n['text'].strip() for n in dialog['children']):issue('surface_trigger_description_missing','弹窗画板需直接可读的触发关系说明')
+            base=section['attrs'].get('data-ps-base-state')
+            if not base: continue
+            if base==sid or (pid,base) not in inventories:
+                issue('surface_base_invalid','基础状态data-ps-base-state无效');continue
+            base_nodes=[n for n in parser.nodes if n['state']==base and n['snapshot']]
+            copies=[n for card in cards if card['attrs'].get('data-ps-surface')=='page' for n in descendants(card)]
+            required={e['selector'] for e in inventories[(pid,base)] if isinstance(e,dict) and e.get('selector')}
+            required.update('#'+n['attrs']['id'] for n in base_nodes if not n['hidden'] and n['tag'] in ('button','input','select','textarea','a') and n['attrs'].get('id'))
+            for origin in sorted(required):
+                preserved=[n for n in copies if n['attrs'].get('data-ps-origin')==origin]
+                originals=[n for n in base_nodes if '#'+n['attrs'].get('id','')==origin]
+                if len(preserved)!=1 or len(originals)!=1 or preserved[0]['tag']!=originals[0]['tag'] or preserved[0]['hidden']:
+                    issue('surface_control_missing','关联页面遗漏或替换基础元素：'+origin+'；保留真实控件并用data-ps-origin关联')
+    return findings
 
 
 def control_review(spec, content):
@@ -116,6 +163,7 @@ def control_review(spec, content):
             if value != actual.get(key):
                 findings.append(dict(code='control_mismatch', path=path, message='原型控件与规则派生断言不一致', evidence=row))
     unchecked = [dict(page=pid, state=n['state'], selector='#'+n['attrs']['id']) for pid, parser in pages.items() for n in parser.nodes if n['snapshot'] and n['tag'] in ('input', 'select', 'textarea', 'button') and n['attrs'].get('id') and (pid, n['state'], '#'+n['attrs']['id']) not in checked]
+    findings.extend(surface_review(spec,pages))
     return dict(findings=findings, comparisons=comparisons, unchecked_controls=unchecked)
 
 

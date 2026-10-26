@@ -34,6 +34,8 @@ verdict 为 pass/fail/not_applicable/unverified；已复核项均需定位与观
 
 八项复核：input_scope、rule_closure、consistency、flow_paths、annotation_scope、redundancy、acceptance、browser。流程路径的登记与语义核对见 [process-diagrams.md](process-diagrams.md)，逐状态精确绑定见 [prototype.md](prototype.md)。具体问题由首轮报告生成，不在此重复。逐功能/分支列出检查证据，可同一项记录多处定位；缺陷需要指出遗漏会让下游猜测什么。删除冗余前核对条件、状态、边界及恢复是否仍有唯一明确出处；上下文投影和独立边界不是重复。只为本次功能审查适用情况，不为凑完整新增功能。
 
+同一详情有多个界面时，按prototype.md检查上下独立画板；脚本在controls.findings报告surface_*问题，包括缺标题/内容、缺触发入口、画板嵌套以及基础元素遗漏。browser证据须包含各画板完整画面、标题及灰色间隔，逐画板核对控件与标注，不以遮罩叠加或属性断言通过代替。基础画面和衍生画面同时遗漏的业务元素仍需对照原始方案复核。
+
 ## 控件一致性断言
 
 `quality.control_checks` 是从已维护规则派生的检测断言，与输入约束台账同属核对证据，不是第二套业务规则。先确定规则，再登记断言；修改业务值时复核断言，不能为了通过检测反向修改需求。语义审查需确认 expected 与 rule_ids 真正对应。

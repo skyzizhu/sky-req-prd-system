@@ -153,3 +153,37 @@ class UnifiedReviewTests(unittest.TestCase):
         run=subprocess.run([sys.executable,str(ROOT/'scripts/evaluate_scenarios.py'),str(mapping),'--report-dir',str(output)],capture_output=True,text=True)
         self.assertEqual(run.returncode,3,run.stderr)
         self.assertEqual([r['status'] for r in json.loads((output/'summary.json').read_text())],['not_run']*3)
+
+
+class ArtboardContinuityTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.content=Path(self.tmp.name)
+        (self.content/'manifest.json').write_text(json.dumps({'modules':[{'pages':[{'id':'detail','type':'prototype','file':'page.html'}]}]}))
+        self.html='''<section data-ps-state="default"><div class="sr-snapshot"><p id="summary">Room A</p><button id="cancel" type="button">Cancel</button></div></section>
+<section data-ps-state="confirm" data-ps-base-state="default"><div class="sr-snapshot" data-ps-artboards>
+<section class="sr-artboard" data-ps-surface="page"><h3 class="sr-artboard-title">Details</h3><div class="sr-artboard-body"><p id="copy-summary" data-ps-origin="#summary">Room A</p><button id="copy-cancel" data-ps-origin="#cancel" type="button">Cancel</button></div></section>
+<section class="sr-artboard" data-ps-surface="dialog" data-ps-trigger="#copy-cancel"><h3 class="sr-artboard-title">Confirmation dialog</h3><p class="sr-artboard-caption">Opened by Cancel in Details</p><div class="sr-artboard-body"><button id="keep">Keep</button><button id="send">Confirm</button></div></section></div></section>'''
+        self.spec={'pages':[{'id':'detail','states':[{'id':'default','elements':[{'selector':'#summary'}]},{'id':'confirm','elements':[]}]}]}
+
+    def tearDown(self):self.tmp.cleanup()
+
+    def codes(self,html=None):
+        (self.content/'page.html').write_text(html or self.html)
+        return [f['code'] for f in control_review(self.spec,self.content)['findings']]
+
+    def test_complete_boards_preserve_trigger_even_if_state_inventory_omits_it(self):
+        self.assertEqual(self.codes(),[])
+        self.assertIn('surface_control_missing',self.codes(self.html.replace('<button id="copy-cancel" data-ps-origin="#cancel" type="button">Cancel</button>','')))
+
+    def test_multiple_related_pages_and_dialog_can_share_detail(self):
+        extra='<section class="sr-artboard" data-ps-surface="page"><h3 class="sr-artboard-title">Related page</h3><div class="sr-artboard-body">Content</div></section>'
+        self.assertEqual(self.codes(self.html.replace('<section class="sr-artboard" data-ps-surface="dialog"',extra+'<section class="sr-artboard" data-ps-surface="dialog"')),[])
+
+    def test_missing_headers_containers_trigger_and_preserved_controls_rejected(self):
+        for old,new,code in [('data-ps-trigger="#copy-cancel"','data-ps-trigger="#missing"','surface_trigger_invalid'),('data-ps-base-state="default"','data-ps-base-state="missing"','surface_base_invalid'),('data-ps-artboards','data-old-layout','surface_artboards_missing'),('sr-artboard-title','missing-title','surface_structure_missing'),('sr-artboard-body','missing-body','surface_structure_missing'),('sr-artboard-caption','missing-caption','surface_trigger_description_missing'),('<button id="copy-cancel"','<div id="copy-cancel"','surface_control_missing'),('id="copy-summary"','hidden id="copy-summary"','surface_control_missing'),('data-ps-surface="page"','data-ps-surface="page" inert','surface_artboard_inactive')]:
+            with self.subTest(code=code):self.assertIn(code,self.codes(self.html.replace(old,new)))
+
+    def test_embedded_dialog_or_real_modal_overlay_is_not_an_independent_artboard(self):
+        self.assertIn('surface_dialog_embedded',self.codes(self.html.replace('class="sr-artboard" data-ps-surface="dialog"','role="dialog" data-ps-surface="dialog"')))
+        nested=self.html.replace('</div></section>\n<section class="sr-artboard" data-ps-surface="dialog"','</div><section class="sr-artboard" data-ps-surface="dialog"').replace('</div></section></div></section>','</div></section></section></div></section>')
+        self.assertIn('surface_embedded',self.codes(nested))

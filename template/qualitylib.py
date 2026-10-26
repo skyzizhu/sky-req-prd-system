@@ -312,6 +312,41 @@ def evaluate(spec, content=None):
             else:issue('check_missing',path,'未核对适用检查项：'+label)
             check_rows.append(dict(requirement=rid,feature=req.get('title',rid),dimension=dimension,label=label,status=status or 'missing',rule_ids=objects(check.get('rule_ids')),question=check.get('question',''),reason=check.get('reason',''),blocking=check.get('blocking',False)))
         for key in checks.keys()-dimensions.keys():issue('unknown_dimension',f'{rid}/review/{key}','检查维度不属于选定功能类型，需校正类型或维度')
+    # Mobile delivery applicability is evidence, not another source of business rules.
+    mobile_rows=[]; form=None
+    if content is not None:
+        try: form=json.loads((Path(content)/'manifest.json').read_text(encoding='utf-8')).get('product',{}).get('form')
+        except (OSError,ValueError,TypeError): pass  # Existing structure validation reports malformed manifests.
+    mobile=quality.get('mobile_review')
+    if form in ('mobile','h5','miniapp') or mobile is not None:
+        dimensions={'platform','navigation','interruption','authorization','network','components'}
+        if not isinstance(mobile,list):
+            issue('mobile_review_missing','quality.mobile_review','移动端交付需登记平台、导航、中断、授权、网络与组件适用性');mobile=[]
+        known_rules={r['id']:r for req in reqs.values() for r in objects(req.get('rule_details')) if isinstance(r,dict) and nonempty(r.get('id'))}
+        known_ac={a['id']:a for req in reqs.values() for a in objects(req.get('acceptance')) if isinstance(a,dict) and nonempty(a.get('id'))}
+        seen=set()
+        for check in mobile:
+            if not isinstance(check,dict) or check.get('dimension') not in dimensions:
+                issue('mobile_dimension_invalid','quality.mobile_review','移动检查维度无效');continue
+            key=check['dimension'];path='quality.mobile_review/'+key
+            if key in seen:issue('mobile_dimension_duplicate',path,'移动检查维度重复')
+            seen.add(key);status=check.get('status')
+            if status=='covered':
+                rr=refs(check.get('rule_ids'),known_rules,path,'移动规则')
+                aa=refs(check.get('acceptance_ids'),known_ac,path,'移动验收')
+                supported={aid for rid in rr for aid in objects(known_rules[rid].get('acceptance_ids'))}
+                if any(aid not in supported for aid in aa):issue('mobile_acceptance_unrelated',path,'移动验收未被关联规则支持')
+            elif status=='not_applicable':
+                if key=='platform' or not nonempty(check.get('reason')):issue('mobile_applicability_invalid',path,'需具体不适用理由；平台不能跳过')
+            elif status=='pending':
+                if not nonempty(check.get('question')) or check.get('impact') not in ('implementation','acceptance','editorial') or type(check.get('blocking')) is not bool:
+                    issue('mobile_decision_invalid',path,'待决策需具体问题、影响与阻塞结论')
+                else:
+                    if check['impact']!='editorial' and not check['blocking']:issue('decision_nonblocking',path,'移动实现/验收问题不能降为不阻塞')
+                    issue('mobile_decision',path,check['question'],'error' if check['blocking'] else 'decision')
+            else:issue('mobile_check_invalid',path,'需covered、pending或not_applicable')
+            mobile_rows.append(check)
+        for key in sorted(dimensions-seen):issue('mobile_check_missing','quality.mobile_review/'+key,'缺少移动交付适用性检查')
     if pending_rules:issue('rules_pending','requirements',f'{pending_rules} 条规则仍待业务确认','decision')
     if content is not None and scope.get('prd'):
         try:
@@ -329,7 +364,7 @@ def evaluate(spec, content=None):
     return {'status':'incomplete' if counts['error'] else 'review_required' if counts['decision'] else 'checks_passed',
             'counts':{'errors':counts['error'],'decisions':counts['decision'],'warnings':counts['warning'],'inputs':len(input_ids),'requirements':len(reqs),'rules':len(coverage),'states':len(states),'elements':sum(map(len,inventories.values())),'cases':case_total,'diagrams':len(objects(spec.get('diagrams')))},
             'diagrams':[{k:d.get(k,'') for k in ('id','title','kind','level','module','requirement_id','parent_id','parent_node')} for d in objects(spec.get('diagrams')) if isinstance(d,dict)],
-            'input_constraints':obligations,'issues':issues,'coverage':coverage,'checks':check_rows,'cases':case_rows,
+            'mobile_review':mobile_rows,'input_constraints':obligations,'issues':issues,'coverage':coverage,'checks':check_rows,'cases':case_rows,
             'limits':'仅验证已登记方案与证据的覆盖、适用性及关联。covered 表示已有说明，不表示业务已确认；无法发现从输入登记和规则中同时遗漏的业务事实，不代替语义复核、真实产品测试或开工决策。'}
 
 

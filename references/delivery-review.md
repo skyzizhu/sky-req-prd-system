@@ -32,7 +32,7 @@ verdict 为 pass/fail/not_applicable/unverified；已复核项均需定位与观
 
 源指纹绑定项目、版本、源内容、原始输入和评测标准，改动后旧证据会拒绝复用。原始方案文件未提供时不能把 input_scope 标为通过；它与从 spec 生成的台账不是同一份证据。证据文件是复核者的记录，脚本不能证明复核者确实看过页面。
 
-八项复核：input_scope、rule_closure、consistency、flow_paths、annotation_scope、redundancy、acceptance、browser。流程路径的登记与语义核对见 [process-diagrams.md](process-diagrams.md)，逐状态精确绑定见 [prototype.md](prototype.md)。具体问题由首轮报告生成，不在此重复。逐功能/分支列出检查证据，可同一项记录多处定位；缺陷需要指出遗漏会让下游猜测什么。删除冗余前核对条件、状态、边界及恢复是否仍有唯一明确出处；上下文投影和独立边界不是重复。只为本次功能审查适用情况，不为凑完整新增功能。
+复核项：input_scope、rule_closure、consistency、flow_paths、annotation_scope、redundancy、acceptance、mobile_delivery、browser。流程路径的登记与语义核对见 [process-diagrams.md](process-diagrams.md)，逐状态精确绑定见 [prototype.md](prototype.md)。具体问题由首轮报告生成，不在此重复。逐功能/分支列出检查证据，可同一项记录多处定位；缺陷需要指出遗漏会让下游猜测什么。删除冗余前核对条件、状态、边界及恢复是否仍有唯一明确出处；上下文投影和独立边界不是重复。只为本次功能审查适用情况，不为凑完整新增功能。
 
 同一详情有多个界面时，按prototype.md检查上下独立画板；脚本在controls.findings报告surface_*问题，包括缺标题/内容、缺触发入口、画板嵌套以及基础元素遗漏。browser证据须包含各画板完整画面、标题及灰色间隔，逐画板核对控件与标注，不以遮罩叠加或属性断言通过代替。基础画面和衍生画面同时遗漏的业务元素仍需对照原始方案复核。
 
@@ -56,7 +56,7 @@ verdict 为 pass/fail/not_applicable/unverified；已复核项均需定位与观
 
 ## 固定场景评测
 
-`tests/scenarios/delivery.json` 固定三个中等场景：设备申领（控件/失败恢复）、会议预约取消（时间/状态/待决策）、仅指标 PRD（裁剪/口径/去重）。这些是独立产品输入与审查标准，不是生成模板。
+`tests/scenarios/delivery.json` 固定四个中等场景：设备申领（控件/失败恢复）、会议预约取消（时间/状态/待决策）、仅指标 PRD（裁剪/口径/去重）、移动App体验课预约（跨页返回/中断重入/移动画板）。这些是独立产品输入与审查标准，不是生成模板。
 
 1. 修改 skill 后，在临时空目录按每个 scenario.input **实际运行技能生成候选物料**；保持同一输入和交付范围。不要用演示生成器替代这些任务，也不要把已知答案灌进生成输入。
 2. 逐个对照 input 和 checks 审查候选；浏览器检查适用页面。第一次无 evidence 运行收集指纹和未完成项，随后填写证据复核。

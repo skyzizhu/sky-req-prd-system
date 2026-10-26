@@ -143,3 +143,10 @@ body.sr-host { margin: 0; background: #f5f5f5; color: #252525; font: 13px/1.5 -a
 .sr-focus-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sr-related-controls { border-top: 1px solid #e2e8f0; margin-top: 10px; padding-top: 8px; font-size: 12px; }
 .sr-related-controls summary { cursor: pointer; margin-bottom: 6px; color: #526078; }
+
+/* Opt in for mobile product drawings; reader viewport does not determine product platform. */
+:is(.sr-artboard,.sr-snapshot)[data-ps-platform="mobile"] { box-sizing: border-box; width: min(100%, 390px); max-width: 100%; font-size: 14px; }
+[data-ps-platform="mobile"] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,button) { box-sizing: border-box; min-height: 44px; max-width: 100%; font-size: 16px; }
+[data-ps-platform="mobile"] :is(input[type=checkbox],input[type=radio]) { width: 18px; height: 18px; }
+[data-ps-platform="mobile"] label:has(input[type=checkbox],input[type=radio]) { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; }
+[data-ps-platform="mobile"] .sr-mobile-actions { box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 8px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #ddd; background: #fff; }

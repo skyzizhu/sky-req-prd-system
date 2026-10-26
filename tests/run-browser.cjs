@@ -7,6 +7,7 @@ const suites=[
   ['static-reader','scripts/create_static_demo.py'],
   ['local-controls',null],
   ['artboard-surfaces',null],
+  ['consumer-mobile',null],
   ['diagrams','scripts/create_static_demo.py'],
   ['editor','tests/fixtures/versioned_project.py'],
   ['prd','tests/fixtures/versioned_project.py'],

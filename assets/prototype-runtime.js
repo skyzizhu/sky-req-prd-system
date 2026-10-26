@@ -36,7 +36,7 @@ window.PSLocalControls = function(snapshot,onLayout){
     var node=owner(el),mode=node && node.dataset.psLocal,type=(el.type || '').toLowerCase();
     return (mode==='choice' && el.tagName==='INPUT' && ['checkbox','radio'].includes(type)) ||
       (mode==='select' && el.tagName==='SELECT') ||
-      (mode==='input' && (el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && ['text','email','number','date','time','search','tel','url','range'].includes(type)))) ||
+      (mode==='input' && (el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && ['text','password','email','number','date','time','search','tel','url','range'].includes(type)))) ||
       (mode==='disclosure' && el.tagName==='SUMMARY');
   }
   controls.forEach(function(el){if(!allowed(el) && !el.disabled)el.setAttribute('tabindex','-1');});

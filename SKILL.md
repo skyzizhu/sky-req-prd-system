@@ -2,7 +2,7 @@
 name: sky-req-prd-system
 description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成、更新或审查产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.20"
+  version: "2.0.0-preview.22"
 ---
 
 # 产品方案 → PRD 与多状态原型
@@ -35,6 +35,7 @@ metadata:
 读取 [prototype.md](references/prototype.md)、[control-annotations.md](references/control-annotations.md) 和 [local-controls.md](references/local-controls.md)，分别负责布局/阅读、控件语义、局部交互契约。
 
 - 按功能任务组织原型详情，使用紧凑线框及真实控件形态。设计可重做视觉，但不能遗漏必要元素、数据和适用状态。
+- 受众（B/C端）与平台分别判断；面向消费者或涉及移动端时，读取 [consumer-prototype.md](references/consumer-prototype.md)，按实际端补齐布局、触控和适用状态，不能把阅读器窄屏适配当作移动产品支持。
 - 同一原型详情涉及多个页面、弹窗或抽屉时，上下排列独立画板，各有标题栏、边框和白色内容容器，画板之间留灰色间隔；标明触发关系，完整保留各界面控件。生成与检查契约见 [prototype.md](references/prototype.md)。
 - Tab 展示页面级状态；下拉展开、选择、开关等只做画面内必要交互，不模拟业务提交或网络。逐项登记状态覆盖及局部核对路径，不能为减少 Tab 删除异常状态。
 - 默认选中有效标注，右侧仅显示它在当前状态下精确关联的全部规则。点击控件只操作，点击独立编号只看规则，点击区域不重叠。不恢复浮窗、连线或标注模式。

@@ -238,3 +238,27 @@ class QualityTests(unittest.TestCase):
                 self.assertEqual(len(project['versions']),1)
 
 if __name__=='__main__':unittest.main()
+
+
+class MobileDeliveryChecksTests(unittest.TestCase):
+    setUpClass=classmethod(QualityTests.setUpClass.__func__)
+    tearDownClass=classmethod(QualityTests.tearDownClass.__func__)
+    setUp=QualityTests.setUp
+    report=QualityTests.report
+    codes=QualityTests.codes
+
+    def test_mobile_platform_requires_all_applicability_dimensions(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as directory:
+            content=Path(directory)/'content';shutil.copytree(self.content,content)
+            manifest=json.loads((content/'manifest.json').read_text());manifest['product']['form']='mobile';(content/'manifest.json').write_text(json.dumps(manifest))
+            codes={i['code'] for i in evaluate(self.spec,content)['issues']}
+            self.assertIn('mobile_review_missing',codes);self.assertIn('mobile_check_missing',codes)
+
+    def test_declared_mobile_checks_need_related_evidence_and_real_applicability(self):
+        rule=self.req['rule_details'][0];ac=rule['acceptance_ids'][0]
+        self.spec['quality']['mobile_review']=[{'dimension':d,'status':'covered','rule_ids':[rule['id']],'acceptance_ids':[ac]} for d in ['platform','navigation','interruption','authorization','network','components']]
+        self.assertFalse({c for c in self.codes() if c.startswith('mobile_')})
+        check=self.spec['quality']['mobile_review'][1];check['acceptance_ids']=['missing'];self.assertTrue(any(i['severity']=='error' and '移动验收' in i['message'] for i in self.report()['issues']))
+        check.update(status='not_applicable',reason='');self.assertIn('mobile_applicability_invalid',self.codes())
+        check.update(status='pending',question='返回时保留什么？',impact='implementation',blocking=False);self.assertIn('decision_nonblocking',self.codes())

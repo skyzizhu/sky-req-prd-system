@@ -71,6 +71,12 @@ class ControlConsistencyTests(unittest.TestCase):
         self.spec['quality']['control_checks'][0]['rule_ids']=['MISSING']
         self.assertTrue(control_review(self.spec,self.content)['findings'])
 
+    def test_mobile_product_needs_product_canvas_not_only_reader_responsiveness(self):
+        manifest=json.loads((self.content/'manifest.json').read_text());manifest['product']={'form':'mobile'};(self.content/'manifest.json').write_text(json.dumps(manifest))
+        self.assertIn('mobile_canvas_missing',{f['code'] for f in control_review(self.spec,self.content)['findings']})
+        p=self.content/'page.html';p.write_text(p.read_text().replace('class="sr-snapshot"','class="sr-snapshot" data-ps-platform="mobile"'))
+        self.assertNotIn('mobile_canvas_missing',{f['code'] for f in control_review(self.spec,self.content)['findings']})
+
     def test_select_without_selected_uses_native_first_option(self):
         parser=Controls();parser.feed('<select><option value="a">A</option><option value="b">B</option></select>')
         self.assertEqual(parser.values(parser.nodes[0])['value'],'a')
@@ -152,7 +158,7 @@ class UnifiedReviewTests(unittest.TestCase):
         output=Path(self.tmp.name)/'reports'
         run=subprocess.run([sys.executable,str(ROOT/'scripts/evaluate_scenarios.py'),str(mapping),'--report-dir',str(output)],capture_output=True,text=True)
         self.assertEqual(run.returncode,3,run.stderr)
-        self.assertEqual([r['status'] for r in json.loads((output/'summary.json').read_text())],['not_run']*3)
+        self.assertEqual([r['status'] for r in json.loads((output/'summary.json').read_text())],['not_run']*len(json.loads((ROOT/'tests/scenarios/delivery.json').read_text())['scenarios']))
 
 
 class ArtboardContinuityTests(unittest.TestCase):

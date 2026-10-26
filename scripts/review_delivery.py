@@ -19,6 +19,7 @@ DIMENSIONS = {
     'annotation_scope': '逐控件/操作及状态核对必要规则：基础约束、当前可操作性、禁用原因、结果及恢复；区分关闭/确认/背景限制，不能按整个功能批量绑定',
     'redundancy': '查找重复正文、泛化标注和无关说明；保留必要的上下文投影及独立边界',
     'acceptance': '逐分支核对具体验收的前提、触发、预期，不以编号关联代替语义覆盖',
+    'mobile_delivery': '涉及移动App/H5/小程序时，对照原方案核对平台、导航返回、中断恢复、系统授权及组件状态；从规则追至画板和验收，不以窄屏测试替代；非移动项目说明不适用',
     'browser': '实际查看独立页、iframe、状态及局部变化、编号与控件、键盘和窄屏；对照基础页查漏控件，核对多个界面的独立画板、标题/间隔、触发关系与控件保留；记录观察证据',
 }
 BOOLEAN = {'required', 'disabled', 'multiple', 'checked', 'readonly'}
@@ -131,6 +132,13 @@ def control_review(spec, content):
             if page.get('type') != 'prototype': continue
             parser = Controls(); parser.feed(safe(content, page['file']).read_text(encoding='utf-8'))
             pages[page['id']] = parser
+    if manifest.get('product',{}).get('form') in ('mobile','h5','miniapp'):
+        for pid,parser in pages.items():
+            for snapshot in [n for n in parser.nodes if 'sr-snapshot' in n['attrs'].get('class','').split()]:
+                boards=[n for n in descendants(snapshot) if 'sr-artboard' in n['attrs'].get('class','').split()]
+                targets=boards or [snapshot]
+                if any(n['attrs'].get('data-ps-platform')!='mobile' for n in targets):
+                    findings.append(dict(code='mobile_canvas_missing',path=pid+'/'+str(snapshot['state']),message='移动产品画板需显式data-ps-platform=mobile；窄屏阅读器不能代替移动画布'))
     rules = {r['id'] for req in spec.get('requirements', []) for r in req.get('rule_details', [])}
     for i, check in enumerate(spec.get('quality', {}).get('control_checks', [])):
         path = 'quality.control_checks/'+str(i)

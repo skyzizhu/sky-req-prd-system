@@ -64,7 +64,7 @@ project/
 }
 ```
 
-其他 type：markdown、mermaid、prototype、html-embed。file 相对本版 content，禁止越界。多端沿用 product.ends；多端一致的状态合入一张详情页双画布并排（见 prototype.md），仅结构分叉的端单独成页。
+其他 type：markdown、mermaid、prototype、html-embed。file 相对本版 content，禁止越界。多端信息按实际方案记录；规则相同则复用，多端画面在同一详情中按prototype.md上下分画板展示，不强制并排。只有独立任务/导航需要时才另设入口。
 
 ## 命令
 

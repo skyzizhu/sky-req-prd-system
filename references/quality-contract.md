@@ -117,3 +117,5 @@ pending 检查项声明 impact 为 implementation、acceptance 或 editorial。�
 ## 统一审查与跨物料检测
 
 含原型的生成/修改完成后，按 [delivery-review.md](delivery-review.md) 执行统一审查入口；它复用本检查器，不替代语义与浏览器复核。含原型时，将规则中可确定的原生控件属性派生为 quality.control_checks（schema 见该文件），由统一入口比对实际 HTML；未知或动态属性保持待复核。该台账不进入 PRD 正文，不作为第二套业务决策来源。
+
+移动端项目另按 [consumer-prototype.md](consumer-prototype.md) 登记quality.mobile_review，六维只引用规则与验收；不适用说明理由，不新增业务模块。

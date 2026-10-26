@@ -16,7 +16,7 @@ import prdlib
 
 def install(root):
     shutil.copytree(SKILL / 'template/site', root / 'site', dirs_exist_ok=True)
-    for name in ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'qualitylib.py', 'diagramlib.py'):
+    for name in BUILD_TOOLS:
         shutil.copy2(SKILL / 'template' / name, root / name)
 
 

@@ -18,6 +18,8 @@
 
 ## 各类型易漏内容
 
+涉及字段和控件时，同时按 [control-annotations.md](control-annotations.md) 核对选项、默认值、约束及交互结果；内容仍写入本章的唯一规则源，由原型引用，不再另抄一套控件说明。
+
 - **表单**：字段含义/来源/默认值、必填与校验时机、数值精度与空白处理；动态行初始数量、增删及上下限；成功去向；取消/离开后的数据去向。已有共用输入约定可引用，不机械列全部字符类型。
 - **列表和详情**：可见字段、内容分组及操作条件；搜索匹配和触发方式、筛选选项和默认值、排序字段的业务含义、分页和返回定位；空数据与失败区分。详情可归入已有功能说明，不必虚构一个独立业务功能。
 - **审批/流程**：谁有权处理与谁有权查阅分开；处理完成或状态变化后如何反馈和返回；审批人来源、多人归属、可用性、实际会发生的组织变动。已有组织规则可引用，不能自动增加代理、转交或配置能力。
@@ -28,12 +30,20 @@
 
 ## 唯一来源与展示
 
+网页按“业务模块 → 功能 → 规则分类 → 规则主题”展示。分类使用轻标题和分隔线，不把整类规则塞进厚重底色块；规则主题下直接显示约束与表格，依据/编号/验收关联放末尾折叠。关键规则不默认折叠。
+
+新规则提供可定位的简短 `title`（例如“活动类型筛选”“默认排序与分页”）。`statement` 表达一个完整的简单约束；复杂控件可以用短摘要，执行细节放可选 `clauses: [{label,text}]`，如“可选范围”“默认值”“触发与联动”“空值与异常”。不要求简单规则也填整套说明项，不在摘要逐项重复 clauses 或 table 的内容。
+
+表格适用于字段定义、选项映射和条件分支；不要把所有规则机械做成巨表。一个规则主题如果同时包含独立的排序、余量计算、分页等，应按读者任务拆为不同规则，重新关联原型和验收；不要靠标点自动切句或根据渲染器猜业务含义。既有未结构化正文保持原意，展示层不自动改写。
+
+`title` 和 `clauses` 与 statement/table 同存在唯一 rule_details 内，PRD网页、Markdown导出和原型说明读取同一份数据。clauses的label/text非空；中文标签按本次含义命名，不预填不适用行。未知项继续明确待确认。
+
 功能规则继续保存在 `requirements[].rule_details`。可选 category：`entry/fields/display/behavior/validation/permission/state/data/feedback/recovery/content`，也允许业务自定义分类。网页和完整导出按上述顺序显示实际有内容的分类。不要另建一套重复规则章节。
 
 需要字段表、内容表或决策表时，使用规则可选的 `table`；statement 概述表的作用，表内维护细节，不在 statement 逐格重复。来源/确认状态沿用所属规则；不同来源或确认状态的行应拆成不同规则表。精确业务约束可在表内引用已有 RULE 编号，不复制其全文。
 
 ```json
-{"id":"RULE-FIELDS","category":"fields","statement":"字段来源及编辑性如下；长度约束见 RULE-NAME。","source":"ai-inferred","status":"pending","table":{"columns":["字段","来源 / 默认","编辑性"],"rows":[["名称","新建为空，修改带入当前值","可编辑"]]},"acceptance_ids":["AC-FIELDS"],"presentation":{"mode":"text","reason":"文字表格足以表达字段定义"}}
+{"id":"RULE-FIELDS","title":"名称字段","category":"fields","statement":"字段来源及编辑性如下。","clauses":[{"label":"校验约束","text":"引用 RULE-NAME，不在本表重复长度限制。"}],"source":"ai-inferred","status":"pending","table":{"columns":["字段","来源 / 默认","编辑性"],"rows":[["名称","新建为空，修改带入当前值","可编辑"]]},"acceptance_ids":["AC-FIELDS"],"presentation":{"mode":"text","reason":"文字表格足以表达字段定义"}}
 ```
 
 待明确的实现口径用已有 `review.checks` 的 `pending/question/blocking` 登记，在功能正文与导出中直接展示。问题写成可以回答的业务选择及影响；已知部分仍写完整。阻塞事项如实标 blocking，不为质量报告通过而降级。未经确认的补充规则标 ai-inferred/pending，不能把默认建议写成用户决定。

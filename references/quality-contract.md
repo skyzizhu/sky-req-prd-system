@@ -1,6 +1,6 @@
 # 交付完整性检查
 
-生成/修改交付物时读取。质量数据与规则同存 `content/spec.json`，报告由其生成，不另维护业务口径。完整示例见 `template/prototype-spec.json`；它是合成演示，不是通用业务模板。
+生成/修改交付物时读取。质量数据与规则同存 `content/spec.json`，报告由其生成，不另维护业务口径。完整合成示例由 `scripts/create_static_demo.py` 生成；其 `example_spec()` 同时供图测试使用，不作为通用业务模板。
 
 ## 交付检查流程
 
@@ -10,15 +10,16 @@
 4. 从规则选择关键边界及异常用例；PRD 展示与导出共用这些用例。不要在验收章节复制另一套规则。
 5. 按 [process-diagrams.md](process-diagrams.md) 先核对流程/状态图是否适用，再检查所需图的正常和异常路径、条件分支及状态连线；图、规则和原型状态一致。
 6. 对照 [functional-detail.md](functional-detail.md) 做内容复核：covered 规则是否真的回答该维度，引用验收是否覆盖关键分支，原输入的独立约束是否逐项承接；不能把存在一条引用当作整项完整。
-7. build 后运行 validate 和严格质量报告；修复缺项，再进行语义与浏览器复核。
+7. 涉及原型时按 [control-annotations.md](control-annotations.md) 逐控件语义复核，尤其检查选择项/数量、默认值、多选限制、单选互斥及小操作结果；存在标注关联不等于内容已完整。
+8. 用page.state_review核对页面状态与局部变化：适用的校验、取消、加载、失败、未知、空数据及权限状态不能遗漏；下拉展开等不占Tab，局部选项/联动有可操作核对路径。实际检查控件与标注互不触发、编号不遮挡控件。
+9. build 后运行 validate 并保存质量报告；修复缺项，再进行语义与浏览器复核。
 
 ```bash
 python3 <项目>/build.py
-python3 <skill>/scripts/validate.py <项目>
-python3 <skill>/scripts/audit_quality.py <项目> --strict --report <项目>/quality-report
+python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
 ```
 
-`validate.py` 默认检查全部版本结构、编译一致性及当前版交付覆盖。检查其他版本用 audit 的 `--version`。空脚手架或阶段草稿可用 `validate.py --structure-only`，该结果不能当交付通过。基础构建与 `projectlib.validate` 仍只管结构，允许逐步完善草稿。
+`validate.py` 默认检查全部版本结构、编译一致性及当前版交付覆盖。检查其他版本或单独输出覆盖报告时用 `audit_quality.py --version <版本> --strict --report <前缀>`；它不替代结构与构建一致性检查。空脚手架或阶段草稿可用 `validate.py --structure-only`，该结果不能当交付通过。基础构建与 `projectlib.validate` 仍只管结构，允许逐步完善草稿。
 
 报告状态：`incomplete` 有缺项或明确阻塞事项，严格检查返回非零；`review_required` 登记覆盖通过但仍有待决策项，可交评审稿；`checks_passed` 仅表示登记证据检查通过。任何状态都不自动授权开工或上线。业务评审后，阻塞实现/验收的问题标 `blocking:true`，不能为通过检查任意改为 false。
 
@@ -77,6 +78,8 @@ python3 <skill>/scripts/audit_quality.py <项目> --strict --report <项目>/qua
 ```
 
 画面目标必须出现在 `pages[].states[].elements`，且位于该状态 HTML 的 `.sr-snapshot` 内。`interactions[]` 必须有精确的 `rule_ids`；画面规则须由同一页面、状态、元素关联。HTML hidden/aria-hidden 会报错，CSS 遮挡及实际可见性由浏览器复核。
+
+每个状态的必要业务元素还需有适用于该状态的精确标注；共用标注可由元素自身的 data-rule-ref 关联。只有外层区域的标注不能替代子字段、小操作或只读数据的说明。结构检查只验证关联存在，细节是否足够仍需按 prototype.md 做语义复核。
 
 规则的 `acceptance_ids` 指向本功能验收；验收写 given/when/then。未关联的验收、关联不存在的状态/元素、无规则的标注均报错。后台口径等纯文字规则无需强造原型。
 

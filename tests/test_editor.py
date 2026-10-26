@@ -23,7 +23,7 @@ class EditorTests(unittest.TestCase):
     def setUpClass(cls):
         cls.fixture = tempfile.TemporaryDirectory()
         cls.base = pathlib.Path(cls.fixture.name) / 'base'
-        subprocess.run([sys.executable, str(ROOT / 'scripts/create_demo.py'), str(cls.base)], check=True, capture_output=True)
+        subprocess.run([sys.executable, str(ROOT / 'tests/fixtures/versioned_project.py'), str(cls.base)], check=True, capture_output=True)
 
     @classmethod
     def tearDownClass(cls):

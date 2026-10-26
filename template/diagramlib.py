@@ -4,19 +4,30 @@
 def items(value):return value if isinstance(value,list) else []
 def text(value):return isinstance(value,str) and bool(value.strip())
 
+def edge_caption(diagram,edge,index):
+    # Long labels and state self-loops share cramped routing space. Keep their full
+    # meaning in the generated transition table instead of shrinking the diagram.
+    if diagram.get('kind')=='state' or len(str(edge.get('label','')))>18:return 'T'+str(index+1).zfill(2)
+    return edge.get('label','')
+
+
 def mermaid(diagram):
-    # Generate syntax from graph data: labels cannot inject Mermaid directives/links.
     def label(value):return str(value).replace('&','&amp;').replace('"','&quot;').replace('<','&lt;').replace('>','&gt;').replace('\n',' ')
     nodes=items(diagram.get('nodes'));aliases={n['id']:'N'+str(i) for i,n in enumerate(nodes)}
     state=diagram.get('kind')=='state'
     out=['stateDiagram-v2' if state else 'flowchart TD']
     for node in nodes:
         name=aliases[node['id']];caption=label(node['label'])
-        out.append(f'  state "{caption}" as {name}' if state else f'  {name}["{caption}"]')
+        shape=node.get('type','process')
+        if state:out.append(f'  state "{caption}" as {name}')
+        elif shape=='decision':out.append(f'  {name}{{"{caption}"}}')
+        elif shape in ('start','end'):out.append(f'  {name}(["{caption}"])')
+        elif shape=='subprocess':out.append(f'  {name}[["{caption}"]]')
+        else:out.append(f'  {name}["{caption}"]')
         if node.get('entry') and state:out.append('  [*] --> '+name)
         if node.get('terminal') and state:out.append('  '+name+' --> [*]')
-    for edge in items(diagram.get('edges')):
-        start,end=aliases[edge['from']],aliases[edge['to']];caption=label(edge.get('label',''))
+    for i,edge in enumerate(items(diagram.get('edges'))):
+        start,end=aliases[edge['from']],aliases[edge['to']];caption=label(edge_caption(diagram,edge,i))
         out.append(f'  {start} --> {end}'+(' : '+caption if caption else '') if state else f'  {start} -->'+(f'|"{caption}"|' if caption else '')+' '+end)
     return '\n'.join(out)
 
@@ -29,6 +40,18 @@ def markdown(diagram, all_diagrams=None, heading=4):
         out.append('上层流程：'+parent.get('title',diagram['parent_id'])+' → '+node.get('label',diagram.get('parent_node','')))
     if diagram.get('summary'):out.append(diagram['summary'])
     out.append('```mermaid\n'+mermaid(diagram)+'\n```')
+    nodes={n['id']:n for n in items(diagram.get('nodes'))}
+    edges=items(diagram.get('edges'))
+    if diagram.get('kind')=='state' or any(edge_caption(diagram,e,i)!=e.get('label') or e.get('condition') or e.get('effect') for i,e in enumerate(edges)):
+        def cell(v):return str(v).replace('|','｜').replace('\n','；')
+        out.append('迁移说明：图中 T 编号对应下表；条件与副作用保留全文，不挤在连线上。')
+        rows=['| 编号 / 连线 | 迁移 | 触发与条件 | 结果说明 / 规则 |','| --- | --- | --- | --- |']
+        for i,e in enumerate(edges):
+            trigger=e.get('label','')+('；条件：'+e['condition'] if e.get('condition') else '')
+            effect='；'.join(v for v in (e.get('effect',''),'依据：'+'、'.join(e['rule_ids']) if e.get('rule_ids') else '') if v)
+            rows.append('| '+' | '.join(cell(v) for v in (edge_caption(diagram,e,i),nodes[e['from']]['label']+' → '+nodes[e['to']]['label'],trigger,effect or '未单列结果说明；按本行完整触发描述执行'))+' |')
+        out.append('\n'.join(rows))
+
     children=[d for d in index.values() if d.get('parent_id')==diagram['id']]
     if children:out.append('节点展开：'+'；'.join(d['title']+'（'+d['id']+'，见对应功能详情）' for d in children))
     return '\n\n'.join(out)
@@ -63,6 +86,9 @@ def evaluate(spec, has_prototype=True):
             if not isinstance(n,dict) or not text(n.get('id')) or not text(n.get('label')):issue('diagram_node',did,'节点需有编号与可理解的名称');continue
             if n['id'] in nodes:issue('diagram_node_duplicate',did,'节点编号重复')
             nodes[n['id']]=n
+            if d.get('kind')=='flow' and n.get('type','process') not in ('process','decision','start','end','subprocess'):issue('diagram_node_type',did+'/'+n['id'],'流程节点类型需为process/decision/start/end/subprocess')
+            if d.get('kind')=='state' and n.get('type') not in (None,'state'):issue('diagram_state_node_type',did+'/'+n['id'],'状态图节点仅表示状态，不用流程判断节点')
+
             if any(rid not in reqs or (reqs[rid].get('module') or '功能需求')!=d.get('module') for rid in items(n.get('requirement_ids'))):issue('diagram_node_requirement',did,'节点功能关联不存在或跨模块')
             target=n.get('prototype')
             if target is not None and has_prototype:
@@ -76,6 +102,9 @@ def evaluate(spec, has_prototype=True):
             used.update((edge['from'],edge['to']))
             if not text(edge.get('label')):issue('diagram_condition',did,'流转连线需写明动作或条件')
             if any(r not in all_rules for r in items(edge.get('rule_ids'))):issue('diagram_rule',did,'流转引用的规则不存在')
+            for field in ('condition','effect'):
+                if field in edge and not text(edge[field]):issue('diagram_edge_detail',did,'连线条件/结果说明必须为非空文本')
+
         for nid in nodes.keys()-used:issue('diagram_disconnected',did+'/'+nid,'节点未连接到流程')
         roots=[n['id'] for n in nodes.values() if n.get('entry')]
         if not roots:issue('diagram_entry',did,'图需明确至少一个入口节点（entry=true）')
@@ -88,6 +117,16 @@ def evaluate(spec, has_prototype=True):
         outgoing={e.get('from') for e in edges if isinstance(e,dict)}
         for nid,n in nodes.items():
             if d.get('kind')=='flow' and nid not in outgoing and not n.get('terminal'):issue('diagram_deadend',did+'/'+nid,'非结束节点没有后续路径，需补分支或明确交接结果')
+
+        for nid,n in nodes.items():
+            branches=[e for e in edges if isinstance(e,dict) and e.get('from')==nid]
+            if n.get('type')=='decision':
+                if len(branches)<2:issue('diagram_decision_branches',did+'/'+nid,'判断节点至少有两条明确出口')
+                labels=[str(e.get('label','')).strip() for e in branches]
+                if len(set(labels))!=len(labels):issue('diagram_decision_labels',did+'/'+nid,'判断出口标签不能相同，需明确互斥条件')
+            if d.get('kind')=='flow' and n.get('type')=='start' and not n.get('entry'):issue('diagram_start_entry',did+'/'+nid,'开始节点需声明entry')
+            if d.get('kind')=='flow' and n.get('type')=='end' and not n.get('terminal'):issue('diagram_end_terminal',did+'/'+nid,'结束节点需声明terminal')
+            if d.get('kind')=='flow' and n.get('terminal') and branches:issue('diagram_terminal_outgoing',did+'/'+nid,'结束/交接结果不应继续发出路径，需修正结果或节点类型')
         visited={did};parent=d.get('parent_id')
         while parent in diagrams:
             if parent in visited:issue('diagram_cycle',did,'子图层级不能循环引用');break

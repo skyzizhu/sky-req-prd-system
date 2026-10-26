@@ -1,64 +1,44 @@
 ---
 name: sky-req-prd-system
-description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与静态多状态原型，支持已有项目增量维护。用于明确要求生成或更新产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
+description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成或更新产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.7"
+  version: "2.0.0-preview.15"
 ---
 
-# 产品方案 → PRD 与静态原型
+# 产品方案 → PRD 与多状态原型
 
-输入是产品经理已经分析过的方案。职责是把方案说明白、补齐必要细节，使开发明确本次做什么、怎么判断结果。不是重新论证用户痛点，也不是代替产品经理增加功能。
+将产品经理已确定的方案补全为可实现、可验收的交付物，减少与开发、测试、设计的反复沟通。保留影响本次实现、结果和设计的信息，完整但不冗余；不重新挖掘痛点或擅自增加功能。
 
-## 先定位，再完善
+## 定位任务与依据
 
-- 已有项目优先读取 `project.json`；无路径时用 `scripts/project.py discover <工作区>`。候选不唯一再询问，不为局部改动另建项目。
-- 读取全局与项目 `config.md`；当场指令优先。首次生成读取 [workflow.md](references/workflow.md)；既有物料小修改只读 [maintenance.md](references/maintenance.md)，涉及规则定位再读 [incremental.md](references/incremental.md)。
-- 从输入归纳本次范围、排除项、已有能力影响、交付物和待确认项。信息够用直接执行，仅追问会改变范围、端或关键业务结果的问题。
-- 输入若只有用户原话或痛点，说明需要产品方案，请用户补充拟采用的功能和规则；不自行做需求挖掘替代这一步。
-- 可以补充输入校验、状态差异、异常处理等方案细节；无依据的补充标 `ai-inferred/pending`。新增功能、权限、阈值和业务取舍不冒充已确认。用户提出的确定方案保留其依据，不要求重复确认。
+- 已有项目先读 `project.json`；无路径用 `scripts/project.py discover <工作区>`，候选不唯一再询问。不为局部修改另建项目。
+- 读取全局及项目 `config.md` 的实际偏好，当场指令优先。首次生成读 [workflow.md](references/workflow.md)；既有物料小改先读 [maintenance.md](references/maintenance.md)，需要规则/控件定位时再读 [incremental.md](references/incremental.md)。
+- 明确交付物、本次做/不做、已有能力影响及待确认项。未提及不等于不做；仅追问会改变范围、平台或关键业务结果的问题。只有用户原话/痛点时，请补充拟采用的产品方案。
+- 可补齐必要执行细节，无依据的补充标 `ai-inferred/pending`，不编造权限、阈值或业务取舍。`source: origin/ai-inferred` 与 `status: confirmed/pending` 独立；生成、测试和交付都不替代业务确认。
+- 只生成用户指定的交付物，裁剪方式见 [nodes.md](references/nodes.md)；仅原型也保留规则依赖的最小 spec。
 
-## PRD：有层次，少重复
+## 编写 PRD
 
-去重与菜单遵循 [information-architecture.md](references/information-architecture.md)，编写时读取 [standard-prd.md](references/standard-prd.md) 与 [delivery-quality.md](references/delivery-quality.md)。
+读取 [standard-prd.md](references/standard-prd.md)、[functional-detail.md](references/functional-detail.md) 和 [delivery-quality.md](references/delivery-quality.md)。菜单、正文归属和跨物料引用见 [information-architecture.md](references/information-architecture.md)。
 
-- PRD 采用九章标准结构：版本说明和范围、用户与业务流程、功能需求与规则、数据与埋点、非功能需求、验收与上线条件、里程碑与计划、风险与待决策、附录与参考资料。章节完整、内容按适用性填写；不适用写理由，未知项明确待确认。边界是重点，不替代其余章节。
-- 第一章顶部先展示背景与目标，其下紧接本版功能清单；再展开其他内容。非原型详情的正文页使用可用内容宽度并保留正常边距，不为未使用的侧栏预留大块空白。
-- 第一章面向整体方案阅读：基本信息、背景依据、用户价值与业务目标、成功指标和重要决策、本次做/不做、本版功能清单及已有能力影响。功能清单按模块列出功能名、范围摘要、变更类型（新增/修改/移除/沿用）、优先级和确认状态；从 spec 与基线生成，不另维护一份。CTO 主要通过大纲、范围、功能清单、依赖与风险理解本版。
-- 概览必须明确做什么、不做什么及对已有功能的影响。原文没给出的边界应显式待确认，不把未提及当成不做。
-- 先判断是否确有流程及状态流转：有流程才画流程图，有状态流转才画状态图；没有则不画，不为模板虚构流程、状态或父图。模块流程放“用户与业务流程”，必要子图放功能详情；正常路径及已确定的异常、失败、回退、恢复路径都需表达。编写与检查读取 [process-diagrams.md](references/process-diagrams.md)。
-- 涉及业务抽象时说明实体及关系、业务规则，存在状态流转再关联状态机；状态流转图已表达清楚时直接引用，不另写一份重复状态机。纯展示/文案等简单功能不强套业务建模。详见 [business-modeling.md](references/business-modeling.md)。
-- 背景与决策只整理已有依据，不重做需求挖掘或编造备选；关键场景写清角色、情境和任务。成功指标区别于功能验收：第一章说明目标，第四章定义口径，第六章安排上线后观察；未知基线、目标、窗口与负责人标待确认，详见 standard-prd.md。
-- 功能内部按 [functional-detail.md](references/functional-detail.md) 核对入口、字段、操作结果、权限分支、异常恢复和可观察验收；按适用性组织，不以章节齐全或引用存在代替内容完整。PRD 应能独立说明业务要求，不能依赖原型或原始输入补全。
-- 功能按业务模块分组（`requirements[].module`），详情顺序为功能说明、适用对象及前提、分类规则、必要的实例与验收。同一模块下的功能平级；简单功能不强拆多层。
-- 每条规则只表达一个可执行约束：必要条件、行为、结果。状态只写差异；共用规则只写一处。标题用于导航，不复制正文。避免套话、背景反复解释、把编号列表当正文。简洁不等于删条件：开发应能理解何时发生、执行什么、出现什么结果；复杂规则用表格或实例解释。
-- `spec.json` 是业务规则唯一来源。新规则使用 `rule_details`，不再在 `rules`、原型说明、测试中复制正文。编号、来源和确认状态保留但次要展示；实例只用于澄清难点，验收可展开。
-- 用户只要某类交付物时只交付该类；仅原型仍需最小 spec。材料选择见 [nodes.md](references/nodes.md)。
+- 使用标准九章；第一章先背景与目标，再本版功能清单，明确范围及既有能力影响。章节按适用性填写，未知项待确认，不以边界清单代替完整 PRD。
+- 按业务模块 → 功能 → 规则分类组织。规则简短但保留对象、条件、行为、结果及必要异常；复杂内容用分项、表格或实例。PRD 本身足以说明业务要求，不能依赖原型补全遗漏。
+- `spec.json` 的 `rule_details` 是规则唯一来源；GWT 在功能详情维护。共用规则只写一处，状态只写差异，原型、交接与导出读取或引用它，不再手写第二套正文。
+- 有流程才画流程图，有状态流转才画状态图，覆盖适用的正常、异常和恢复路径；无流程不虚构。涉及图时读 [process-diagrams.md](references/process-diagrams.md)，涉及业务抽象时读 [business-modeling.md](references/business-modeling.md)。实体与规则按需说明，状态机直接引用已有状态图。
 
-## 原型：打开就能看规则
+## 生成原型
 
-生成原型前读取 [prototype.md](references/prototype.md)。默认使用新版静态阅读器，`body data-prototype-mode="static"`。
+读取 [prototype.md](references/prototype.md)、[control-annotations.md](references/control-annotations.md) 和 [local-controls.md](references/local-controls.md)，分别负责布局/阅读、控件语义、局部交互契约。
 
-- 一个真实页面一个入口，页面内声明适用状态；展示静态布局，不模拟提交、网络或进度动画。
-- 顶部选状态，左侧画面、右侧固定说明。默认显示所有适用规则，点击不是阅读前提。
-- 画面小编号与规则双向定位；只有定位高亮，不弹卡片、不拖面板、不切标注模式、不画四色连线。
-- 共用规则与状态差异分组。支持展开全部状态对照。只画有业务意义的状态，不机械生成十二类。
-- 画面业务控件为静态快照；阅读器的状态切换、编号和折叠为可操作工具。评审批注不进入主阅读路径。
-- 原型主要服务开发和测试，规则可定位 PRD 与验收，链接可定位版本、页面、状态和规则。设计主要校对状态与必要元素完整性，页面布局和视觉可重新设计。技术负责人主要阅读 PRD，不为 CTO 在原型增加专门模式或汇报区。
-- 每个状态声明必要元素清单（states[].elements 的 selector/title）；对照输入方案与规则逐项核对，再检查清单元素确实出现在对应画面中。清单齐不代表输入没有遗漏，仍需语义复核。
+- 一个真实页面一个入口，使用紧凑线框及真实控件形态。设计可重做视觉，但不能遗漏必要元素、数据和适用状态。
+- Tab 展示页面级状态；下拉展开、选择、开关等只做画面内必要交互，不模拟业务提交或网络。逐项登记状态覆盖及局部核对路径，不能为减少 Tab 删除异常状态。
+- 默认选中有效标注，右侧仅显示它在当前状态下精确关联的全部规则。点击控件只操作，点击独立编号只看规则，点击区域不重叠。不恢复浮窗、连线或标注模式。
+- 标注覆盖有业务含义的字段、小操作和只读数据，尤其明确选择项及数量、默认值、约束和结果。共享规则可复用，但不能用整表单的泛化说明冒充逐控件完整性。
 
-## 数据与维护
+## 维护与交付
 
-- 一个项目固定入口，版本与页面 ID 稳定。项目命令和目录见 workflow.md。V2 只接受新数据契约，不提供旧项目迁移、旧运行时或路由回退。
-- 规则 `source: origin/ai-inferred` 与 `status: confirmed/pending` 独立。交付、冻结、测试通过均不替代业务确认。
-- 修改前 impact 并检查手改，完成后 build、validate、checkpoint。不整体重生成已落地物料，不覆盖冻结版本。
-- 页面 HTML、CSS、JS 分离，支持 file://。正式内容编辑读 [editing.md](references/editing.md)；交接读 [developer-delivery.md](references/developer-delivery.md)。
-- 记录实际验收或上线结果时读 [outcomes.md](references/outcomes.md)。原型校对、文档确认和实际产品测试结果分别记录，不自动把待确认规则当作已就绪。
-
-## 验证与交付
-
-1. 读取 [quality-contract.md](references/quality-contract.md)，登记输入方案条目、适用功能类型检查、规则表达方式及关键边界用例。运行项目 `build.py`，再运行 `scripts/validate.py <项目>` 和 `scripts/audit_quality.py <项目> --strict --report <项目>/quality-report`；修复缺项。非阻塞待决策单独列出，评审稿不冒充开工已就绪。
-2. 实际浏览器检查独立原型和固定入口 iframe：默认可读、状态同步、编号双向定位、状态对照、窄屏。静态原型不以真实业务提交成功验收。
-3. 复核规则和画面、范围和排除项、PRD 和导出是否一致；如未执行某项检查如实说明。
-4. 启动本机服务并确认入口 200，交付服务链接、绝对文件路径和当前页面深链接，说明版本、改动、验证及剩余决策。
-
-不因生成方案自动发布、冻结或操作外部业务系统。
+- 固定项目入口、稳定版本及页面 ID，只接受 V2 契约。修改前 impact 并检查手改，完成后 build、validate、checkpoint；不整体重生成已有物料，不覆盖冻结版本。
+- 正式编辑读 [editing.md](references/editing.md)，交接读 [developer-delivery.md](references/developer-delivery.md)，记录实际测试/上线结果读 [outcomes.md](references/outcomes.md)。原型校对与真实产品结果分开记录。
+- 按 [quality-contract.md](references/quality-contract.md) 登记输入 → 功能 → 规则 → 画面/文字 → 验收，执行内容语义复核。构建后运行 `scripts/validate.py <项目> --report <项目>/quality-report`，修复缺项；非阻塞待决策单列，评审稿不冒充开工就绪。
+- 实际检查独立页和站点 iframe 的默认规则、状态同步、编号定位、状态对照、控件操作、键盘和窄屏；结构检查不能证明内容完整或图意准确。未执行项如实说明。
+- 启动本机服务并确认入口 200，交付链接、绝对路径和当前页面深链接，说明改动、验证及剩余决策。localhost 仅供本机访问，不因生成自动发布、冻结或操作外部业务系统。

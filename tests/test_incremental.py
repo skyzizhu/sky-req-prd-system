@@ -16,7 +16,7 @@ class IncrementalTests(unittest.TestCase):
     def test_html_and_precise_edit(self):
         with tempfile.TemporaryDirectory() as temp:
             root=pathlib.Path(temp)/'demo'
-            subprocess.run([sys.executable,str(ROOT/'scripts/create_demo.py'),str(root)],check=True,capture_output=True)
+            subprocess.run([sys.executable,str(ROOT/'tests/fixtures/versioned_project.py'),str(root)],check=True,capture_output=True)
             html=root/'versions/v1.1/content/prototype/list.html'
             self.assertEqual(locate(str(html)),(root.resolve(),'v1.1'))
             self.assertEqual(locate((root/'site/index.html').as_uri()+'#/v/v1.1/prototype/order-list')[1],'v1.1')

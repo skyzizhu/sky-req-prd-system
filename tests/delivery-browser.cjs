@@ -3,8 +3,9 @@ const {pathToFileURL}=require('node:url');
 const path=require('node:path'), fs=require('node:fs'), assert=require('node:assert/strict');
 (async()=>{
   const root=path.resolve(process.argv[2]), shots=path.resolve(process.argv[3]);fs.mkdirSync(shots,{recursive:true});
-  const browser=await chromium.launch({headless:true}), page=await browser.newPage({viewport:{width:1440,height:1000}}), errors=[];
-  page.on('pageerror',e=>errors.push(e.message));
+  const browser=await chromium.launch({headless:true,channel:process.env.PW_CHANNEL || undefined,executablePath:process.env.PW_EXECUTABLE || undefined}), page=await browser.newPage({viewport:{width:1440,height:1000}}), errors=[];
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://**/*',route=>route.abort());
   try {
     await page.goto(pathToFileURL(path.join(root,'site/index.html')).href+'#/v/v1.1/_delivery/tasks');
     await page.getByRole('heading',{name:'交付清单',exact:true}).waitFor();

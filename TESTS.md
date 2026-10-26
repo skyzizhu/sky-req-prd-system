@@ -1,24 +1,35 @@
 # V2 验证
 
+## 数据与模型回归
+
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
-node --test tests/delivery.cjs
-python3 scripts/create_static_demo.py /空目录
-python3 scripts/validate.py /空目录
+node --test tests/delivery.cjs tests/annotation-model.cjs
+python3 scripts/create_static_demo.py /空的预览目录
+python3 scripts/validate.py /预览目录 --report /预览目录/quality-report
 ```
 
-Python 检查项目与版本、交接快照、编辑冲突与撤销、附件、标准 PRD、规则关联及状态画布契约。Node 检查交接筛选和导出。
+Python 覆盖版本/冻结/交接、编辑冲突与撤销、附件、标准 PRD、规则/验收关联、图结构及交付完整性。Node 覆盖交接筛选/导出、当前标注的精确规则关联和共享规则去重。报告状态及语义复核标准见 [quality-contract.md](references/quality-contract.md)；自动通过不能替代业务确认或实际产品测试。
 
-浏览器用真实打开页面验证：站点与独立页默认可读、状态切换与恢复、双向定位、状态对照、PRD 和验收引用、交接信息、定位链接、键盘和窄窗口。可选自动化脚本为 tests/static-reader-browser.cjs、prd-browser.cjs、delivery-browser.cjs、editor-browser.cjs、handoff-browser.cjs、maintenance-browser.cjs、outcomes-browser.cjs、standard-prd-browser.cjs；需 Playwright 和已安装浏览器。
+## 浏览器回归
 
-旧演示、浮窗拖动、批注导入及旧项目迁移测试随功能删除；不作为 V2 的交付能力。
+需 Node.js、可解析的 Playwright 包及已安装浏览器。统一入口自动创建独立临时项目，不修改既有交付物；失败保留临时物料及截图，全部通过后清理。
 
-质量回归还验证：删除元素清单、精确规则关联或必要失败状态会报错；错误的验收关联、被 HTML 隐藏的必要元素、漏检维度、缺少不适用理由会报错；纯文字交付和无视觉差异的数值边界不强制新增画面；非阻塞待决策不会被当作已确认。
+```bash
+node tests/run-browser.cjs
+```
 
-流程图回归验证模块全貌、功能节点映射、子流程/状态图及其上层节点；缺失图、无条件连线、错误节点、无入口可达的孤岛、层级循环及失效原型状态引用会报错。PRD 查看与完整导出使用同一套图数据，浏览器需确认渲染为图形。
+默认使用 Playwright 已安装的 Chromium；使用本机 Chrome 可设置 `PW_CHANNEL=chrome`，指定其他可执行文件用 `PW_EXECUTABLE`。依赖位于独立目录时，将其 node_modules 加入 NODE_PATH，无需将依赖打包进技能。
 
-按适用性回归：无流程且无状态流转时不要求图；仅有状态流转时不要求虚构父流程；持续运行状态机不强制终态。
+| 用例 | 覆盖 |
+| --- | --- |
+| static-reader-browser.cjs | 独立页与站点 iframe、默认标注、状态切换/对照、精确规则、PRD 导出、窄屏 |
+| local-controls-browser.cjs | 原生选择与联动、状态重置、键盘、窄屏、编号不遮挡控件、控件/标注互不触发、提交受阻 |
+| editor-browser.cjs | 属性/正文预览保存、实际属性生效、撤销与冲突；不模拟业务提交 |
+| prd-browser.cjs | 业务层次、定位信息、关联页面去重、非空控件属性保留与完整导出 |
+| delivery-browser.cjs | 交接筛选、待确认子规则、JSON/Markdown 导出及原型入口 |
+| handoff-browser.cjs | 交接版本深链接、历史静态原型及独立快照 |
+| outcomes-browser.cjs | 验收记录与复盘、旧基线提示及证据展示 |
+| standard-prd-browser.cjs | 标准章节、附录真实上传/下载及完整导出 |
 
-内容去重回归：完整 PRD 每个 GWT 正文只出现一次；关联页面去重但非空控件属性保留；交接 Markdown 引用原文，JSON 保留验收全文；移除项引用旧版，只有功能物料时不生成无效标准章节链接。浏览器复核验收自动展开与定位、原型当前状态元素同步、对照模式各状态元素可展开。
-
-功能详情结构回归：字段/内容表在完整导出中保留并正确处理分隔符，列数不一致在结构与质量检查中均拒绝；待明确问题及阻塞属性在 PRD、完整导出和交付筛选一致显示。网页实测表格显示及窄屏滚动，简单功能不出现空分类。
+对外合成演示仅由 `scripts/create_static_demo.py` 生成，其 `example_spec()` 与图测试共用数据。`tests/fixtures/versioned_project.py` 是测试生命周期和编辑操作的最小夹具，只保证结构有效，不作为完整交付样例。旧浮窗、批注导入和业务演示能力不再回归。

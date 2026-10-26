@@ -1,12 +1,19 @@
 const {chromium}=require('playwright');
+const {execFileSync}=require('node:child_process');
 const assert=require('node:assert/strict');
 const path=require('node:path');
 const fs=require('node:fs');
 const {pathToFileURL}=require('node:url');
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  // A nonempty property supplement must survive deduplication.
+  const specFile=path.join(process.argv[2],'versions/v1.1/content/spec.json');
+  const spec=JSON.parse(fs.readFileSync(specFile));
+  spec.interactions.find(i=>i.id==='INT-CREATE').properties={text:'新建订单'};
+  fs.writeFileSync(specFile,JSON.stringify(spec));
+  execFileSync('python3',[path.join(process.argv[2],'build.py')]);
+  const browser=await chromium.launch({headless:true,channel:process.env.PW_CHANNEL || undefined,executablePath:process.env.PW_EXECUTABLE || undefined});
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://**/*',r=>r.abort());
   const base=pathToFileURL(path.join(process.argv[2],'site/index.html')).href;
   try{
@@ -21,11 +28,14 @@ const {pathToFileURL}=require('node:url');
     await page.getByRole('button',{name:'交给 Agent 修改此需求',exact:true}).click();
     assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/FR-ORDER-001/);
     await page.locator('#prd-edit-context button').click();
-    await page.locator('.prd-fold').filter({has:page.locator('.prd-control')}).locator(':scope > summary').click();
-    await page.locator('.prd-control').first().locator('summary').click();
-    await page.getByRole('button',{name:'交给 Agent 修改此控件',exact:true}).first().click();
-    assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/INT-CREATE/);
-    await page.locator('#prd-edit-context button').click();
+    const supplement=page.locator('.prd-fold').filter({has:page.getByText('控件属性补充',{exact:true})});
+    await supplement.locator('summary').click();
+    assert.match(await supplement.innerText(),/INT-CREATE/);
+    assert.match(await supplement.innerText(),/新建订单/);
+    assert.equal(await page.locator('.prd-control').count(),0);
+    const related=page.locator('.prd-fold').filter({has:page.getByText('关联原型',{exact:true})});
+    await related.locator('summary').click();
+    assert.equal(await related.getByRole('link',{name:'订单列表',exact:true}).count(),1);
     const download=page.waitForEvent('download');await page.locator('#prd-export').click();
     const md=fs.readFileSync(await (await download).path(),'utf8');
     for(const text of ['## 创建订单','## 批量完成订单','前提：','预期：','RULE-NAME-INPUT'])assert.ok(md.includes(text));
@@ -36,6 +46,6 @@ const {pathToFileURL}=require('node:url');
     await page.getByRole('button',{name:'交给 Agent 修改此需求',exact:true}).click();
     assert.match(await page.getByRole('textbox',{name:'Agent 修改上下文'}).inputValue(),/版本：v1.0/);
     assert.deepEqual(errors,[]);
-    console.log('PASS PRD: business hierarchy, collapsed controls, stable-ID search, exact Agent context, full readable export, history route');
+    console.log('PASS PRD: business hierarchy, deduplicated page links and retained property supplement, stable-ID search, exact requirement Agent context, full readable export, history route');
   }finally{await browser.close();}
 })();

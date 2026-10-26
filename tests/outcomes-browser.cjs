@@ -7,8 +7,8 @@ const fs = require('node:fs');
 const root = path.resolve(process.argv[2]);
 const prepare = spawnSync('python3', ['-c', `
 import pathlib,sys
-sys.path[:0]=['scripts','template']
-from create_demo import generate
+sys.path[:0]=['tests/fixtures','scripts','template']
+from versioned_project import generate
 from record_outcome import append
 from projectlib import compile_project
 r=pathlib.Path(sys.argv[1]);generate(r)
@@ -20,9 +20,9 @@ append(r,p);compile_project(r)
 `, root], {encoding:'utf8'});
 assert.equal(prepare.status,0,prepare.stderr);
 (async () => {
-  const browser=await chromium.launch({headless:true});
+  const browser=await chromium.launch({headless:true,channel:process.env.PW_CHANNEL || undefined,executablePath:process.env.PW_EXECUTABLE || undefined});
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
-  const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+  page.setDefaultTimeout(10000);const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://**/*',r=>r.abort());
   const base=pathToFileURL(path.join(root,'site/index.html')).href;
   try {
@@ -47,10 +47,12 @@ assert.equal(prepare.status,0,prepare.stderr);
     assert.equal(draft.result,'not_run');
     draft.actor='手工草稿';
     await page.locator('#outcome-draft').fill(JSON.stringify(draft));
+    const storedBefore=fs.readdirSync(path.join(root,'outcomes')).filter(f=>f.endsWith('.json')).sort();
     const download=page.waitForEvent('download');
     await page.locator('#outcome-export').click();
     assert.equal(JSON.parse(fs.readFileSync(await (await download).path(),'utf8')).actor,'手工草稿');
-    assert.match(await page.locator('#outcome-draft-status').innerText(),/尚未入库/);
+    assert.match(await page.locator('#outcome-draft-status').innerText(),/未入库/);
+    assert.deepEqual(fs.readdirSync(path.join(root,'outcomes')).filter(f=>f.endsWith('.json')).sort(),storedBefore);
     assert.deepEqual(errors,[]);
     console.log('PASS outcomes: scope separation, missing coverage, metrics, follow-up, safe rendering, draft export');
   } finally { await browser.close(); }

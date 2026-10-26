@@ -29,7 +29,7 @@ def add_diagrams(spec):
             node('entry','已登录且有创建权限',entry=True),node('create','创建订单',requirement_ids=[rid]),node('list','列表展示新订单（已有能力/交接点）',terminal=True),node('invalid','校验失败：提示并定位字段'),node('failed','请求失败：保留输入')],
             [edge('entry','create','进入创建页'),edge('create','invalid','校验失败','INVALID'),edge('invalid','create','修正后提交','INVALID'),edge('create','failed','请求失败','FAILURE'),edge('failed','create','重试','FAILURE'),edge('create','list','创建成功并返回列表','SUCCESS')],summary='覆盖本次创建功能及已有列表交接点；权限细节待确认，支付、审批、编辑、删除不在本图范围。'),
         diagram('FLOW-CREATE','创建订单 · 子流程','flow','detail',[
-            node('fill','填写名称、金额、备注',entry=True),node('check','校验名称'),node('error','显示字段错误并定位'),node('send','提交请求并禁用按钮'),node('fail','提示失败，保留输入'),node('done','创建成功，返回列表',terminal=True)],
+            node('fill','填写名称、金额、备注',entry=True),node('check','校验名称',type='decision'),node('error','显示字段错误并定位'),node('send','提交请求并禁用按钮'),node('fail','提示失败，保留输入'),node('done','创建成功，返回列表',terminal=True)],
             [edge('fill','check','点击创建订单'),edge('check','error','名称无效','INVALID'),edge('error','fill','修正名称'),edge('check','send','校验通过','NAME'),edge('send','fail','请求失败','FAILURE'),edge('fail','send','重新提交','FAILURE'),edge('send','done','请求成功','SUCCESS')],
             requirement_id=rid,parent_id='FLOW-ORDER',parent_node='create',summary='字段其他限制与提交契约仍待确认；本图只展开示例已登记的名称校验与提交反馈。'),
         diagram('STATE-CREATE','创建页面 · 交互状态流转','state','detail',[
@@ -72,6 +72,40 @@ def add_quality(spec):
     return add_diagrams(spec)
 
 
+def example_spec():
+    """Return fresh synthetic states and spec; shared by the preview and graph tests."""
+    states=[('default','默认','打开创建页，尚未填写。'),('invalid','校验失败','提交时名称为空。'),('submitting','提交中','校验通过，正在提交。'),('success','创建成功','订单创建完成。'),('failed','提交失败','请求失败，保留已填内容。')]
+    rules=[('NAME','validation','名称必填；去除首尾空格后为 1～40 字。'),('AMOUNT','data','金额使用人民币元，保留两位小数。'),('INVALID','validation','名称为空时显示“请输入订单名称”，定位该字段。'),('SUBMITTING','state','提交中禁用提交按钮，防止重复提交。'),('SUCCESS','feedback','成功后关闭创建页，列表新增该订单并置于首行。'),('FAILURE','feedback','失败后保留已填内容，显示失败提示，允许重新提交。')]
+    rules[-1:-1]=[('REMARK','fields','备注选填，新建为空；填写内容随订单提交，长度限制待确认。'),('CREATE','behavior','点击创建订单时先校验填写内容；通过后发起创建并进入提交中。'),('CANCEL','behavior','取消时返回订单列表，丢弃本次未提交输入；提交中取消是否可用待确认。')]
+    cases=[('NAME','位于创建页','输入仅含空格的名称并提交','拒绝提交，提示名称必填'),('AMOUNT','金额输入为 1280','提交并展示订单金额','显示 1,280.00 元'),('INVALID','名称为空','点击创建订单','显示“请输入订单名称”并定位该字段'),('SUBMITTING','请求正在处理中','再次点击提交','按钮不可用，不发起重复请求'),('SUCCESS','信息有效且请求成功','完成创建','关闭创建页，列表首行显示新订单'),('FAILURE','已填写有效信息','创建请求失败','保留全部输入，显示失败提示并允许重试')]
+    cases[-1:-1]=[('REMARK','新建订单且备注为空','填写备注后创建成功','订单保留填写的备注'),('CREATE','填写内容有效','点击创建订单','发起创建并进入提交中'),('CANCEL','尚未提交订单','点击取消','返回订单列表，不保存本次输入')]
+    ac=[{'id':'AC-ORDER-'+key,'given':given,'when':when,'then':then} for key,given,when,then in cases]
+    req={'id':'FR-ORDER-001','title':'创建订单','module':'订单管理','description':'填写订单信息并创建订单。','source':'ai-inferred','status':'pending','blocking':False,'rule_details':[{'id':'RULE-ORDER-'+key,'category':cat,'statement':statement,'source':'ai-inferred','status':'pending','acceptance_ids':['AC-ORDER-'+key]} for key,cat,statement in rules],'acceptance':ac}
+    req['rule_details'][0]['category']='fields'
+    req['rule_details'][0]['table']={'columns':['字段','来源 / 初值','编辑性'], 'rows':[['订单名称','新建为空','可编辑；校验见本规则']]}
+    req['rule_details'][0]['examples']=[{'input':'名称仅含空格','expected':'拒绝提交，提示名称必填'}]
+    interactions=[]
+    def area(key, selector, title, state=None):
+        it={'id':'INT-ORDER-'+key,'page':'create-order','selector':'#'+selector,'title':title,'description':title,'action':'inspect','requirement_ids':[req['id']],'rule_ids':['RULE-ORDER-'+key]}
+        if state:it['state_ids']=[state]
+        interactions.append(it)
+    area('NAME','order-canvas','订单名称')
+    area('AMOUNT','order-canvas','金额口径')
+    area('REMARK','order-canvas','备注输入')
+    area('CANCEL','order-canvas','取消与未保存输入')
+    area('CREATE','order-canvas','创建与字段校验')
+    interactions[-1]['id']='INT-ORDER-CREATE'
+    interactions[-1]['state_ids']=['default','invalid','failed']
+    for key, sid,title in [('INVALID','invalid','名称校验'),('SUBMITTING','submitting','提交保护'),('SUCCESS','success','成功结果'),('FAILURE','failed','失败反馈')]:area(key,sid+'-focus',title,sid)
+    spec={'schema_version':2,'requirements':[req], 'pages':[{'id':'create-order','title':'创建订单','purpose':'查看订单创建页各状态及规则。','handoff':{'role':'产品运营'},'requirement_ids':[req['id']],'states':[{'id':sid,'title':title,'summary':summary,'elements':state_elements(sid),'next':{'default':'填写后提交；无效输入进入校验失败。','invalid':'修正名称后重新提交。','submitting':'请求成功进入成功状态，失败进入提交失败。','success':'返回订单列表，显示新订单。','failed':'保留输入；允许重试，进入提交中。'}[sid]} for sid,title,summary in states]}],'interactions':interactions}
+    spec['pages'][0]['state_review']=[{'dimension':'初始进入','status':'covered','state_ids':['default']},{'dimension':'校验错误','status':'covered','state_ids':['invalid']},{'dimension':'提交反馈','status':'covered','state_ids':['submitting','success','failed']},{'dimension':'本地填写','status':'local','selectors':['#default-name','#default-amount','#default-remark'],'reason':'输入后切换Tab，核对每个状态恢复预设内容'}]
+    spec=add_quality(spec)
+    for it in interactions:
+        if not it.get('state_ids'):it['state_ids']=['default','invalid','submitting','failed']
+    interactions.append({'id':'INT-ORDER-BACK','page':'create-order','selector':'#success-back','title':'返回订单列表','description':'成功后的返回入口','action':'inspect','requirement_ids':[req['id']],'rule_ids':['RULE-ORDER-SUCCESS'],'state_ids':['success']})
+    return states, spec
+
+
 def generate(root):
     subprocess.run([sys.executable, str(SKILL/'scripts/project.py'), 'init', str(root), '--name', '订单创建 · V2 重构预览', '--form', 'web', '--version', 'v0.1'], check=True)
     content = root/'versions/v0.1/content'
@@ -81,34 +115,19 @@ def generate(root):
     for name in ('prototype-runtime.js','prototype-runtime.css'):
         shutil.copy2(SKILL/'assets'/name, assets/name)
     shutil.copy2(SKILL/'examples/static-reader/page.css', assets/'page.css')
-    states=[('default','默认','打开创建页，尚未填写。'),('invalid','校验失败','提交时名称为空。'),('submitting','提交中','校验通过，正在提交。'),('success','创建成功','订单创建完成。'),('failed','提交失败','请求失败，保留已填内容。')]
-    rules=[('NAME','validation','名称必填；去除首尾空格后为 1～40 字。'),('AMOUNT','data','金额使用人民币元，保留两位小数。'),('INVALID','validation','名称为空时显示“请输入订单名称”，定位该字段。'),('SUBMITTING','state','提交中禁用提交按钮，防止重复提交。'),('SUCCESS','feedback','成功后关闭创建页，列表新增该订单并置于首行。'),('FAILURE','feedback','失败后保留已填内容，显示失败提示，允许重新提交。')]
-    cases=[('NAME','位于创建页','输入仅含空格的名称并提交','拒绝提交，提示名称必填'),('AMOUNT','金额输入为 1280','提交并展示订单金额','显示 1,280.00 元'),('INVALID','名称为空','点击创建订单','显示“请输入订单名称”并定位该字段'),('SUBMITTING','请求正在处理中','再次点击提交','按钮不可用，不发起重复请求'),('SUCCESS','信息有效且请求成功','完成创建','关闭创建页，列表首行显示新订单'),('FAILURE','已填写有效信息','创建请求失败','保留全部输入，显示失败提示并允许重试')]
-    ac=[{'id':'AC-ORDER-'+key,'given':given,'when':when,'then':then} for key,given,when,then in cases]
-    req={'id':'FR-ORDER-001','title':'创建订单','module':'订单管理','description':'填写订单信息并创建订单。','source':'ai-inferred','status':'pending','blocking':False,'rule_details':[{'id':'RULE-ORDER-'+key,'category':cat,'statement':statement,'source':'ai-inferred','status':'pending','acceptance_ids':['AC-ORDER-'+key]} for key,cat,statement in rules],'acceptance':ac}
-    req['rule_details'][0]['category']='fields'
-    req['rule_details'][0]['table']={'columns':['字段','来源 / 初值','编辑性'], 'rows':[['订单名称','新建为空','可编辑；校验见本规则']]}
-    interactions=[]
-    def area(key, selector, title, state=None):
-        it={'id':'INT-ORDER-'+key,'page':'create-order','selector':'#'+selector,'title':title,'description':title,'action':'inspect','requirement_ids':[req['id']],'rule_ids':['RULE-ORDER-'+key]}
-        if state:it['state_ids']=[state]
-        interactions.append(it)
-    area('NAME','order-canvas','订单名称')
-    area('AMOUNT','order-canvas','金额口径')
-    for key, sid,title in [('INVALID','invalid','名称校验'),('SUBMITTING','submitting','提交保护'),('SUCCESS','success','成功结果'),('FAILURE','failed','失败反馈')]:area(key,sid+'-focus',title,sid)
-    spec={'schema_version':2,'requirements':[req], 'pages':[{'id':'create-order','title':'创建订单','purpose':'查看订单创建页各状态及规则。','handoff':{'role':'产品运营'},'requirement_ids':[req['id']],'states':[{'id':sid,'title':title,'summary':summary,'elements':state_elements(sid),'next':{'default':'填写后提交；无效输入进入校验失败。','invalid':'修正名称后重新提交。','submitting':'请求成功进入成功状态，失败进入提交失败。','success':'返回订单列表，显示新订单。','failed':'保留输入；允许重试，进入提交中。'}[sid]} for sid,title,summary in states]}],'interactions':interactions}
-    save('spec.json',add_quality(spec))
+    states, spec = example_spec()
+    save('spec.json',spec)
     snapshots=[]
     for sid,title,summary in states:
         if sid=='success':
-            inside='<div id="success-focus" class="success-block"><span class="success-icon">✓</span><h3>订单创建成功</h3><p>列表已新增“秋季活动物料”。</p><div id="success-back" class="visual-button">返回订单列表</div></div>'
+            inside='<div id="success-focus" class="success-block"><span class="success-icon">✓</span><h3>订单创建成功</h3><p>列表已新增“秋季活动物料”。</p><button type="button" id="success-back" class="visual-button">返回订单列表</button></div>'
         else:
             name='' if sid in ('default','invalid') else '秋季活动物料'
-            field='<div id="'+sid+'-name" data-rule-ref="INT-ORDER-NAME" class="field '+('invalid' if sid=='invalid' else '')+'">'+(name or '<span class="placeholder">请输入订单名称</span>')+'</div>'
+            field='<input type="text" aria-label="订单名称" id="'+sid+'-name" data-rule-ref="INT-ORDER-NAME" data-ps-local="input" class="field '+('invalid' if sid=='invalid' else '')+'" value="'+name+'" placeholder="请输入订单名称"'+(' disabled' if sid=='submitting' else '')+'>'
             if sid=='invalid':field='<div id="invalid-focus">'+field+'<p class="field-error">请输入订单名称</p></div>'
-            inside='<div class="form-body"><label>订单名称 <span>*</span></label>'+field+'<label>金额（元）</label><div id="'+sid+'-amount" data-rule-ref="INT-ORDER-AMOUNT" class="field">'+('1,280.00' if name else '<span class="placeholder">0.00</span>')+'</div><label>备注</label><div id="'+sid+'-remark" class="field multiline">'+('活动用物料' if name else '<span class="placeholder">选填</span>')+'</div>'
+            inside='<div class="form-body"><label>订单名称 <span>*</span></label>'+field+'<label>金额（元）</label><input type="text" inputmode="decimal" aria-label="金额（元）" id="'+sid+'-amount" data-rule-ref="INT-ORDER-AMOUNT" data-ps-local="input" class="field" value="'+('1,280.00' if name else '')+'" placeholder="0.00"'+(' disabled' if sid=='submitting' else '')+'><label>备注</label><textarea aria-label="备注" id="'+sid+'-remark" data-rule-ref="INT-ORDER-REMARK" data-ps-local="input" class="field multiline" placeholder="选填"'+(' disabled' if sid=='submitting' else '')+'>'+('活动用物料' if name else '')+'</textarea>'
             if sid=='failed':inside+='<div id="failed-focus" class="error-banner">提交失败，请重试。已保留填写内容。</div>'
-            inside+='</div><div class="form-footer"><span id="'+sid+'-cancel" class="visual-button secondary">取消</span><span '+('id="submitting-focus" ' if sid=='submitting' else 'id="'+sid+'-submit" ')+'class="visual-button '+('disabled' if sid=='submitting' else '')+'">'+('提交中…' if sid=='submitting' else '创建订单')+'</span></div>'
+            inside+='</div><div class="form-footer"><button type="button" id="'+sid+'-cancel" data-rule-ref="INT-ORDER-CANCEL" class="visual-button secondary">取消</button><button type="button" '+('id="submitting-focus" ' if sid=='submitting' else 'id="'+sid+'-submit" data-rule-ref="INT-ORDER-CREATE" ')+'class="visual-button '+('disabled' if sid=='submitting' else '')+'"'+(' disabled' if sid=='submitting' else '')+'>'+('提交中…' if sid=='submitting' else '创建订单')+'</button></div>'
         snapshots.append('<section data-ps-state="'+sid+'"><h2>'+title+' · '+summary+'</h2><div class="sr-snapshot"><div class="app-top"><strong>工作台</strong><span>订单 / 创建订单</span><span>林晓 · 产品运营</span></div><div class="app-content"><div class="form-card"><div class="form-heading"><h3>创建订单</h3><p>填写订单信息</p></div>'+inside+'</div></div></div></section>')
     html='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>创建订单 · 静态原型</title><link rel="stylesheet" href="assets/page.css"><link rel="stylesheet" href="assets/prototype-runtime.css"></head><body data-page-id="create-order" data-prototype-mode="static"><main id="order-canvas">'+''.join(snapshots)+'</main><script src="assets/spec-data.js"></script><script src="assets/prototype-runtime.js"></script></body></html>'
     (content/'prototype/create-order.html').write_text(html,encoding='utf-8')

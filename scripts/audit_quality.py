@@ -23,6 +23,14 @@ def project_report(root, version=None):
     return report
 
 
+def save_report(report, prefix):
+    """Write both projections of one evaluated report."""
+    prefix = Path(prefix)
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+    Path(str(prefix)+'.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    Path(str(prefix)+'.md').write_text(markdown(report), encoding='utf-8')
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('project',type=Path)
@@ -33,9 +41,7 @@ def main():
     try:
         report=project_report(args.project.resolve(),args.version)
         if args.report:
-            args.report.parent.mkdir(parents=True,exist_ok=True)
-            Path(str(args.report)+'.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-            Path(str(args.report)+'.md').write_text(markdown(report),encoding='utf-8')
+            save_report(report, args.report)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return int(args.strict and report['counts']['errors']>0)
     except (ValueError,OSError,KeyError,TypeError) as error:

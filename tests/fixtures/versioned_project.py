@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Create an executable two-version reference project in an empty output directory."""
+"""Minimal two-version fixture for lifecycle/editor tests; not a complete delivery example."""
 import pathlib
 import shutil
 import subprocess
 import sys
 
-SKILL = pathlib.Path(__file__).resolve().parents[1]
+SKILL = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(SKILL / 'template'))
 from projectlib import read, write
 
@@ -27,9 +27,9 @@ def generate(root):
     for name in ('prototype-runtime.js', 'prototype-runtime.css'):
         shutil.copy2(SKILL / 'assets' / name, assets / name)
     for name in ('list.html', 'detail.html'):
-        shutil.copy2(SKILL / 'examples/order-demo' / name, vr / 'prototype' / name)
+        shutil.copy2(SKILL / 'tests/fixtures/versioned-pages' / name, vr / 'prototype' / name)
     for name in ('demo.css',):
-        shutil.copy2(SKILL / 'examples/order-demo' / name, assets / name)
+        shutil.copy2(SKILL / 'tests/fixtures/versioned-pages' / name, assets / name)
     m = read(vr / 'manifest.json')
     def page(pid, title, kind, file=None):
         result = {'id': pid, 'title': title, 'type': kind, 'source': 'ai-inferred', 'status': 'confirmed'}
@@ -43,9 +43,9 @@ def generate(root):
     ]
     m['modules'][0]['pages'][0]['status'] = 'confirmed'
     write(vr / 'manifest.json', m)
-    (vr / 'overview/index.md').write_text('# V1.0 · 基础订单\n\n本示例为合成演示数据，确认状态仅用于测试版本冻结，并非真实产品决策。\n\n目标：开发能够操作创建、查阅订单的完整流程。\n\n范围：订单列表、搜索、创建与详情。排除：真实支付、接口、用户登录。\n\n> 🤖 **AI 推断**：本示例用于检验工具能力。\n', encoding='utf-8')
+    (vr / 'overview/index.md').write_text('# V1.0 · 基础订单\n\n本示例为合成演示数据，确认状态仅用于测试版本冻结，并非真实产品决策。\n\n目标：检验版本、冻结、编辑与交接工具；不作为完整业务交付示例。\n\n范围：订单列表、搜索、创建与详情。排除：真实支付、接口、用户登录。\n\n> 🤖 **AI 推断**：本示例用于检验工具能力。\n', encoding='utf-8')
     for folder, content in {
-        'testing': '# 关键路径\n\n- TC-001：创建订单 → 列表出现 → 打开详情 → 返回列表。\n- TC-002：空名称不能提交；提交失败保留输入；重试只创建一条。\n- TC-003：无权限时不能创建；切换正常状态恢复。\n- TC-004：打开需求面板 → 拖拽 → 定位元素 → 停靠 → 收起。\n',
+        'testing': '# 关键路径\n\n- TC-001：创建订单 → 列表出现 → 打开详情 → 返回列表。\n- TC-002：空名称不能提交；提交失败保留输入；重试只创建一条。\n- TC-003：无权限时不能创建；切换正常状态恢复。\n- TC-004：打开状态画面 → 选择编号 → 查看关联规则。\n',
         'launch': '# 上线范围与回退\n\n本项目仅为交互演示，不连接真实业务系统。\n\n- [ ] 开发与产品完成关键路径评审\n- [ ] 待决策规则已明确\n- [ ] 实际上线前另行确认部署、监控与回退负责人\n'
     }.items():
         (vr / folder).mkdir()
@@ -55,17 +55,16 @@ def generate(root):
         requirement('FR-ORDER-002', '查阅订单', '用户搜索订单并打开详情，返回时保留演示数据。', {'显示规则': '默认按演示数据顺序排列，新订单位于首行；列表滚动查看。', '跳转': '详情按钮打开首笔订单；详情返回订单列表。', '筛选规则': '按名称进行不区分大小写的包含匹配。', '异常与边界': '空态、加载、错误、无权限通过场景选择器演示；无数据时详情按钮禁用。'}, '已有订单', '打开详情后返回', '详情显示首笔订单，返回后订单仍存在')
     ]
     interactions = []
-    def interaction(iid, pid, selector, rid, action, description, target=None):
-        it = {'id': iid, 'page': pid, 'selector': '#' + selector, 'requirement_ids': [rid], 'action': 'inspect', 'description': description, 'level': 'crit' if action in {'submit', 'dialog'} else 'info'}
-        if target: it['target'] = target
+    def interaction(iid, pid, selector, rid, description):
+        it = {'id': iid, 'page': pid, 'selector': '#' + selector, 'requirement_ids': [rid], 'action': 'inspect', 'description': description}
         interactions.append(it)
-    interaction('INT-SEARCH', 'order-list', 'search', 'FR-ORDER-002', 'input', '输入名称即时筛选订单')
-    interaction('INT-CREATE', 'order-list', 'create', 'FR-ORDER-001', 'dialog', '打开创建弹框，加载及无权限时禁用', 'create-dialog')
-    interaction('INT-NAME', 'order-list', 'order-name', 'FR-ORDER-001', 'input', '必填 1～40 字，空白名称不可提交')
-    interaction('INT-CANCEL', 'order-list', 'cancel', 'FR-ORDER-001', 'close', '取消并关闭弹框', 'create-dialog')
-    interaction('INT-SUBMIT', 'order-list', 'submit', 'FR-ORDER-001', 'submit', '校验、提交、禁重复；失败保留输入')
-    interaction('INT-DETAIL', 'order-list', 'detail', 'FR-ORDER-002', 'navigate', '打开第一笔订单详情', 'order-detail')
-    interaction('INT-BACK', 'order-detail', 'back', 'FR-ORDER-002', 'navigate', '返回列表并保留订单', 'order-list')
+    interaction('INT-SEARCH', 'order-list', 'search', 'FR-ORDER-002', '输入名称即时筛选订单')
+    interaction('INT-CREATE', 'order-list', 'create', 'FR-ORDER-001', '打开创建弹框，加载及无权限时禁用')
+    interaction('INT-NAME', 'order-list', 'order-name', 'FR-ORDER-001', '必填 1～40 字，空白名称不可提交')
+    interaction('INT-CANCEL', 'order-list', 'cancel', 'FR-ORDER-001', '取消并关闭弹框')
+    interaction('INT-SUBMIT', 'order-list', 'submit', 'FR-ORDER-001', '校验、提交、禁重复；失败保留输入')
+    interaction('INT-DETAIL', 'order-list', 'detail', 'FR-ORDER-002', '打开第一笔订单详情')
+    interaction('INT-BACK', 'order-detail', 'back', 'FR-ORDER-002', '返回列表并保留订单')
     # V1.0 excludes the future batch action, visibly disabled if inspected.
     html = (vr / 'prototype/list.html').read_text(encoding='utf-8').replace('id="batch" type="button" hidden', 'id="batch" type="button" hidden disabled data-out-of-scope="V1.1 批量完成"')
     (vr / 'prototype/list.html').write_text(html, encoding='utf-8')
@@ -89,14 +88,14 @@ def generate(root):
         'examples': [{'input': '正常场景下有两条待处理订单', 'expected': '两条订单均变为已完成，批量按钮禁用'}],
         'acceptance_ids': ['AC-ORDER-003']}]
     spec['pages'][0]['requirement_ids'].append('FR-ORDER-003')
-    interaction('INT-BATCH', 'order-list', 'batch', 'FR-ORDER-003', 'custom', '完成全部待处理订单，刷新状态并禁用按钮')
+    interaction('INT-BATCH', 'order-list', 'batch', 'FR-ORDER-003', '完成全部待处理订单，刷新状态并禁用按钮')
     interactions[-1]['rule_ids'] = ['RULE-BATCH-COMPLETE']
     name_req = spec['requirements'][0]
     name_req['rule_details'] = [{'id': 'RULE-NAME-INPUT', 'category': '字段与校验',
         'statement': name_req['rules'].pop('输入与校验'), 'source': 'ai-inferred', 'status': 'pending',
         'examples': [{'input': '仅含空格', 'expected': '拒绝提交并定位名称字段'}], 'acceptance_ids': ['AC-ORDER-001']}]
     next(i for i in interactions if i['id'] == 'INT-NAME')['rule_ids'] = ['RULE-NAME-INPUT']
-    interaction('INT-FEEDBACK', 'order-list', 'feedback', 'FR-ORDER-002', 'inspect', '列表状态提示（只读）')
+    interaction('INT-FEEDBACK', 'order-list', 'feedback', 'FR-ORDER-002', '列表状态提示（只读）')
     write(vr / 'spec.json', spec)
     html = (vr / 'prototype/list.html').read_text(encoding='utf-8').replace(' hidden disabled data-out-of-scope="V1.1 批量完成"', '').replace('id="feedback"', 'id="feedback" data-business-value')
     (vr / 'prototype/list.html').write_text(html, encoding='utf-8')

@@ -9,12 +9,12 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 sys.path.insert(0,str(ROOT/'template'))
-from create_static_demo import add_diagrams
+from create_static_demo import example_spec
 from diagramlib import evaluate,mermaid,markdown
 
 class DiagramTests(unittest.TestCase):
     def setUp(self):
-        self.spec=json.loads((ROOT/'template/prototype-spec.json').read_text())
+        _,self.spec=example_spec()
         self.diagrams=self.spec['diagrams']
     def codes(self):return {i['code'] for i in evaluate(self.spec) if i['severity']=='error'}
     def test_complete_hierarchy_is_read_only(self):
@@ -22,6 +22,36 @@ class DiagramTests(unittest.TestCase):
         self.assertEqual(self.codes(),set());self.assertEqual(self.spec,before)
         self.assertIn('stateDiagram-v2',mermaid(self.diagrams[2]))
         self.assertIn('上层流程',markdown(self.diagrams[1],self.diagrams))
+    def test_state_labels_preserve_full_meaning_in_transition_table(self):
+        state=self.diagrams[2]
+        state['edges'][0].update(label='提交且输入无效，需要保留全部内容并定位错误字段',condition='名称为空',effect='显示字段错误，不发起请求')
+        svg_source=mermaid(state)
+        self.assertIn(': T01',svg_source)
+        self.assertNotIn('提交且输入无效',svg_source)
+        doc=markdown(state,self.diagrams)
+        self.assertIn('提交且输入无效，需要保留全部内容并定位错误字段',doc)
+        self.assertIn('条件：名称为空',doc)
+        self.assertIn('显示字段错误，不发起请求',doc)
+        self.assertIn('| --- | --- | --- | --- |\n| T01 |',doc)
+        self.assertNotIn('| --- | --- | --- | --- |\n\n',doc)
+
+    def test_flow_shapes_and_decision_exits_are_checked(self):
+        flow=self.diagrams[1]
+        next(n for n in flow['nodes'] if n['id']=='check')['type']='decision'
+        next(n for n in flow['nodes'] if n['id']=='done')['type']='end'
+        self.assertIn('{"校验名称"}',mermaid(flow))
+        self.assertIn('(["创建成功，返回列表"])',mermaid(flow))
+        self.assertEqual(self.codes(),set())
+        branches=[e for e in flow['edges'] if e['from']=='check']
+        branches[1]['label']=branches[0]['label']
+        self.assertIn('diagram_decision_labels',self.codes())
+        flow['edges']=[e for e in flow['edges'] if e is not branches[1]]
+        self.assertIn('diagram_decision_branches',self.codes())
+
+    def test_flow_terminal_cannot_continue(self):
+        self.diagrams[1]['edges'].append({'from':'done','to':'fill','label':'再试'})
+        self.assertIn('diagram_terminal_outgoing',self.codes())
+
     def test_module_overview_cannot_be_replaced_with_detail_diagrams(self):
         self.spec['diagrams']=self.diagrams[1:]
         self.assertTrue({'module_flow_missing','diagram_parent'}<=self.codes())

@@ -153,12 +153,16 @@ PS.renderMermaid = async function (el, code) {
   if (window.mermaid) {
     try {
       if (!PS.__mmdInit) {
-        window.mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+        window.mermaid.initialize({ startOnLoad:false, theme:"neutral", securityLevel:"strict", htmlLabels:false, fontFamily:'Arial, "Microsoft YaHei", sans-serif', themeVariables:{fontSize:"14px"}, flowchart:{htmlLabels:false,useMaxWidth:false,nodeSpacing:40,rankSpacing:56,padding:16}, state:{useMaxWidth:false} });
         PS.__mmdInit = true;
       }
       var id = "mmd-" + Math.random().toString(36).slice(2, 9);
+      if(document.fonts && document.fonts.ready)await document.fonts.ready;
       var res = await window.mermaid.render(id, code);
-      el.innerHTML = '<div class="mermaid-box">' + res.svg + "</div>";
+      el.innerHTML = '<div class="diagram-tools" aria-label="图形缩放"><button type="button" data-zoom="out" aria-label="缩小图形">−</button><button type="button" data-zoom="reset" aria-label="恢复图形原始大小">100%</button><button type="button" data-zoom="in" aria-label="放大图形">＋</button><span>可滚动查看完整图形；迁移说明见图下表格</span></div><div class="diagram-viewport" tabindex="0" role="region" aria-label="图形画布，可横向或纵向滚动"><div class="mermaid-box">' + res.svg + '</div></div>';
+      var svg=el.querySelector('svg'),vb=svg.viewBox.baseVal,original={width:vb.width || Number(svg.getAttribute('width')) || 600,height:vb.height || Number(svg.getAttribute('height')) || 400},scale=1;
+      function resize(){svg.style.width=(original.width*scale)+'px';svg.style.height=(original.height*scale)+'px';svg.style.maxWidth='none';el.querySelector('[data-zoom="reset"]').textContent=Math.round(scale*100)+'%';el.querySelector('[data-zoom="out"]').disabled=scale<=0.5;el.querySelector('[data-zoom="in"]').disabled=scale>=2;}
+      el.querySelector('.diagram-tools').onclick=function(e){var b=e.target.closest('[data-zoom]');if(!b)return;scale=b.dataset.zoom==='reset'?1:Math.max(0.5,Math.min(2,scale+(b.dataset.zoom==='in'?0.25:-0.25)));resize();};resize();
       return;
     } catch (e) {
       // 渲染失败则降级

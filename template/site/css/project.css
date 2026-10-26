@@ -143,3 +143,43 @@
 #prd-sections,.prd-diagram{min-width:0}.prd-requirement{min-width:0;max-width:100%;box-sizing:border-box}
 /* Long metadata and the edit action need separate lines in narrow PRD cards. */
 @media(max-width:680px){.prd-requirement header>button{float:none;display:inline-block;margin:10px 0 0}.prd-requirement header .prd-meta{margin-bottom:0}}
+
+/* Rule reading: category > subject > constraints / detail table > evidence. */
+.prd-rule-group{background:none;border:0;padding:0;margin:24px 0}
+.prd-rule-group>h4{font-size:14px;color:#475569;margin:0 0 8px;padding:0 0 8px;border-bottom:2px solid #dbe2ea}
+.prd-rule-item{padding:14px 0 16px;border-bottom:1px solid #e5e9ef;min-width:0}
+.prd-rule-item:last-child{border-bottom:0}
+.prd-rule-heading{display:flex;gap:10px;align-items:baseline;margin:0 0 7px}
+.prd-rule-heading h5{font-size:15px;font-weight:650;margin:0;color:#1e293b}
+.prd-reader .prd-rule-summary{margin:0 0 9px;line-height:1.75;white-space:pre-wrap}
+.prd-rule-clauses{margin:8px 0 12px;border-top:1px solid #e5e9ef}
+.prd-rule-clauses>div{display:grid;grid-template-columns:110px minmax(0,1fr);border-bottom:1px solid #e5e9ef}
+.prd-rule-clauses dt{background:#f8fafc;font-size:12px;font-weight:600;color:#475569;padding:8px 10px}
+.prd-rule-clauses dd{margin:0;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.prd-rule-item .prd-boundary-scroll{margin:10px 0;border:1px solid #dbe2ea;border-radius:4px;max-width:100%;min-width:0}
+.prd-rule-item table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.prd-rule-item th,.prd-rule-item td{border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0;padding:8px 12px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}
+.prd-rule-item th{background:#f1f5f9;font-size:12px;color:#475569;font-weight:600}
+.prd-rule-item th:last-child,.prd-rule-item td:last-child{border-right:0}
+.prd-rule-item tr:last-child td{border-bottom:0}
+.prd-rule-item tbody tr:nth-child(even){background:#fafbfc}
+.prd-rule-item .prd-rule-evidence{margin-top:10px;font-size:11px;color:#64748b}
+.prd-rule-item .prd-rule-evidence p{font-size:11px;margin:5px 0}
+.prd-rule-examples{margin:10px 0;padding:8px 12px;background:#f8fafc;border-left:2px solid #cbd5e1}
+.prd-rule-examples h6{font-size:12px;color:#64748b;margin:0 0 6px}
+.prd-rule-examples dl{margin:0;font-size:12px}.prd-rule-examples dt{color:#64748b}.prd-rule-examples dd{margin:2px 0 8px}
+@media(max-width:680px){.prd-rule-clauses>div{grid-template-columns:1fr}.prd-rule-clauses dt{padding:6px 8px}.prd-rule-clauses dd{padding:6px 8px}.prd-rule-item th,.prd-rule-item td{padding:7px 8px}.prd-rule-heading{flex-wrap:wrap;gap:5px}}
+
+/* Preserve readable diagram dimensions; scroll instead of shrinking all text. */
+.mermaid-inline{max-width:100%;min-width:0;overflow:visible}
+.diagram-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0;font-size:11px;color:#64748b}
+.diagram-tools button{border:1px solid #cbd5e1;background:#fff;border-radius:3px;padding:3px 8px;min-height:28px;font:12px/1.5 system-ui;cursor:pointer}
+.diagram-tools button:focus-visible,.diagram-viewport:focus-visible{outline:2px solid #4769db;outline-offset:2px}
+.diagram-tools button:disabled{opacity:.4;cursor:default}
+.diagram-viewport{overflow:auto;max-height:75vh;border:1px solid #e2e8f0;border-radius:4px;background:#fff;max-width:100%;min-width:0}
+.diagram-viewport .mermaid-box{width:max-content;min-width:0;padding:16px;text-align:left}
+.diagram-viewport .mermaid-box svg{display:block;max-width:none;height:auto}
+.diagram-viewport .mermaid-box{margin-inline:auto}
+.prd-diagram>table{display:block;overflow-x:auto;max-width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+.prd-diagram>table th,.prd-diagram>table td{border:1px solid #dbe2ea;padding:8px 10px;text-align:left;vertical-align:top;min-width:80px;white-space:normal;overflow-wrap:anywhere}
+.prd-diagram>table th{background:#f1f5f9;font-weight:600}.prd-diagram>table tbody tr:nth-child(even){background:#fafbfc}

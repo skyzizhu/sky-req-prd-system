@@ -102,7 +102,7 @@ def impact(before, after, docs_before, docs_after):
             'review_interactions': sorted({i['id'] for s in specs for i in s.get('interactions', []) if affected(i)}),
             'review_acceptance': sorted({a['id'] for r in list(old.values()) + list(new.values()) if changed_docs or r['id'] in changed for a in r.get('acceptance', [])}),
             'documents': changed_docs,
-            'notice': 'PRD 和原型需求数据在保存后重新编译；原型业务脚本、独立测试文档及实际行为需按影响清单复核。正文变化按全页面保守复核。未自动 checkpoint。'}
+            'notice': 'PRD 和原型需求数据在保存后重新编译；原型状态画面、局部交互声明、独立测试文档及真实产品需按影响清单复核。正文变化按全页面保守复核。未自动 checkpoint。'}
 
 
 def candidate(current, payload):
@@ -113,7 +113,7 @@ def candidate(current, payload):
     if spec != current['spec']:
         if not isinstance(spec, dict) or not isinstance(current['spec'], dict):
             raise ValueError('请先通过需求工作流建立结构化 PRD')
-        # Only declarative properties/targets of existing interactions are editable.
+        # Only declarative properties of existing annotations are editable.
         for key in spec.keys() | current['spec'].keys():
             if key not in {'requirements', 'interactions'} and spec.get(key) != current['spec'].get(key):
                 raise ValueError('此编辑器仅修改需求，页面与交互结构请走原型变更流程')
@@ -125,10 +125,8 @@ def candidate(current, payload):
         for old_it, it in zip(old_interactions, interactions):
             if old_it == it:
                 continue
-            if any(old_it.get(k) != it.get(k) for k in old_it.keys() | it.keys() if k not in {'properties', 'target'}):
-                raise ValueError('只允许编辑 properties 和 target，不能改写交互标识与关联')
-            if old_it.get('target') != it.get('target') and it['action'] not in {'navigate', 'dialog', 'close', 'toggle'}:
-                raise ValueError('此交互类型不支持目标编辑')
+            if any(old_it.get(k) != it.get(k) for k in old_it.keys() | it.keys() if k != 'properties'):
+                raise ValueError('只允许编辑 properties，不能改写交互标识与关联')
             element = current['prototype_elements'].get(it['page'], {}).get(it['selector'][1:], {})
             errors = property_errors(it, element)
             if errors:

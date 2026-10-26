@@ -13,7 +13,7 @@ class HandoffTests(unittest.TestCase):
     def test_revisions_keep_draft_and_old_snapshot(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp) / 'project'
-            subprocess.run([sys.executable, str(ROOT / 'scripts/create_demo.py'), str(root)], check=True, capture_output=True)
+            subprocess.run([sys.executable, str(ROOT / 'tests/fixtures/versioned_project.py'), str(root)], check=True, capture_output=True)
             def handoff(r):
                 return subprocess.run([sys.executable, str(ROOT / 'scripts/project.py'), 'handoff', str(root), '--version', 'v1.1', '--revision', r], capture_output=True, text=True)
             result = handoff('r1')
@@ -39,7 +39,7 @@ class HandoffTests(unittest.TestCase):
     def test_blocking_rule_prevents_handoff(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp) / 'project'
-            subprocess.run([sys.executable, str(ROOT / 'scripts/create_demo.py'), str(root)], check=True, capture_output=True)
+            subprocess.run([sys.executable, str(ROOT / 'tests/fixtures/versioned_project.py'), str(root)], check=True, capture_output=True)
             file = root / 'versions/v1.1/content/spec.json'
             spec = read(file); spec['requirements'][0]['blocking'] = True
             write(file, spec)

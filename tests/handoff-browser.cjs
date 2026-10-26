@@ -12,22 +12,24 @@ const assert=require('node:assert/strict');
   const file=path.join(root,'versions/v1.1/content/spec.json');
   const spec=JSON.parse(fs.readFileSync(file)); spec.requirements[0].title='第二轮交接标题'; fs.writeFileSync(file,JSON.stringify(spec));
   handoff('r2');
-  const browser=await chromium.launch({headless:true});
-  const page=await browser.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+  const browser=await chromium.launch({headless:true,channel:process.env.PW_CHANNEL || undefined,executablePath:process.env.PW_EXECUTABLE || undefined});
+  const page=await browser.newPage(); page.setDefaultTimeout(10000);const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://**/*',route=>route.abort());
   try {
     const base=pathToFileURL(path.join(root,'site/index.html')).href;
     await page.goto(base+'#/v/v1.1.r1/_changes/report');
     assert.match(await page.locator('#version-context').innerText(),/历史交接/);
     await page.locator('#content').getByRole('link',{name:'订单列表',exact:true}).click();
     assert.match(await page.locator('iframe').getAttribute('src'),/v1.1.r1/);
+    await page.frameLocator('iframe').locator('.sr-rules').waitFor();
     await page.frameLocator('iframe').locator('#create').click();
-    await page.frameLocator('iframe').locator('#create-dialog').waitFor({state:'visible'});
+    assert.equal(await page.frameLocator('iframe').locator('#create-dialog').evaluate(node=>node.open),false);
     await page.goto(base+'#/v/v1.1.r2/requirements/spec');
     assert.match(await page.locator('#version-context').innerText(),/当前开发依据/);
     assert.match(await page.locator('#content').innerText(),/第二轮交接标题/);
     await page.goto(base+'#/v/v1.1.r1/requirements/spec');
     assert.doesNotMatch(await page.locator('#content').innerText(),/第二轮交接标题/);
     assert.deepEqual(errors,[]);
-    console.log('PASS: r1 deep link, old prototype interaction, r2 current basis, independent requirement snapshots');
+    console.log('PASS: r1 deep link, historical static reader, r2 current basis, independent requirement snapshots');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

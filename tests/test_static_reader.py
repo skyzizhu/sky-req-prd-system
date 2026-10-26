@@ -64,6 +64,23 @@ class StaticReaderTests(unittest.TestCase):
         self.assertIn('初始值是什么？（影响实现/验收，需先明确）',exported)
         self.assertIn('阻塞开发：是',exported)
 
+    def test_rule_subject_and_clauses_survive_export_and_validation(self):
+        spec=read(self.file)
+        rule=spec['requirements'][0]['rule_details'][0]
+        rule['title']='订单名称'
+        rule['clauses']=[{'label':'默认值','text':'新建为空；修改带入已有名称'},{'label':'校验时机','text':'提交时校验，错误保留输入'}]
+        write(self.file,spec)
+        self.assertEqual(validate(self.root)[0],[])
+        exported=spec_markdown(spec)
+        self.assertIn('##### 订单名称',exported)
+        for row in rule['clauses']:self.assertEqual(exported.count(row['label']+'：'+row['text']),1)
+        from qualitylib import evaluate
+        for clauses in ([{'label':'默认值','text':''}], '正文'):
+            rule['clauses']=clauses
+            write(self.file,spec)
+            self.assertTrue(any('说明项' in error for error in validate(self.root)[0]))
+            self.assertIn('rule_content_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})
+
     def test_malformed_rule_table_is_rejected(self):
         from qualitylib import evaluate
         spec=read(self.file)
@@ -117,8 +134,43 @@ class StaticReaderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'schema_version=3'):compile_project(self.root)
         self.assertEqual(before,hashes(self.root))
 
+    def test_native_control_can_reuse_precise_common_annotation(self):
+        html=self.file.parent/'prototype/create-order.html'
+        text=html.read_text()
+        self.assertIn('<input type="text" aria-label="订单名称" id="failed-name"',text)
+        self.assertIn('data-rule-ref="INT-ORDER-NAME"',text)
+        self.assertIn('<textarea aria-label="备注"',text)
+        self.assertEqual(validate(self.root)[0],[])
+        from qualitylib import evaluate
+        self.assertEqual(evaluate(read(self.file),self.file.parent)['counts']['errors'],0)
+
     def test_required_element_cannot_point_to_another_state(self):
         spec=read(self.file)
         spec['pages'][0]['states'][1]['elements'][0]['selector']='#default-name'
         write(self.file,spec)
         self.assertTrue(any('必要元素缺失或不属于该状态' in error for error in validate(self.root)[0]))
+
+    def test_page_and_local_state_review_references_are_checked(self):
+        from qualitylib import evaluate
+        spec=read(self.file)
+        page=spec['pages'][0]
+        page['state_review']=[
+            {'dimension':'初始与校验','status':'covered','state_ids':['default','invalid']},
+            {'dimension':'本地填写','status':'local','selectors':['#default-name'],'reason':'输入后切换Tab核对恢复预设值'},
+            {'dimension':'取消结果','status':'not_applicable','reason':'本案例只负责创建订单，取消返回为已有页面交接'}]
+        self.assertNotIn('state_review_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})
+        page['state_review'][0]['state_ids']=['missing']
+        self.assertIn('state_review_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})
+        page['state_review'][0]['state_ids']=['default']
+        page['state_review'][1]['selectors']=['#missing']
+        self.assertIn('state_review_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})
+
+    def test_state_review_rejects_invalid_or_unexplained_classification(self):
+        from qualitylib import evaluate
+        spec=read(self.file)
+        for row in [
+            {'dimension':'错误','status':'covered','state_ids':[{}]},
+            {'dimension':'错误','status':'local','selectors':['#default-name']},
+            {'dimension':'错误','status':'not_applicable'}]:
+            spec['pages'][0]['state_review']=[row]
+            self.assertIn('state_review_invalid',{i['code'] for i in evaluate(spec,self.file.parent)['issues']})

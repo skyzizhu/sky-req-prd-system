@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>页面状态与局部交互校对</title>
+<link rel="stylesheet" href="../../assets/prototype-runtime.css">
+<link rel="stylesheet" href="local-controls.css"></head>
+<body data-page-id="local-controls" data-prototype-mode="static">
+<main>
+  <section data-ps-state="default"><h2>初始填写</h2><div class="sr-snapshot">
+    <form class="fixture-form" action="/should-not-submit">
+      <h3>培训报名 · 局部交互校对</h3>
+      <label for="default-session">报名场次</label>
+      <select id="default-session" data-rule-ref="INT-SESSION" data-ps-local="select">
+        <option value="s1" selected>11月5日 · 余量8</option><option value="s2" disabled>11月6日 · 已满额</option><option value="s3">11月12日 · 余量12</option>
+      </select>
+      <p>参加方式</p>
+      <div id="default-method" class="sr-control-group" data-rule-ref="INT-METHOD" data-ps-local="choice" data-ps-key="method">
+        <label><input id="default-onsite" data-rule-ref="INT-METHOD" type="radio" name="default-method" value="onsite" checked>现场参加</label>
+        <label><input id="default-online" data-rule-ref="INT-METHOD" type="radio" name="default-method" value="online">线上参加</label>
+      </div>
+      <div id="default-email-region" data-ps-when-key="method" data-ps-when-value="online" data-ps-clear-hidden hidden>
+        <label for="default-email">接收邮箱</label><input id="default-email" data-rule-ref="INT-EMAIL" data-ps-local="input" type="email" placeholder="name@example.com">
+      </div>
+      <p>学习辅助</p>
+      <div id="default-support" class="sr-control-group" data-rule-ref="INT-SUPPORT" data-ps-local="choice">
+        <label><input id="default-support-switch" data-rule-ref="INT-SUPPORT" type="checkbox" role="switch" data-ps-key="support">需要辅助需求</label>
+      </div>
+      <div id="default-parts-region" data-ps-when-key="support" data-ps-when-value="true" data-ps-clear-hidden hidden>
+        <div id="default-parts" class="sr-control-group" data-rule-ref="INT-PARTS" data-ps-local="choice" data-ps-max="2" data-ps-feedback="default-limit">
+          <label><input id="default-part-1" data-rule-ref="INT-PARTS" type="checkbox">大字讲义</label><label><input id="default-part-2" data-rule-ref="INT-PARTS" type="checkbox">字幕稿</label><label><input id="default-part-3" data-rule-ref="INT-PARTS" type="checkbox">课后资料</label>
+        </div>
+        <p id="default-limit" data-ps-local-error hidden>最多选择2项辅助需求</p>
+      </div>
+      <details data-ps-local="disclosure"><summary>查看报名须知</summary><p>仅限本人参加，开课前可取消。</p></details>
+      <button id="default-submit" data-rule-ref="INT-SUBMIT" type="submit">提交报名（结果从Tab查看）</button>
+    </form>
+  </div></section>
+  <section data-ps-state="failed"><h2>报名失败</h2><div class="sr-snapshot"><div class="fixture-form">
+    <h3>报名失败 · 已保留填写内容</h3>
+    <select id="failed-session" data-rule-ref="INT-SESSION" data-ps-local="select"><option value="s3" selected>11月12日 · 余量12</option></select>
+    <p id="failed-feedback" data-rule-ref="INT-FAILURE">服务端明确未生效，可重试；本校对页不执行真实报名。</p>
+  </div></div></section>
+</main>
+<script src="local-controls-data.js"></script><script src="../../assets/prototype-runtime.js"></script>
+</body></html>

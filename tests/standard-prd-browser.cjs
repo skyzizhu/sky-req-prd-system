@@ -6,8 +6,9 @@ const {pathToFileURL}=require('node:url');
  const root=path.resolve(process.argv[2]);
  const proc=spawn('python3',[path.join(__dirname,'../scripts/edit_project.py'),root,'--version','v1.1']);
  const url=await new Promise((resolve,reject)=>{let s='';proc.stdout.on('data',d=>{s+=d;const m=s.match(/http:\/\/127\.0\.0\.1:\d+\/#token=[\w-]+/);if(m)resolve(m[0]);});proc.once('exit',c=>reject(Error('server '+c)));});
- const browser=await chromium.launch({headless:true}),page=await browser.newPage();
- const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const browser=await chromium.launch({headless:true,channel:process.env.PW_CHANNEL || undefined,executablePath:process.env.PW_EXECUTABLE || undefined}),page=await browser.newPage();
+ page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://**/*',route=>route.abort());
  try{
   await page.goto(url);await page.locator('#material').selectOption('attachments');
   await page.locator('#attachment-file').setInputFiles({name:'访谈.txt',mimeType:'text/plain',buffer:Buffer.from('用户访谈依据')});

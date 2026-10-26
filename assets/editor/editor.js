@@ -108,13 +108,6 @@
       };
       label.appendChild(input); var baseHint = document.createElement('small'); baseHint.textContent = '原型原值：' + (base == null || base === '' ? '空' : base); label.appendChild(baseHint); form.appendChild(label);
     });
-    if (['navigate','dialog','close','toggle'].includes(it.action)) {
-      var wrap = document.createElement('label'); wrap.textContent = '跳转或弹框目标'; var select = document.createElement('select'); select.disabled = !current.editable;
-      select.setAttribute('aria-label', '跳转或弹框目标');
-      var targets = it.action === 'navigate' ? Object.keys(current.prototype_elements) : Object.keys(current.prototype_elements[it.page]).filter(function (id) { return !['dialog','close'].includes(it.action) || current.prototype_elements[it.page][id].tag === 'dialog'; });
-      targets.forEach(function (id) { select.add(new Option(id,id)); }); select.value = it.target;
-      select.onchange = function () { it.target = select.value; changed(); }; wrap.appendChild(select); form.appendChild(wrap);
-    }
     var reset = document.createElement('button'); reset.textContent = '恢复此控件原始属性'; reset.type = 'button'; reset.disabled = !current.editable;
     reset.onclick = function () { delete it.properties; changed(); render(); }; form.appendChild(reset);
   }

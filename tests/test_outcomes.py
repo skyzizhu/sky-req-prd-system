@@ -18,7 +18,7 @@ class OutcomeTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = pathlib.Path(self.tmp.name) / 'demo'
-        subprocess.run([sys.executable, str(ROOT / 'scripts/create_demo.py'), str(self.root)], check=True, capture_output=True)
+        subprocess.run([sys.executable, str(ROOT / 'tests/fixtures/versioned_project.py'), str(self.root)], check=True, capture_output=True)
         self.p = {'kind':'execution','version':'v1.0','requirement_id':'FR-ORDER-001','acceptance_id':'AC-ORDER-001',
                   'scope':'prototype','result':'passed','environment':'离线演示','build':'合成原型',
                   'actor':'测试工具（合成记录）','observed_at':'2026-09-09T12:00:00+08:00','evidence':['测试示例，无真实验收'],

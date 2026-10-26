@@ -59,8 +59,8 @@ def patch(current, iid, field, value):
     if len(matches) != 1: raise ValueError('必须提供唯一需求或控件 ID，不使用模糊匹配保存')
     kind,item = matches[0]; parts = field.split('/')
     if kind == 'interactions':
-        if parts[0] not in ('properties','target') or len(parts)>2 or parts[0]=='target' and len(parts)!=1:
-            raise ValueError('控件仅支持 properties/属性名 或 target；布局/行为由 Agent 局部修改源文件')
+        if parts[0] != 'properties' or len(parts) != 2:
+            raise ValueError('控件仅支持 properties/属性名；布局与状态由 Agent 局部修改源文件')
         if parts[0]=='properties' and 'properties' not in item: item['properties']={}
     elif parts[0] not in ('title','description','rules','rule_details','acceptance'):
         raise ValueError('不可通过单项编辑修改稳定 ID、来源或确认状态')

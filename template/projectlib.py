@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.7'
+TEMPLATE_VERSION = '2.0.0-preview.15'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -169,8 +169,10 @@ def spec_markdown(spec, outcomes=None):
             rules=rule_groups[category]
             out += [f"#### {category_names.get(category, category)}"]
             for rule in rules:
+                if rule.get('title'):out += ['##### '+rule['title']]
                 out += [f"- {rule['statement']}",
                         f"  - 依据：{rule['id']} · {'AI 推断' if rule.get('source')=='ai-inferred' else '原始需求'} · {'已确认' if rule.get('status')=='confirmed' else '待确认'}"]
+                for clause in rule.get('clauses',[]):out += ['  - '+clause['label']+'：'+clause['text']]
                 if 'table' in rule:out += [prdlib.rule_table_markdown(rule['table'])]
                 for example in rule.get('examples', []):
                     out += [f"  - 实例：{example['input']} → {example['expected']}"]
@@ -380,6 +382,8 @@ def validate(root):
                     ruleids.add(rule['id'])
                     if rule.get('source') not in {'origin', 'ai-inferred'} or rule.get('status') not in {'pending', 'confirmed'}:
                         errors.append(f'{vid}/{rid}: 规则来源或状态无效')
+                    content_error=prdlib.rule_content_error(rule)
+                    if content_error:errors.append(f'{vid}/{rid}: {content_error}')
                     if 'table' in rule:
                         error=prdlib.rule_table_error(rule['table'])
                         if error:errors.append(f'{vid}/{rid}/{rule["id"]}: '+error)
@@ -420,19 +424,12 @@ def validate(root):
                 for rid in it.get('requirement_ids', []):
                     if rid not in reqs or rid not in mappings.get(pid, {}).get('requirement_ids', []):
                         errors.append(f'{vid}/{it["id"]}: 需求未关联至本页 {rid}')
-                action, target = it.get('action'), it.get('target')
                 errors.extend(f'{vid}/{it["id"]}: {error}' for error in property_errors(it, parsed.get(pid, HTMLCheck()).elements.get(selector[1:], {})))
                 refs = it.get('rule_ids')
                 if refs is not None:
                     allowed = {rule['id'] for rid in it.get('requirement_ids', []) for rule in reqs.get(rid, {}).get('rule_details', []) if isinstance(rule, dict) and isinstance(rule.get('id'), str)}
                     if not isinstance(refs, list) or not refs or any(not isinstance(ref, str) or ref not in allowed for ref in refs):
                         errors.append(f'{vid}/{it["id"]}: 控件规则关联无效')
-                if action not in {'navigate', 'dialog', 'close', 'input', 'submit', 'toggle', 'custom', 'inspect'}:
-                    errors.append(f'{vid}/{it["id"]}: 未知动作')
-                if action == 'navigate' and target not in mappings:
-                    errors.append(f'{vid}/{it["id"]}: 跳转页面不存在')
-                if action in {'dialog', 'close', 'toggle'} and target not in parsed.get(pid, HTMLCheck()).ids:
-                    errors.append(f'{vid}/{it["id"]}: 弹框或面板不存在')
             for p in ps:
                 if p['type'] != 'prototype':
                     continue
@@ -490,7 +487,9 @@ def validate(root):
                         if 'disabled' not in control and control.get('aria-disabled') != 'true':
                             errors.append(f'{vid}/{pid}: 范围外控件必须禁用')
                     elif control.get('id') not in covered.get(pid, set()):
-                        errors.append(f'{vid}/{pid}: 可操作控件缺少交互说明 {control.get("id", control)}')
+                        state=html.elements.get(control.get('id'),{}).get('_state')
+                        mapped=any(it.get('page')==pid and it.get('id')==control.get('data-rule-ref') and (not it.get('state_ids') or state in it['state_ids']) for it in spec.get('interactions',[]))
+                        if not mapped:errors.append(f'{vid}/{pid}: 可操作控件缺少交互说明 {control.get("id", control)}')
         except (ValueError, KeyError, TypeError, OSError) as e:
             errors.append(f'{vid}: {e}')
     try:

@@ -61,6 +61,25 @@ class QualityTests(unittest.TestCase):
             file.write_text(file.read_text().replace('id="failed-focus"','hidden id="failed-focus"'))
             self.assertIn('element_not_visible',{i['code'] for i in evaluate(self.spec,content)['issues']})
 
+    def test_small_element_needs_its_own_state_applicable_annotation(self):
+        self.spec['interactions']=[it for it in self.spec['interactions'] if it['id']!='INT-ORDER-REMARK']
+        self.assertIn('element_annotation_missing',self.codes())
+        # A form-level annotation still cannot stand in for the missing field.
+        self.spec['interactions'][0]['selector']='#order-canvas'
+        self.assertIn('element_annotation_missing',self.codes())
+
+    def test_common_element_annotation_must_apply_to_each_state(self):
+        it=next(it for it in self.spec['interactions'] if it['id']=='INT-ORDER-AMOUNT')
+        it['state_ids']=['default']
+        report=self.report()
+        paths=[i['path'] for i in report['issues'] if i['code']=='element_annotation_missing']
+        self.assertIn('create-order/failed/#failed-amount',paths)
+        self.assertNotIn('create-order/default/#default-amount',paths)
+
+    def test_common_field_mapping_is_a_precise_visual_target(self):
+        self.req['rule_details'][0]['presentation']={'mode':'prototype','targets':[{'page':'create-order','state':'failed','selector':'#failed-name'}]}
+        self.assertEqual(self.codes(),set())
+
     def test_profile_checks_cannot_be_skipped(self):
         self.req['review']['checks']=[]
         self.assertIn('check_missing',self.codes())
@@ -121,5 +140,23 @@ class QualityTests(unittest.TestCase):
                 spec=copy.deepcopy(self.original);spec.pop('quality');file.write_text(json.dumps(spec))
                 self.assertEqual(subprocess.run(cmd,capture_output=True).returncode,1)
             finally:file.write_bytes(before)
+
+    def test_validate_writes_same_report_and_rejects_incomplete_delivery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix=Path(directory)/'report'
+            cmd=[sys.executable,str(ROOT/'scripts/validate.py'),str(self.root),'--report',str(prefix)]
+            self.assertEqual(subprocess.run(cmd,capture_output=True).returncode,0)
+            good=json.loads(prefix.with_suffix('.json').read_text())
+            self.assertEqual(good['status'],'review_required')
+            file=self.content/'spec.json'; before=file.read_bytes()
+            try:
+                spec=copy.deepcopy(self.original);spec.pop('quality');file.write_text(json.dumps(spec))
+                subprocess.run([sys.executable,str(self.root/'build.py')],check=True,capture_output=True)
+                self.assertEqual(subprocess.run(cmd,capture_output=True).returncode,1)
+                self.assertEqual(json.loads(prefix.with_suffix('.json').read_text())['status'],'incomplete')
+                self.assertTrue(prefix.with_suffix('.md').is_file())
+            finally:
+                file.write_bytes(before)
+                subprocess.run([sys.executable,str(self.root/'build.py')],check=True,capture_output=True)
 
 if __name__=='__main__':unittest.main()

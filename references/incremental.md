@@ -29,15 +29,15 @@ python3 <skill>/scripts/revise_item.py <项目> --version v1.1 --id FR-ORDER-001
 python3 <skill>/scripts/revise_item.py <项目> --version v1.1 --id FR-ORDER-001 --field rule_details/RULE-NAME-INPUT/statement --value <值.json> --revision <相同指纹> --save
 ```
 
-默认只预览，--save 才正式保存。保持未修改条目、未知字段、ID、关联、文档与历史；冲突拒绝覆盖。保存复用 editing.md 的校验、备份及撤销记录。需求支持 title/description、rules/既有键、rule_details/规则ID/statement 等既有子字段和 acceptance/验收ID/given|when|then；不通过此入口改 ID、来源、状态、关联或替换整组规则。控件支持 properties/text、properties/placeholder、properties/maxLength 等已有白名单及 target。
+默认只预览，--save 才正式保存。保持未修改条目、未知字段、ID、关联、文档与历史；冲突拒绝覆盖。保存复用 editing.md 的校验、备份及撤销记录。需求支持 title/description、rules/既有键、rule_details/规则ID/statement 等既有子字段和 acceptance/验收ID/given|when|then；不通过此入口改 ID、来源、状态、关联或替换整组规则。控件支持 properties/text、properties/placeholder、properties/maxLength 等已有白名单。
 
 多个相关字段（规则、控件约束、提示）应在一个 editing.md 修改包中共同修改，避免将逐项保存的中间状态交付。单项工具是定位和局部维护捷径，不取消关联复核。
 
-## 原型布局、控件和业务显示
+## 原型布局、控件和预设状态
 
 - 简单文案/输入约束：优先修改 interactions.properties，同时核对关联规则、提示和测试。
 - 元素层次、布局、样式：读取当前 HTML/CSS，按稳定 selector 局部 apply_patch；保留其他元素、资源路径和已有手工调整，不重新套模板或重写全页。
-- 显示/隐藏、权限、弹框、跳转、校验、数据：修改对应 spec 规则及页面独立 JS 分支；“文字改了”不等于逻辑已改。读取现有持久化状态，避免演示旧数据掩盖修改。
-- 布局/JS 修改不在单项保存器支持范围内；按 workflow.md 的 impact、源码局部修改、build、validate、浏览器验证、checkpoint 执行。修改前保留原始差异/可恢复备份，不以重生成绕过冲突。
+- 显示/隐藏和简单联动：按 [local-controls.md](local-controls.md) 修改声明属性；页面级权限、校验、取消和结果反馈修改相应预设状态及规则。真实跳转/提交只说明业务去向，不新增业务脚本、存储或请求模拟。
+- 布局/状态源码修改不在单项保存器支持范围内；按 workflow.md 的 impact、源码局部修改、build、validate、浏览器验证、checkpoint 执行。修改前保留原始差异/可恢复备份，不以重生成绕过冲突。
 
 交付列出“页面名称 + 需求名称（编号）/控件说明（编号）→ 修改点 → 关联复核结果”。运行正常/边界路径，核对无关需求和冻结哈希未变。新增/删除结构只有用户真的要求时才做，不因为找不到目标就创建替代项。PRD 更新、原型更新、实际行为验证分开报告，不能用 build 通过代替全部验证。

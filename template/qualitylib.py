@@ -36,7 +36,7 @@ class Snapshot(HTMLParser):
                  'snapshot':parent.get('snapshot',False) or 'sr-snapshot' in a.get('class','').split(),
                  'hidden':parent.get('hidden',False) or 'hidden' in a or a.get('aria-hidden')=='true'}
         if 'data-ps-state' in a:self.states.add(a['data-ps-state'])
-        if a.get('id'):self.ids[a['id']]=context
+        if a.get('id'):self.ids[a['id']]=dict(context,rule_ref=a.get('data-rule-ref'))
         if tag not in self.VOID:self.stack.append((tag,context))
     def handle_endtag(self,tag):
         for n in range(len(self.stack)-1,-1,-1):
@@ -112,6 +112,32 @@ def evaluate(spec, content=None):
         except (OSError,ValueError,KeyError,TypeError) as error:issue('prototype_read','prototype',str(error))
     elif has_prototype:
         issue('dom_not_checked','prototype','未提供原型源目录，本次只检查声明关系，未核对实际 HTML','warning')
+    for pid,page in pages.items():
+        review=page.get('state_review')
+        if review is None:continue
+        if not isinstance(review,list) or not review:
+            issue('state_review_invalid',pid,'页面状态核对需为非空数组');continue
+        dimensions=set()
+        for item in review:
+            if not isinstance(item,dict) or not nonempty(item.get('dimension')):
+                issue('state_review_invalid',pid,'状态核对需明确维度');continue
+            dimension=item['dimension'];path=f'{pid}/state_review/{dimension}'
+            if dimension in dimensions:issue('state_review_invalid',path,'状态核对维度重复')
+            dimensions.add(dimension)
+            status=item.get('status')
+            if status=='covered':
+                ids=item.get('state_ids')
+                if not isinstance(ids,list) or not ids or any(not isinstance(sid,str) or (pid,sid) not in states for sid in ids):
+                    issue('state_review_invalid',path,'需关联本页面有效的页面状态')
+            elif status=='local':
+                selectors=item.get('selectors');parser=dom.get(pid)
+                if not nonempty(item.get('reason')) or not isinstance(selectors,list) or not selectors or any(not isinstance(s,str) or not s.startswith('#') for s in selectors):
+                    issue('state_review_invalid',path,'局部变化需有控件定位及可操作核对路径')
+                elif parser and any(not parser.ids.get(s[1:],{}).get('snapshot') for s in selectors):
+                    issue('state_review_invalid',path,'局部核对目标须位于本页面画面内')
+            elif status=='not_applicable':
+                if not nonempty(item.get('reason')):issue('state_review_invalid',path,'不适用状态需有本次范围理由')
+            else:issue('state_review_invalid',path,'需区分页面状态、局部变化或不适用')
     interaction_items=objects(spec.get('interactions'))
     rule_owners={}
     for rid,req in reqs.items():
@@ -123,6 +149,14 @@ def evaluate(spec, content=None):
             path=it.get('id','interaction')
             allowed={k for k,v in rule_owners.items() if v in objects(it.get('requirement_ids'))}
             refs(it.get('rule_ids'),allowed,path,'精确规则')
+    if has_prototype:
+        for (pid,sid),inventory in inventories.items():
+            for selector in inventory:
+                parser=dom.get(pid)
+                element=parser.ids.get(selector.lstrip('#'),{}) if parser else {}
+                # A container annotation does not explain every child control.
+                linked=any(isinstance(it,dict) and it.get('page')==pid and (not it.get('state_ids') or sid in objects(it['state_ids'])) and (it.get('selector')==selector or element.get('rule_ref')==it.get('id')) and any(rule_owners.get(rule) in objects(it.get('requirement_ids')) for rule in objects(it.get('rule_ids'))) for it in interaction_items)
+                if parser and not linked:issue('element_annotation_missing',f'{pid}/{sid}/{selector}','必要业务元素缺少当前状态的精确标注，不能用外层区域说明代替')
     def presentation(value,path,rule_ids,annotated):
         if not isinstance(value,dict):issue('presentation_missing',path,'未说明用原型画面还是文字表达');return 'missing',[]
         mode=value.get('mode');targets=objects(value.get('targets'))
@@ -143,7 +177,7 @@ def evaluate(spec, content=None):
             if not any(r in objects(page.get('requirement_ids')) for r in rule_ids):issue('page_requirement_missing',path,'目标页面未关联该需求')
             if annotated:
                 for rule_id in annotated:
-                    linked=any(isinstance(it,dict) and it.get('page')==key[0] and rule_id in objects(it.get('rule_ids')) and rule_owners.get(rule_id) in objects(it.get('requirement_ids')) and (not it.get('state_ids') or key[1] in objects(it['state_ids'])) and it.get('selector')==selector for it in interaction_items)
+                    linked=any(isinstance(it,dict) and it.get('page')==key[0] and rule_id in objects(it.get('rule_ids')) and rule_owners.get(rule_id) in objects(it.get('requirement_ids')) and (not it.get('state_ids') or key[1] in objects(it['state_ids'])) and (it.get('selector')==selector or (dom.get(key[0]) and dom[key[0]].ids.get(selector.lstrip('#'),{}).get('rule_ref')==it.get('id'))) for it in interaction_items)
                     if not linked:issue('visual_rule_unlinked',path,'画面规则未通过该状态的元素精确关联：'+rule_id)
         return mode,targets
     pending_rules=0;case_total=0
@@ -165,6 +199,8 @@ def evaluate(spec, content=None):
             if not nonempty(rule.get('statement')) or not nonempty(rule.get('category')):issue('rule_incomplete',path,'规则缺少明确说明或分类')
             if rule.get('source') not in ('origin','ai-inferred') or rule.get('status') not in ('pending','confirmed'):issue('rule_origin',path,'规则来源或确认状态无效')
             if rule.get('status')=='pending':pending_rules+=1
+            content_error=prdlib.rule_content_error(rule)
+            if content_error:issue('rule_content_invalid',path,content_error)
             if 'table' in rule:
                 error=prdlib.rule_table_error(rule['table'])
                 if error:issue('rule_table_invalid',path,error)

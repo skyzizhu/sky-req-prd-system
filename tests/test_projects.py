@@ -16,7 +16,7 @@ class ProjectTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
         cls.base = pathlib.Path(cls.temp.name) / 'base'
-        subprocess.run([sys.executable, str(ROOT / 'scripts/create_demo.py'), str(cls.base)], check=True, capture_output=True)
+        subprocess.run([sys.executable, str(ROOT / 'tests/fixtures/versioned_project.py'), str(cls.base)], check=True, capture_output=True)
 
     @classmethod
     def tearDownClass(cls):

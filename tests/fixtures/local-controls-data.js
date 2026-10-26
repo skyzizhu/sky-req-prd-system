@@ -1,0 +1,22 @@
+window.PS_SPEC={schema_version:2,projectName:'页面状态与轻量交互',version:'QA',spec:{
+  requirements:[{id:'FR',rule_details:[
+    {id:'SESSION',title:'报名场次',statement:'动态场次样例3项，默认首个有余量场次；满额禁选。'},
+    {id:'METHOD',title:'参加方式',statement:'现场默认，线上与现场互斥。切线上显示邮箱，切现场清空邮箱。'},
+    {id:'EMAIL',title:'接收邮箱',statement:'仅线上填写；切回现场时清空，不实际发送。'},
+    {id:'SUPPORT',title:'辅助开关',statement:'默认关闭，开启显示辅助复选组；关闭清空选择。'},
+    {id:'PARTS',title:'辅助复选组',statement:'3项默认均未选，最多选2项；超限回退本次勾选并提示。'},
+    {id:'SUBMIT',title:'提交结果',statement:'提交、失败和取消等页面状态在Tab中查看，本页不执行报名。'},
+    {id:'FAILURE',title:'报名失败',statement:'明确未生效时保留填写内容，可按规则重试。'}
+  ]}],pages:[{id:'local-controls',title:'页面状态与局部交互',requirement_ids:['FR'],states:[
+    {id:'default',title:'初始填写',summary:'操作下拉、单选、开关和复选，不增加控件展开Tab。'},
+    {id:'failed',title:'报名失败',summary:'独立失败画面，保留既定输入。'}
+  ]}],interactions:[
+    {id:'INT-SESSION',page:'local-controls',selector:'#default-session',title:'报名场次',rule_ids:['SESSION'],state_ids:['default','failed']},
+    {id:'INT-METHOD',page:'local-controls',selector:'#default-method',title:'参加方式',rule_ids:['METHOD'],state_ids:['default']},
+    {id:'INT-EMAIL',page:'local-controls',selector:'#default-email',title:'接收邮箱',rule_ids:['EMAIL'],state_ids:['default']},
+    {id:'INT-SUPPORT',page:'local-controls',selector:'#default-support',title:'辅助开关',rule_ids:['SUPPORT'],state_ids:['default']},
+    {id:'INT-PARTS',page:'local-controls',selector:'#default-parts',title:'辅助复选组',rule_ids:['PARTS'],state_ids:['default']},
+    {id:'INT-SUBMIT',page:'local-controls',selector:'#default-submit',title:'提交报名',rule_ids:['SUBMIT'],state_ids:['default']},
+    {id:'INT-FAILURE',page:'local-controls',selector:'#failed-feedback',title:'失败反馈',rule_ids:['FAILURE'],state_ids:['failed']}
+  ]
+}};

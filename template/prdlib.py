@@ -7,6 +7,14 @@ import diagramlib
 # These are optional reading groups, not mandatory sections for every feature.
 RULE_CATEGORIES = {'entry':'入口与前提','fields':'数据与字段','display':'内容与展示','behavior':'操作与结果','validation':'输入校验','permission':'权限规则','state':'状态规则','data':'数据口径','feedback':'操作反馈','recovery':'异常与恢复','content':'固定内容'}
 
+def rule_content_error(rule):
+    if 'title' in rule and (not isinstance(rule['title'],str) or not rule['title'].strip()):return '规则主题需为非空文本'
+    if 'clauses' in rule:
+        rows=rule['clauses']
+        if not isinstance(rows,list) or not rows or any(not isinstance(row,dict) or any(not isinstance(row.get(k),str) or not row[k].strip() for k in ('label','text')) for row in rows):return '规则说明项需为非空 label/text 列表'
+    return None
+
+
 def rule_table_error(table):
     if not isinstance(table,dict):return '规则表格必须为对象'
     columns,rows=table.get('columns'),table.get('rows')

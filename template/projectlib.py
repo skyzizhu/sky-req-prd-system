@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.15'
+TEMPLATE_VERSION = '2.0.0-preview.16'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -150,15 +150,11 @@ def spec_markdown(spec, outcomes=None):
             out += [f'## {module}']
             last_module = module
         out += [f"### {r['title']}", f"追踪编号：{r['id']}", r.get('description', ''),
-                f"来源：{'AI 推断' if r['source']=='ai-inferred' else '原始需求'} · 状态：{'已确认' if r['status']=='confirmed' else '待确认'} · 阻塞开发：{'是' if r.get('blocking') or any(c.get('status')=='pending' and c.get('blocking') for c in r.get('review',{}).get('checks',[])) else '否'}"]
-        if r['source'] == 'ai-inferred':
-            out += ['> 🤖 **AI 推断**：本条需求包含待评审的补全内容。']
-        if r['status'] == 'pending':
-            out += ['> ⚠️ **待确认**：请评审本条规则与验收口径。']
+                f"来源：{'AI 推断' if r['source']=='ai-inferred' else '原始需求'} · 状态：{'已确认' if r['status']=='confirmed' else '待确认'} · 阻塞开发：{'是' if r.get('blocking') or any(prdlib.check_blocks(c) for c in r.get('review',{}).get('checks',[])) else '否'}"]
         questions=[c for c in r.get('review',{}).get('checks',[]) if c.get('status')=='pending']
         if questions:
             out += ['#### 待明确的实现口径']
-            for check in questions:out += ['- '+check['question']+'（'+('影响实现/验收，需先明确' if check.get('blocking') else '不阻塞当前范围')+'）']
+            for check in questions:out += ['- '+check['question']+'（'+('影响实现/验收，需先明确' if prdlib.check_blocks(check) else '仅文案校对，不改变实现/验收')+'）']
         for name, value in r.get('rules', {}).items():
             out += [f'#### {name}', str(value)]
         rule_groups = {}
@@ -182,11 +178,11 @@ def spec_markdown(spec, outcomes=None):
                 out += [diagramlib.markdown(diagram,spec.get('diagrams'),4)]
         if r.get('boundary_cases'):
             def cell(value):return str(value).replace('|','｜').replace('\n',' ')
-            out += ['#### 边界与异常用例', '| 用例 | 输入/触发 | 预期 | 表达方式 |', '| --- | --- | --- | --- |']
+            out += ['#### 边界与异常用例', '| 用例 | 类型 | 验收场景 | 独有补充 |', '| --- | --- | --- | --- |']
             for case in r['boundary_cases']:
-                presentation=case.get('presentation') or {}
-                mode='原型画面' if presentation.get('mode')=='prototype' else '文字：'+presentation.get('reason','')
-                out.append('| '+' | '.join(cell(v) for v in (case['id'],case['input'],case['expected'],mode))+' |')
+                prdlib.case_scenario(case,r)  # Refuse broken references before exporting.
+                extra=case['input']+' → '+case['expected'] if 'input' in case else '—'
+                out.append('| '+' | '.join(cell(v) for v in (case['id'],{'boundary':'边界','exception':'异常','normal':'正常'}.get(case['kind'],case['kind']),'、'.join(case.get('acceptance_ids',[])),extra))+' |')
         out += ['#### 验收标准']
         for ac in r.get('acceptance', []):
             out += [f"- 前提：{ac['given']}\n  - 操作：{ac['when']}\n  - 预期：{ac['then']}\n  - 验收编号：{ac['id']}"]
@@ -549,10 +545,17 @@ def compile_project(root):
                         files[source] = prdlib.document(files[source])['markdown']
             labels = {'provided':'已提供（不代表已确认）','pending':'待补充','not_applicable':'不适用'}
             parts = ['# '+project['name']+' · '+v['id']+' 产品需求文档']
+            provided={}
             for section in sections:
-                parts += ['## '+section['title'], '章节状态：'+labels[section['status']]+'；'+section['reason'], section['markdown']]
+                parts += ['## '+section['title']]
+                if section['status']=='provided':provided.setdefault(section['reason'],[]).append(section['title'])
+                else:parts += ['章节状态：'+labels[section['status']]+'；'+section['reason']]
+                parts += [section['markdown']]
                 if section['id'] == 'appendix':
                     parts += ['- '+a['name']+'：'+a['description']+'；文件相对项目根路径：'+a['relative_path']+('（冻结后补充）' if a['late_addition'] else '') for a in attachments]
+            if provided:
+                parts += ['### 资料依据','“已提供”仅表示正文已整理；业务确认及阻塞信息见功能规则。']
+                parts += ['- '+'、'.join(titles)+'：'+reason for reason,titles in provided.items()]
             current['full_prd_markdown'] = '\n\n'.join(parts)
         if spec and v['status'] == 'planning':
             data = {'schema_version': 2, 'project': project['id'], 'projectName': project['name'], 'version': v['id'], 'build': {'template': TEMPLATE_VERSION, 'generated_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}, 'spec': spec,

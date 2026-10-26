@@ -2,6 +2,7 @@
 from collections import Counter
 from html.parser import HTMLParser
 import json
+import re
 import prdlib
 from pathlib import Path
 
@@ -23,6 +24,13 @@ def nonempty(value):
 
 def objects(value):
     return value if isinstance(value,list) else []
+
+
+def text_content(value):
+    if isinstance(value,str):return value
+    if isinstance(value,dict):return ' '.join(text_content(v) for v in value.values())
+    if isinstance(value,list):return ' '.join(text_content(v) for v in value)
+    return ''
 
 
 class Snapshot(HTMLParser):
@@ -79,8 +87,40 @@ def evaluate(spec, content=None):
             if not nonempty(item.get('reason')):issue('exclusion_reason_missing',path,'排除条目需说明理由')
         elif status=='pending':
             if not nonempty(item.get('question')) or type(item.get('blocking')) is not bool:issue('decision_invalid',path,'待决策输入需有具体问题和是否阻塞的说明')
-            else:issue('input_decision',path,item['question'],'error' if item['blocking'] else 'decision')
+            else:
+                if item.get('impact','implementation') not in ('implementation','acceptance','editorial'):issue('decision_impact',path,'待决策影响类型无效')
+                if item.get('impact','implementation')!='editorial' and not item['blocking']:issue('decision_nonblocking',path,'影响范围/实现的待决策输入不能标为不阻塞')
+                issue('input_decision',path,item['question'],'error' if item['blocking'] else 'decision')
         else:issue('input_disposition',path,'输入条目需标 included、excluded 或 pending')
+    obligations=[]
+    rule_text={rule['id']:text_content([rule.get(k) for k in ('statement','clauses','table')]) for req in reqs.values() for rule in objects(req.get('rule_details')) if isinstance(rule,dict) and nonempty(rule.get('id'))}
+    for item in objects(inputs):
+        if not isinstance(item,dict) or item.get('disposition')!='included':continue
+        constraints=item.get('constraints')
+        if not isinstance(constraints,list) or not constraints:
+            issue('input_constraints_missing',item.get('id','input'),'需逐项登记输入中的独立约束及规则去向');continue
+        seen=set();constrained_rules=set()
+        allowed={rule['id'] for rid in objects(item.get('requirement_ids')) for rule in objects(reqs.get(rid,{}).get('rule_details')) if isinstance(rule,dict) and nonempty(rule.get('id'))}
+        for constraint in constraints:
+            if not isinstance(constraint,dict) or not nonempty(constraint.get('id')) or not nonempty(constraint.get('quote')):
+                issue('input_constraint_invalid',item['id'],'约束需有稳定编号及输入原文片段');continue
+            path=item['id']+'/'+constraint['id']
+            if constraint['id'] in seen:issue('input_constraint_invalid',path,'输入约束编号重复')
+            seen.add(constraint['id'])
+            bound=refs(constraint.get('rule_ids'),allowed,path,'输入规则');constrained_rules.update(bound)
+            literals=constraint.get('literals',[])
+            if not isinstance(literals,list) or any(not nonempty(v) for v in literals):
+                issue('input_literal_invalid',path,'关键字面值需为非空文本数组');literals=[]
+            normalize=lambda text:''.join(text.split())
+            prose=normalize(' '.join(rule_text.get(k,'') for k in bound))
+            for value in literals:
+                token=normalize(value);pattern=(r'(?<!\d)' if token[0].isdigit() else '')+re.escape(token)+(r'(?!\d)' if token[-1].isdigit() else '')
+                if not re.search(pattern,normalize(constraint['quote'])):issue('input_literal_invalid',path,'关键值不在所引用的输入片段中：'+value)
+                elif not re.search(pattern,prose):issue('input_literal_missing',path,'关联规则遗漏输入关键值：'+value)
+            obligations.append(dict(id=constraint['id'],input=item['id'],quote=constraint['quote'],rule_ids=bound,literals=literals))
+        for rid in objects(item.get('requirement_ids')):
+            owned={r.get('id') for r in objects(reqs.get(rid,{}).get('rule_details')) if isinstance(r,dict)}
+            if not owned.intersection(constrained_rules):issue('input_constraint_uncovered',item['id']+'/'+rid,'该功能没有独立输入约束的规则去向')
     for rid in reqs:
         if rid not in included:issue('requirement_without_input',rid,'功能未关联到输入方案条目；补充功能需有明确来源，不自动扩大范围')
     pages={p['id']:p for p in objects(spec.get('pages')) if isinstance(p,dict) and nonempty(p.get('id'))}
@@ -114,10 +154,12 @@ def evaluate(spec, content=None):
         issue('dom_not_checked','prototype','未提供原型源目录，本次只检查声明关系，未核对实际 HTML','warning')
     for pid,page in pages.items():
         review=page.get('state_review')
-        if review is None:continue
+        if review is None:
+            if has_prototype:issue('state_review_missing',pid,'原型交付需登记页面状态与局部变化核对')
+            continue
         if not isinstance(review,list) or not review:
             issue('state_review_invalid',pid,'页面状态核对需为非空数组');continue
-        dimensions=set()
+        dimensions=set();reviewed_states=set()
         for item in review:
             if not isinstance(item,dict) or not nonempty(item.get('dimension')):
                 issue('state_review_invalid',pid,'状态核对需明确维度');continue
@@ -129,6 +171,7 @@ def evaluate(spec, content=None):
                 ids=item.get('state_ids')
                 if not isinstance(ids,list) or not ids or any(not isinstance(sid,str) or (pid,sid) not in states for sid in ids):
                     issue('state_review_invalid',path,'需关联本页面有效的页面状态')
+                else:reviewed_states.update(ids)
             elif status=='local':
                 selectors=item.get('selectors');parser=dom.get(pid)
                 if not nonempty(item.get('reason')) or not isinstance(selectors,list) or not selectors or any(not isinstance(s,str) or not s.startswith('#') for s in selectors):
@@ -138,6 +181,9 @@ def evaluate(spec, content=None):
             elif status=='not_applicable':
                 if not nonempty(item.get('reason')):issue('state_review_invalid',path,'不适用状态需有本次范围理由')
             else:issue('state_review_invalid',path,'需区分页面状态、局部变化或不适用')
+        if has_prototype:
+            missing={sid for page_id,sid in states if page_id==pid}-reviewed_states
+            if missing:issue('state_review_uncovered',pid,'页面状态未纳入核对：'+'、'.join(sorted(missing)))
     interaction_items=objects(spec.get('interactions'))
     rule_owners={}
     for rid,req in reqs.items():
@@ -211,6 +257,7 @@ def evaluate(spec, content=None):
             coverage.append(dict(requirement=rid,feature=req.get('title',rid),rule=rule_id,mode=mode,targets=targets,acceptance_ids=ac_refs))
         for ac_id,ac in acceptance.items():
             if any(not nonempty(ac.get(k)) for k in ('given','when','then')):issue('acceptance_incomplete',f'{rid}/{ac_id}','验收需有前置、操作和可观察预期')
+            if 'kind' in ac and ac['kind'] not in ('boundary','exception','normal'):issue('acceptance_kind',f'{rid}/{ac_id}','验收场景类型无效')
             if ac_id not in used_ac:issue('acceptance_orphan',f'{rid}/{ac_id}','验收未关联到任何规则')
         cases={};raw_cases=req.get('boundary_cases',[])
         if not isinstance(raw_cases,list):issue('cases_invalid',rid,'边界与异常用例需为列表')
@@ -219,14 +266,21 @@ def evaluate(spec, content=None):
             path=f'{rid}/{case["id"]}';case_total+=1
             if case['id'] in cases:issue('case_duplicate',path,'用例编号重复')
             cases[case['id']]=case
-            if case.get('kind') not in ('boundary','exception','normal') or not nonempty(case.get('input')) or not nonempty(case.get('expected')):issue('case_incomplete',path,'用例需说明类型、具体输入和预期结果')
+            if case.get('kind') not in ('boundary','exception','normal'):issue('case_incomplete',path,'用例类型无效')
+            try:scenario=prdlib.case_scenario(case,req)
+            except ValueError as error:
+                issue('case_incomplete',path,str(error));scenario=case
             case_rules=refs(case.get('rule_ids'),rules,path,'用例规则')
             case_ac=refs(case.get('acceptance_ids'),acceptance,path,'用例验收',required=scope.get('acceptance',True))
             supported={ac_id for rule_id in case_rules for ac_id in objects(rules[rule_id].get('acceptance_ids'))}
             if any(ac_id not in supported for ac_id in case_ac):issue('case_acceptance_mismatch',path,'用例验收不属于关联规则')
+            for ac_id in case_ac:
+                ac_kind=acceptance[ac_id].get('kind')
+                if 'input' not in case and ac_kind is None:issue('case_acceptance_kind',path,'引用场景需明确验收的 kind，避免空态关联到失败重试')
+                elif ac_kind is not None and ac_kind!=case.get('kind'):issue('case_acceptance_kind',path,'用例类型与验收场景不一致')
             view=case.get('presentation')
             mode,targets=presentation(view,path,[rid],case_rules if isinstance(view,dict) and view.get('mode')=='prototype' else [])
-            case_rows.append(dict(requirement=rid,feature=req.get('title',rid),id=case['id'],kind=case.get('kind'),input=case.get('input',''),expected=case.get('expected',''),mode=mode,targets=targets,reason=view.get('reason','') if isinstance(view,dict) else ''))
+            case_rows.append(dict(requirement=rid,feature=req.get('title',rid),id=case['id'],kind=case.get('kind'),input=scenario.get('input',''),expected=scenario.get('expected',''),mode=mode,targets=targets,reason=view.get('reason','') if isinstance(view,dict) else ''))
         review=req.get('review',{});types=review.get('types') if isinstance(review,dict) else None
         if not isinstance(types,list) or not types or any(not isinstance(t,str) or t not in PROFILES for t in types):issue('feature_type_missing',rid,'需选择适用功能类型：'+', '.join(PROFILES));types=[]
         dimensions={};case_dimensions={}
@@ -250,6 +304,9 @@ def evaluate(spec, content=None):
             elif status=='not_applicable':
                 if not nonempty(check.get('reason')):issue('not_applicable_reason',path,'不适用需说明与本次范围有关的理由')
             elif status=='pending':
+                impact=check.get('impact','implementation')
+                if impact not in ('implementation','acceptance','editorial'):issue('decision_impact',path,'待决策影响需为 implementation、acceptance 或 editorial')
+                if impact in ('implementation','acceptance') and check.get('blocking') is not True:issue('decision_nonblocking',path,'影响实现或验收的未决问题不能标为不阻塞')
                 if not nonempty(check.get('question')) or type(check.get('blocking')) is not bool:issue('decision_invalid',path,'待确认检查项需说明具体问题与是否阻塞')
                 else:issue('feature_decision',path,check['question'],'error' if check['blocking'] else 'decision')
             else:issue('check_missing',path,'未核对适用检查项：'+label)
@@ -272,7 +329,7 @@ def evaluate(spec, content=None):
     return {'status':'incomplete' if counts['error'] else 'review_required' if counts['decision'] else 'checks_passed',
             'counts':{'errors':counts['error'],'decisions':counts['decision'],'warnings':counts['warning'],'inputs':len(input_ids),'requirements':len(reqs),'rules':len(coverage),'states':len(states),'elements':sum(map(len,inventories.values())),'cases':case_total,'diagrams':len(objects(spec.get('diagrams')))},
             'diagrams':[{k:d.get(k,'') for k in ('id','title','kind','level','module','requirement_id','parent_id','parent_node')} for d in objects(spec.get('diagrams')) if isinstance(d,dict)],
-            'issues':issues,'coverage':coverage,'checks':check_rows,'cases':case_rows,
+            'input_constraints':obligations,'issues':issues,'coverage':coverage,'checks':check_rows,'cases':case_rows,
             'limits':'仅验证已登记方案与证据的覆盖、适用性及关联。covered 表示已有说明，不表示业务已确认；无法发现从输入登记和规则中同时遗漏的业务事实，不代替语义复核、真实产品测试或开工决策。'}
 
 
@@ -289,6 +346,8 @@ def markdown(report):
     out += ['| '+' | '.join(cell(v) for v in (r['feature'],r['label'],r['status'],r['question'] or r['reason']))+' |' for r in report['checks']]
     out += ['','## 边界与状态表达','','| 用例 | 输入 | 预期 | 表达 | 文字表达理由 |','| --- | --- | --- | --- | --- |']
     out += ['| '+' | '.join(cell(r[k]) for k in ('id','input','expected','mode','reason'))+' |' for r in report['cases']]
+    out += ['', '## 输入独立约束追溯', '', '| 约束 | 原文片段 | 规则 | 关键字面值 |', '| --- | --- | --- | --- |']
+    out += ['| '+' | '.join(cell(v) for v in (c['id'],c['quote'],'、'.join(c['rule_ids']),'、'.join(c['literals'])))+' |' for c in report.get('input_constraints',[])]
     out += ['', '## 流程与状态图', '', '| 图 | 类型/层级 | 模块 | 上层图/节点 |', '| --- | --- | --- | --- |']
     out += ['| '+' | '.join(cell(v) for v in (d['title'],d['kind']+'/'+d['level'],d['module'],d['parent_id']+'/'+d['parent_node'] if d['parent_id'] else '模块全貌'))+' |' for d in report.get('diagrams',[])]
     return '\n\n'.join(out[:5])+'\n\n'+'\n'.join(out[5:])+'\n'

@@ -131,3 +131,7 @@ body.sr-host { margin: 0; background: #f5f5f5; color: #252525; font: 13px/1.5 -a
   .sr-rules { padding: 12px; }
   .sr-clauses>div { grid-template-columns: 72px minmax(0,1fr); }
 }
+
+.sr-focus-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sr-related-controls { border-top: 1px solid #e2e8f0; margin-top: 10px; padding-top: 8px; font-size: 12px; }
+.sr-related-controls summary { cursor: pointer; margin-bottom: 6px; color: #526078; }

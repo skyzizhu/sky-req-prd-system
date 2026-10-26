@@ -143,13 +143,10 @@ PS.mdToHtml = function (md) {
   return out.join("\n");
 };
 
-// Mermaid 渲染：CDN 脚本加载慢时最多等待 2.5s，超时降级为源码展示
+// 本地 Mermaid 在 main.js 初始化前按 defer 顺序加载，无网络或轮询依赖。
 PS.renderMermaid = async function (el, code) {
-  var waited = 0;
-  while (!window.mermaid && waited < 2500) {
-    await new Promise(function (r) { setTimeout(r, 100); });
-    waited += 100;
-  }
+  el.dataset.diagramStatus = 'rendering';
+  var failure = '本地图形库未加载，请检查交付目录中的 js/vendor 资源。';
   if (window.mermaid) {
     try {
       if (!PS.__mmdInit) {
@@ -163,13 +160,17 @@ PS.renderMermaid = async function (el, code) {
       var svg=el.querySelector('svg'),vb=svg.viewBox.baseVal,original={width:vb.width || Number(svg.getAttribute('width')) || 600,height:vb.height || Number(svg.getAttribute('height')) || 400},scale=1;
       function resize(){svg.style.width=(original.width*scale)+'px';svg.style.height=(original.height*scale)+'px';svg.style.maxWidth='none';el.querySelector('[data-zoom="reset"]').textContent=Math.round(scale*100)+'%';el.querySelector('[data-zoom="out"]').disabled=scale<=0.5;el.querySelector('[data-zoom="in"]').disabled=scale>=2;}
       el.querySelector('.diagram-tools').onclick=function(e){var b=e.target.closest('[data-zoom]');if(!b)return;scale=b.dataset.zoom==='reset'?1:Math.max(0.5,Math.min(2,scale+(b.dataset.zoom==='in'?0.25:-0.25)));resize();};resize();
+      el.dataset.diagramStatus = 'rendered';
       return;
     } catch (e) {
-      // 渲染失败则降级
+      var failed = document.getElementById(id);
+      if (failed) failed.remove();
+      failure = '图形渲染失败，请核对本图语法和数据；下方保留完整图源。';
     }
   }
+  el.dataset.diagramStatus = 'error';
   el.innerHTML =
-    '<div class="callout warn">⚠️ Mermaid 未能渲染（CDN 不可达或语法错误），已降级为源码展示。</div>' +
+    '<div class="callout warn">' + failure + '</div>' +
     '<pre class="code"><code>' + PS.escapeHtml(code) + "</code></pre>";
 };
 

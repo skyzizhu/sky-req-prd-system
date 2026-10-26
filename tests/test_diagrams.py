@@ -17,6 +17,26 @@ class DiagramTests(unittest.TestCase):
         _,self.spec=example_spec()
         self.diagrams=self.spec['diagrams']
     def codes(self):return {i['code'] for i in evaluate(self.spec) if i['severity']=='error'}
+    def test_removed_retry_branch_is_rejected_even_when_graph_remains_connected(self):
+        state=self.diagrams[2]
+        state['edges']=[e for e in state['edges'] if e['id']!='E08']
+        self.assertIn('diagram_path_edge',self.codes())
+        self.assertNotIn('diagram_unreachable',self.codes())
+
+    def test_scene_path_cannot_jump_between_disconnected_steps(self):
+        self.diagrams[2]['path_reviews'][0]['edge_ids']=['E01','E06']
+        self.assertIn('diagram_path_disconnected',self.codes())
+
+    def test_wrong_scene_cannot_be_substituted_for_failure(self):
+        next(p for p in self.diagrams[2]['path_reviews'] if p['id']=='PATH-INVALID')['acceptance_ids']=['AC-ORDER-SUCCESS']
+        self.assertIn('diagram_path_acceptance',self.codes())
+
+    def test_duplicate_edge_ids_and_unreviewed_paths_stay_explicit(self):
+        self.diagrams[2]['edges'][1]['id']='E01'
+        self.assertIn('diagram_edge_id',self.codes())
+        self.diagrams[0].pop('path_reviews')
+        self.assertIn('diagram_paths_unreviewed',{i['code'] for i in evaluate(self.spec) if i['severity']=='decision'})
+
     def test_complete_hierarchy_is_read_only(self):
         before=copy.deepcopy(self.spec)
         self.assertEqual(self.codes(),set());self.assertEqual(self.spec,before)

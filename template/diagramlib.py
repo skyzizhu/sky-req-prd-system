@@ -57,6 +57,47 @@ def markdown(diagram, all_diagrams=None, heading=4):
     return '\n\n'.join(out)
 
 
+def path_issues(diagram, requirements, require_acceptance=True):
+    """Check declared scenario paths, not the completeness or meaning of business branches."""
+    issues=[];did=diagram['id'];edges={}
+    def issue(code,path,message,severity='error'):
+        issues.append(dict(code=code,path=path,message=message,severity=severity))
+    for edge in items(diagram.get('edges')):
+        if not isinstance(edge,dict) or 'id' not in edge:continue
+        eid=edge['id']
+        if not text(eid):issue('diagram_edge_id',did,'连线ID须为非空文本');continue
+        if eid in edges:issue('diagram_edge_id',did+'/'+eid,'连线ID重复')
+        edges[eid]=edge
+    paths=diagram.get('path_reviews')
+    if paths is None:
+        issue('diagram_paths_unreviewed',did,'未登记由方案/验收驱动的场景路径，不能据连通性声称分支完整','decision')
+        return issues
+    if not isinstance(paths,list) or not paths:
+        issue('diagram_path_invalid',did,'已画图需登记非空场景路径核对');return issues
+    module=[r for r in requirements.values() if (r.get('module') or '功能需求')==diagram.get('module')]
+    acceptance={a['id'] for r in module for a in items(r.get('acceptance')) if isinstance(a,dict) and text(a.get('id'))}
+    rule_acceptance={rule['id']:set(items(rule.get('acceptance_ids'))) for r in module for rule in items(r.get('rule_details')) if isinstance(rule,dict) and text(rule.get('id'))}
+    seen=set()
+    for path in paths:
+        if not isinstance(path,dict) or not text(path.get('id')):
+            issue('diagram_path_invalid',did,'路径核对需有稳定ID');continue
+        where=did+'/'+path['id']
+        if path['id'] in seen:issue('diagram_path_invalid',where,'路径ID重复')
+        seen.add(path['id'])
+        ids=path.get('edge_ids');acs=path.get('acceptance_ids',[])
+        if not isinstance(ids,list) or not ids or any(not isinstance(e,str) or e not in edges for e in ids):
+            issue('diagram_path_edge',where,'路径引用的连线已遗漏或无稳定ID');continue
+        chain=[edges[e] for e in ids]
+        if any(a.get('to')!=b.get('from') for a,b in zip(chain,chain[1:])):
+            issue('diagram_path_disconnected',where,'场景路径前后不连续，不能把互不连接的分支当作一个结果')
+        if not isinstance(acs,list) or (require_acceptance and not acs) or any(not isinstance(a,str) or a not in acceptance for a in acs):
+            issue('diagram_path_acceptance',where,'需引用同模块有效的验收场景；不复制GWT正文');continue
+        supported={a for edge in chain for rule in items(edge.get('rule_ids')) for a in rule_acceptance.get(rule,set())}
+        if any(a not in supported for a in acs):
+            issue('diagram_path_acceptance',where,'路径连线所关联规则未覆盖引用验收，需核对是否绑错场景')
+    return issues
+
+
 def evaluate(spec, has_prototype=True):
     issues=[]
     def issue(code,path,message,severity='error'):issues.append(dict(code=code,path=path,message=message,severity=severity))
@@ -71,6 +112,7 @@ def evaluate(spec, has_prototype=True):
     pages={p['id']:p for p in items(spec.get('pages')) if isinstance(p,dict) and text(p.get('id'))}
     all_rules={rule.get('id') for req in reqs.values() for rule in items(req.get('rule_details')) if isinstance(rule,dict) and text(rule.get('id'))}
     for did,d in diagrams.items():
+        issues.extend(path_issues(d,reqs,(spec.get('quality') or {}).get('scope',{}).get('acceptance',True)))
         if not text(d.get('title')) or d.get('kind') not in ('flow','state') or d.get('level') not in ('module','detail'):issue('diagram_metadata',did,'图需有标题、flow/state 类型和 module/detail 层级')
         if d.get('module') not in modules:issue('diagram_module',did,'图未关联本次业务模块')
         if d.get('source') not in ('origin','ai-inferred') or d.get('status') not in ('confirmed','pending'):issue('diagram_origin',did,'图需注明依据与确认状态')

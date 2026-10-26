@@ -48,7 +48,7 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
   }
   function caseView(c) {
     var view=c.presentation || {};
-    if(view.mode!=='prototype')return esc('文字：'+(view.reason || ''));
+    if(view.mode!=='prototype')return '';
     return (view.targets || []).map(function(t){
       var pg=pages.find(function(p){return p.id===t.page;}), state=pg && (pg.states || []).find(function(s){return s.id===t.state;});
       var mod=(data.versions[vid].manifest.modules || []).find(function(m){return (m.pages || []).some(function(p){return p.id===t.page && p.type==='prototype';});});
@@ -69,19 +69,23 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     var lastModule=null;
     container.querySelector('#prd-sections').innerHTML=selected.map(function(r){
       var module=r.module || '功能需求';var groupTitle=module!==lastModule?'<h2 class="prd-module">'+esc(module)+'</h2>':'';lastModule=module;
-      var html=groupTitle+'<article class="prd-requirement" id="prd-'+esc(r.id)+'"><header><h3 class="prd-feature-title">'+esc(r.title)+'</h3><p class="prd-meta">'+esc(r.id+' · '+meta(r)+(r.blocking || (r.review && r.review.checks || []).some(function(c){return c.status==='pending' && c.blocking;})?' · 阻塞开发':''))+'</p><button data-edit="'+esc(r.id)+'">交给 Agent 修改此需求</button></header>'+p(r.description);
+      var html=groupTitle+'<article class="prd-requirement" id="prd-'+esc(r.id)+'"><header><h3 class="prd-feature-title">'+esc(r.title)+'</h3><p class="prd-meta">'+esc(r.id+' · '+meta(r)+(r.blocking || (r.review && r.review.checks || []).some(function(c){return c.status==='pending' && (c.blocking || c.impact!=='editorial');})?' · 阻塞开发':''))+'</p><button data-edit="'+esc(r.id)+'">交给 Agent 修改此需求</button></header>'+p(r.description);
       var questions=(r.review && r.review.checks || []).filter(function(c){return c.status==='pending';});
-      if(questions.length)html+='<section class="prd-rule"><h4>待明确的实现口径</h4><ul>'+questions.map(function(c){return '<li>'+esc(c.question)+'<p class="prd-meta">'+esc(c.blocking?'影响实现/验收，需先明确':'不阻塞当前范围')+'</p></li>';}).join('')+'</ul></section>';
+      if(questions.length)html+='<section class="prd-rule"><h4>待明确的实现口径</h4><ul>'+questions.map(function(c){return '<li>'+esc(c.question)+'<p class="prd-meta">'+esc(c.blocking || c.impact!=='editorial'?'影响实现/验收，需先明确':'仅文案校对，不改变实现/验收')+'</p></li>';}).join('')+'</ul></section>';
       var ruleKeys=Object.keys(r.rules || {});
       if(ruleKeys.length){html+='<h3>业务规则</h3>';ruleKeys.forEach(function(k){html+='<section class="prd-rule"><h4>'+esc(k)+'</h4>'+p(r.rules[k])+'</section>';});}
       var groups={};(r.rule_details || []).forEach(function(rule){var key=rule.category || '业务规则';(groups[key] || (groups[key]=[])).push(rule);});
       Object.keys(groups).sort(function(a,b){var keys=Object.keys(category);return (keys.includes(a)?keys.indexOf(a):keys.length)-(keys.includes(b)?keys.indexOf(b):keys.length);}).forEach(function(key){html+='<section class="prd-rule prd-rule-group"><h4>'+esc(category[key] || key)+'</h4><div class="prd-rule-items">'+groups[key].map(ruleItem).join('')+'</div></section>';});
       (spec.diagrams || []).filter(function(d){return d.level==='detail' && d.requirement_id===r.id;}).forEach(function(d){html+='<section class="prd-diagram" id="diagram-'+esc(d.id)+'">'+(d.parent_id?'<p><a href="'+parentDiagramLink(d)+'">查看上层流程</a></p>':'')+window.PS.mdToHtml((data.versions[vid].diagrams || {})[d.id] || '')+'</section>';});
       if((r.boundary_cases || []).length){
-        html+='<details class="prd-fold prd-boundaries"><summary>边界与异常用例（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="边界与异常用例表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>输入 / 触发</th><th>预期结果</th><th>表达方式</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){return '<tr><td>'+esc(c.input)+'<br><small>'+esc(c.id)+'</small></td><td>'+esc(c.expected)+'</td><td>'+caseView(c)+'</td></tr>';}).join('')+'</tbody></table></div></details>';
+        html+='<details class="prd-fold prd-boundaries"><summary>边界与异常用例（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="边界与异常用例表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>用例 / 类型</th><th>独有补充</th><th>验收场景</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){
+          var links=(c.acceptance_ids || []).map(function(id){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(r.id)+'&amp;section=acceptance&amp;acceptance='+encodeURIComponent(id)+'">'+esc(id)+'</a>';}).join(' · ');
+          var extra='input' in c?esc(c.input)+'<br>'+esc(c.expected):'—';
+          return '<tr><td>'+esc(c.id)+'<br><small>'+esc({boundary:'边界',exception:'异常',normal:'正常'}[c.kind] || c.kind)+'</small></td><td>'+extra+'</td><td>'+links+(caseView(c)?'<br>'+caseView(c):'')+'</td></tr>';
+        }).join('')+'</tbody></table></div></details>';
       }
       html+='<details class="prd-fold prd-ac-fold" id="acceptance-'+esc(r.id)+'"><summary>验收标准（'+(r.acceptance || []).length+'）</summary><ol class="prd-acceptance">';
-      (r.acceptance || []).forEach(function(a){html+='<li>'+p('前提：'+a.given)+p('操作：'+a.when)+p('预期：'+a.then)+acBadge(a.id)+'<small>'+esc(a.id)+'</small></li>';});
+      (r.acceptance || []).forEach(function(a){html+='<li data-acceptance="'+esc(a.id)+'">'+p('前提：'+a.given)+p('操作：'+a.when)+p('预期：'+a.then)+acBadge(a.id)+'<small>'+esc(a.id)+'</small></li>';});
       html+='</ol></details><details class="prd-fold"><summary>关联原型</summary><p>';
       pages.filter(function(pg){return pg.requirement_ids.includes(r.id);}).forEach(function(pg){
         var mod=data.versions[vid].manifest.modules.find(function(m){return m.pages.some(function(p){return p.id===pg.id && p.type==='prototype';});});
@@ -92,8 +96,15 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
       if(configured.length){html+='<details class="prd-fold"><summary>控件属性补充</summary>';configured.forEach(function(i){html+='<p>'+esc(i.description+' · '+i.id)+'</p>';Object.keys(i.properties).forEach(function(k){html+=p(k+'：'+JSON.stringify(i.properties[k]));});});html+='</details>';}
       return html+'</article>';
     }).join('') || '<p>没有匹配需求，请调整筛选。编号不存在时不会自动定位到其他需求。</p>';
-    window.PS.renderDiagrams(container).then(function(){var wanted=new URLSearchParams(query).get('diagram');if(wanted){var target=document.getElementById('diagram-'+wanted);if(target && container.contains(target))target.scrollIntoView({block:'start'});}else if(new URLSearchParams(query).get('section')==='acceptance'){var ac=container.querySelector('.prd-ac-fold');if(ac)ac.scrollIntoView({block:'start',behavior:'instant'});}});
-    if(new URLSearchParams(query).get('section')==='acceptance'){container.querySelectorAll('.prd-ac-fold').forEach(function(el){el.open=true;});}
+    var targetAcceptance=new URLSearchParams(query).get('acceptance');
+    var acceptanceTarget=targetAcceptance?Array.from(container.querySelectorAll('[data-acceptance]')).find(function(el){return el.dataset.acceptance===targetAcceptance;}):null;
+    if(acceptanceTarget){acceptanceTarget.closest('details').open=true;requestAnimationFrame(function(){if(acceptanceTarget.isConnected)acceptanceTarget.scrollIntoView({block:'start'});});}
+    else if(!targetAcceptance && new URLSearchParams(query).get('section')==='acceptance')container.querySelectorAll('.prd-ac-fold').forEach(function(el){el.open=true;});
+    window.PS.renderDiagrams(container).then(function(){
+      var wanted=new URLSearchParams(query).get('diagram');
+      var target=wanted?document.getElementById('diagram-'+wanted):acceptanceTarget || (!targetAcceptance && new URLSearchParams(query).get('section')==='acceptance'?container.querySelector('.prd-ac-fold'):null);
+      if(target && container.contains(target))target.scrollIntoView({block:'start'});
+    });
     watchSpy(selected);
     setActive((selected[0] || {}).id);
   }

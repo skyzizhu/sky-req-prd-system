@@ -28,7 +28,7 @@
       var pending = !!openChecks.length || r.status !== 'confirmed' || (r.rule_details || []).some(function (rule) { return rule.status !== 'confirmed'; });
       var delivery = r.delivery || {};
       return {id:id, title:r.title, change:removed ? 'removed' : !before[id] ? 'added' : stable(before[id]) !== stable(r) ? 'modified' : stable(interactions) !== stable(oldInteractions) || stable(mappings) !== stable(oldMappings) || files.length ? 'review' : 'unchanged',
-        confirmation:pending ? 'pending' : 'confirmed', blocking:(!!r.blocking || openChecks.some(function(c){return c.blocking;})) && pending,
+        confirmation:pending ? 'pending' : 'confirmed', blocking:(!!r.blocking || openChecks.some(function(c){return c.blocking || c.impact!=='editorial';})) && pending,
         roles:Array.isArray(delivery.roles) ? delivery.roles : [], dependencies:Array.isArray(delivery.dependencies) ? delivery.dependencies : [],
         source:r.source || 'unknown', description:r.description || '', rules:r.rules || {}, rule_details:r.rule_details || [], acceptance:r.acceptance || [], interactions:interactions, links:links};
     });

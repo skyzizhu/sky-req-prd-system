@@ -142,7 +142,7 @@ class StaticReaderTests(unittest.TestCase):
         self.assertIn('<textarea aria-label="备注"',text)
         self.assertEqual(validate(self.root)[0],[])
         from qualitylib import evaluate
-        self.assertEqual(evaluate(read(self.file),self.file.parent)['counts']['errors'],0)
+        self.assertEqual({i['code'] for i in evaluate(read(self.file),self.file.parent)['issues'] if i['severity']=='error'},{'feature_decision'})
 
     def test_required_element_cannot_point_to_another_state(self):
         spec=read(self.file)

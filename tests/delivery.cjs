@@ -15,3 +15,10 @@ test('交接阅读稿只引用规则和验收，机器数据仍完整，移除�
 test('仅有功能物料时引用实际入口',()=>{const d=fixture();delete d.versions.v1.prd_sections;assert.equal(delivery.model(d,'v1').tasks.find(t=>t.id==='C').links[0].route,'#/v/v1/prd/spec?requirement=C');});
 
 test('实现问题标阻塞时交付筛选不能被父需求确认掩盖',()=>{const d=fixture();d.versions.v1.spec.requirements[0].review={checks:[{status:'pending',blocking:true,question:'处理后是否可查阅？'}]};const p=delivery.model(d,'v1');assert.equal(delivery.filter(p,'A','all','blocking','all')[0].id,'A');});
+
+test('implementation question remains blocking even if its flag is incorrectly false',()=>{
+ const d=fixture();d.versions.v1.spec.requirements[0].review={checks:[{status:'pending',impact:'implementation',blocking:false,question:'哪些角色可提交？'}]};
+ assert.equal(delivery.filter(delivery.model(d,'v1'),'A','all','blocking','all')[0].id,'A');
+ d.versions.v1.spec.requirements[0].review.checks[0].impact='editorial';
+ assert.equal(delivery.filter(delivery.model(d,'v1'),'A','all','blocking','all').length,0);
+});

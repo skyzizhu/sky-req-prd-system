@@ -40,7 +40,7 @@ assert.equal(prepare.status,0,prepare.stderr);
     assert.equal(await page.locator('#outcome-results script').count(),0);
     await page.screenshot({path:process.argv[3],fullPage:true});
     await page.getByRole('link',{name:'v1.1',exact:true}).click();
-    await page.locator('#outcome-incoming').waitFor();
+    await page.locator('#outcome-incoming').filter({hasText:'复核重试规则'}).waitFor();
     assert.match(await page.locator('#outcome-incoming').innerText(),/复核重试规则/);
     await page.getByText('填写结果草稿（导出后正式入库）',{exact:true}).click();
     let draft=JSON.parse(await page.locator('#outcome-draft').inputValue());

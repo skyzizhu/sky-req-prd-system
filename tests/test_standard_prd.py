@@ -46,6 +46,14 @@ class StandardPRDTests(unittest.TestCase):
             self.assertIn(word, data)
         self.assertIn('prd/tracking.md', state(self.root,'v1.1')['documents'])
 
+    def test_background_alias_precedes_generated_feature_list(self):
+        body='### 本次范围\n只做创建。\n\n### 背景、目标与决策\n已有背景，不编造。\n'
+        result=prdlib.scope_with_features(body,'### 本版功能清单\n创建订单')
+        self.assertTrue(result.startswith('### 背景、目标与决策'))
+        self.assertLess(result.index('已有背景'),result.index('本版功能清单'))
+        self.assertEqual(result.count('已有背景'),1)
+        self.assertIn('只做创建',result)
+
     def test_status_and_single_function_source(self):
         with self.assertRaises(ValueError): prdlib.document('<!-- prd-status: not_applicable -->\n正文')
         with self.assertRaises(ValueError): prdlib.document('<!-- prd-status: provided -->\n# 标题')

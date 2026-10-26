@@ -227,7 +227,7 @@ def main():
         from editlib import revision
         fingerprint = revision(root)
         specfile = vr / 'content/spec.json'
-        if specfile.exists() and any(r.get('blocking') and (r.get('status') == 'pending' or any(x.get('status') == 'pending' for x in r.get('rule_details', []))) for r in read(specfile)['requirements']):
+        if specfile.exists() and any(prdlib.requirement_blocks(r) for r in read(specfile)['requirements']):
             p.error('阻塞需求或规则待确认，不能交接')
         # Stage the complete operation before touching live metadata or history.
         import tempfile
@@ -263,7 +263,7 @@ def main():
             p.error('该版本已冻结')
         compile_project(root)
         spec = vr / 'content/spec.json'
-        if spec.exists() and any(r.get('blocking') and r['status'] == 'pending' for r in read(spec)['requirements']):
+        if spec.exists() and any(prdlib.requirement_blocks(r) for r in read(spec)['requirements']):
             p.error('存在阻塞开发的待确认需求')
         write(vr / '.snapshot.json', hashes(vr))
         version['status'] = 'frozen'
@@ -296,6 +296,8 @@ def main():
             old = read(vr / '.requirements-baseline.json') if (vr / '.requirements-baseline.json').exists() else {}
             new = {r['id']: r for r in current['requirements']}
             altered = sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k))
+            from review_scope import affected
+            result['review_scope_since_checkpoint'] = affected(current, altered)
             result['changed_since_checkpoint'] = altered
             result['rule_changes_since_checkpoint'] = diff(old, new)
             result['review_acceptance_since_checkpoint'] = sorted({a['id'] for k in altered for r in (old.get(k, {}), new.get(k, {})) for a in r.get('acceptance', [])})
@@ -310,6 +312,7 @@ def main():
                 current = read(vr / 'content/spec.json')
                 new = {r['id']: r for r in current['requirements']}
                 altered = sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k))
+                result['review_scope_since_base'] = affected(current, altered)
                 result['changed_requirements'] = altered
                 result['review_pages'] = [p['id'] for p in current['pages'] if set(p['requirement_ids']) & set(altered)]
                 result['review_interactions'] = [i['id'] for i in current['interactions'] if set(i['requirement_ids']) & set(altered)]

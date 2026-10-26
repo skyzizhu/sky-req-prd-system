@@ -1,0 +1,9 @@
+{
+  "name": "mermaid",
+  "version": "11.17.2",
+  "file": "mermaid-11.17.2.min.js",
+  "source": "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js",
+  "license": "MIT",
+  "license_file": "mermaid-LICENSE.txt",
+  "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+}

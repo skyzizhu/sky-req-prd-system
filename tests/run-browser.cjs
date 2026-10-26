@@ -6,6 +6,7 @@ const work=fs.mkdtempSync(path.join(os.tmpdir(),'prd-browser-'));
 const suites=[
   ['static-reader','scripts/create_static_demo.py'],
   ['local-controls',null],
+  ['diagrams','scripts/create_static_demo.py'],
   ['editor','tests/fixtures/versioned_project.py'],
   ['prd','tests/fixtures/versioned_project.py'],
   ['delivery','tests/fixtures/versioned_project.py'],
@@ -26,4 +27,4 @@ for(const [name,generator] of suites){
   }
 }
 if(failed){console.error('Failed-suite artifacts: '+work);process.exitCode=1;}
-else{fs.rmSync(work,{recursive:true,force:true});console.log('PASS all 8 browser suites (isolated projects cleaned)');}
+else{fs.rmSync(work,{recursive:true,force:true});console.log('PASS all 9 browser suites (isolated projects cleaned)');}

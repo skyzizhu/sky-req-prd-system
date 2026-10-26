@@ -10,3 +10,8 @@ test('compare deduplicates by ID and preserves applicable states',()=>{const res
 test('same text with distinct rule IDs is not merged',()=>{const result=model([{id:'FR',rule_details:[{id:'A',statement:'相同文本'},{id:'B',statement:'相同文本'}]}],[{id:'x',rule_ids:['A','B']}],states,'default',false);assert.equal(result.common.length,2);});
 test('selecting a control collects all its rules without duplicating shared rules',()=>{const result=model(reqs,[...controls,{id:'field',rule_ids:['FAIL'],state_ids:['failed']}],states,'failed',false);const selected=context.window.PSAnnotationSelection(result,'field');assert.equal(selected.focused.length,2);assert.equal(selected.other.length,0);assert.equal(new Set(selected.focused.map(e=>e.rule.id)).size,2);});
 test('other rules remain available and different-state rules stay excluded',()=>{const result=model(reqs,controls,states,'failed',false);const selected=context.window.PSAnnotationSelection(result,'error');assert.equal(selected.focused.map(e=>e.rule.id).join(','),'FAIL');assert.equal(selected.other.map(e=>e.rule.id).join(','),'COMMON');assert.equal(selected.other.some(e=>e.rule.id==='DONE'),false);});
+
+test('selected annotation preserves authored rule order rather than moving shared rules behind other states',()=>{
+ const result=model(reqs,[{id:'close',rule_ids:['COMMON','FAIL'],state_ids:['failed']},{id:'field',rule_ids:['COMMON'],state_ids:['default','failed']}],states,'failed',false);
+ assert.equal(context.window.PSAnnotationSelection(result,'close').focused.map(e=>e.rule.id).join(','),'COMMON,FAIL');
+});

@@ -1,8 +1,8 @@
 ---
 name: sky-req-prd-system
-description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成或更新产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
+description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成、更新或审查产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.15"
+  version: "2.0.0-preview.18"
 ---
 
 # 产品方案 → PRD 与多状态原型
@@ -17,13 +17,17 @@ metadata:
 - 可补齐必要执行细节，无依据的补充标 `ai-inferred/pending`，不编造权限、阈值或业务取舍。`source: origin/ai-inferred` 与 `status: confirmed/pending` 独立；生成、测试和交付都不替代业务确认。
 - 只生成用户指定的交付物，裁剪方式见 [nodes.md](references/nodes.md)；仅原型也保留规则依赖的最小 spec。
 
+## 审查与回归
+
+审查交付物、核对跨物料一致性或评测技能时，读取 [delivery-review.md](references/delivery-review.md)。统一使用 `scripts/review_delivery.py` 复用现有质量检查，独立保存有位置、证据和建议的报告；语义与浏览器检查未执行时明确未复核，不能用脚本通过代替。仅审查不自动修改物料。技能改动的固定场景输入与评测入口也见该文件；评测候选在临时目录生成，不覆盖既有案例。
+
 ## 编写 PRD
 
 读取 [standard-prd.md](references/standard-prd.md)、[functional-detail.md](references/functional-detail.md) 和 [delivery-quality.md](references/delivery-quality.md)。菜单、正文归属和跨物料引用见 [information-architecture.md](references/information-architecture.md)。
 
 - 使用标准九章；第一章先背景与目标，再本版功能清单，明确范围及既有能力影响。章节按适用性填写，未知项待确认，不以边界清单代替完整 PRD。
 - 按业务模块 → 功能 → 规则分类组织。规则简短但保留对象、条件、行为、结果及必要异常；复杂内容用分项、表格或实例。PRD 本身足以说明业务要求，不能依赖原型补全遗漏。
-- `spec.json` 的 `rule_details` 是规则唯一来源；GWT 在功能详情维护。共用规则只写一处，状态只写差异，原型、交接与导出读取或引用它，不再手写第二套正文。
+- `spec.json` 的 `rule_details` 是规则唯一来源；GWT 在功能详情维护，边界索引引用同一场景。共用规则只写一处，状态只写差异，原型、交接与导出读取或引用它，不再手写第二套正文。
 - 有流程才画流程图，有状态流转才画状态图，覆盖适用的正常、异常和恢复路径；无流程不虚构。涉及图时读 [process-diagrams.md](references/process-diagrams.md)，涉及业务抽象时读 [business-modeling.md](references/business-modeling.md)。实体与规则按需说明，状态机直接引用已有状态图。
 
 ## 生成原型
@@ -39,6 +43,7 @@ metadata:
 
 - 固定项目入口、稳定版本及页面 ID，只接受 V2 契约。修改前 impact 并检查手改，完成后 build、validate、checkpoint；不整体重生成已有物料，不覆盖冻结版本。
 - 正式编辑读 [editing.md](references/editing.md)，交接读 [developer-delivery.md](references/developer-delivery.md)，记录实际测试/上线结果读 [outcomes.md](references/outcomes.md)。原型校对与真实产品结果分开记录。
-- 按 [quality-contract.md](references/quality-contract.md) 登记输入 → 功能 → 规则 → 画面/文字 → 验收，执行内容语义复核。构建后运行 `scripts/validate.py <项目> --report <项目>/quality-report`，修复缺项；非阻塞待决策单列，评审稿不冒充开工就绪。
+- 按 [quality-contract.md](references/quality-contract.md) 登记输入 → 功能 → 规则 → 画面/文字 → 验收，执行输入独立约束、规则与验收分支的语义复核；关键实施问题未决时明确阻塞，不因能出稿而标为可开工。构建后运行 `scripts/validate.py <项目> --report <项目>/quality-report`，修复缺项；非阻塞待决策单列，评审稿不冒充开工就绪。
+- 含原型的生成/修改在validate后使用统一审查入口，检查控件属性及当前状态的规则绑定；命令、原始输入证据与未复核项处理见 [delivery-review.md](references/delivery-review.md)。不把引用存在或属性一致当作标注语义完整。
 - 实际检查独立页和站点 iframe 的默认规则、状态同步、编号定位、状态对照、控件操作、键盘和窄屏；结构检查不能证明内容完整或图意准确。未执行项如实说明。
 - 启动本机服务并确认入口 200，交付链接、绝对路径和当前页面深链接，说明改动、验证及剩余决策。localhost 仅供本机访问，不因生成自动发布、冻结或操作外部业务系统。

@@ -22,6 +22,12 @@ python3 scripts/create_static_demo.py /空的预览目录
 python3 -m http.server 8766 --bind 127.0.0.1 --directory /预览目录
 ```
 
+默认合成示例保留字段/权限实施缺口，质量报告为 incomplete，须明确阻塞问题后才能作为实施依据；生成成功只代表评审草稿和结构可读。
+
 打开 `http://localhost:8766/site/index.html#/v/v0.1/prototype/create-order`。本机链接不能直接供其他电脑访问；团队共享需另行部署，不自动发布。
 
 技能入口：[SKILL.md](SKILL.md)。内容规范：[standard-prd.md](references/standard-prd.md)。原型契约：[prototype.md](references/prototype.md)。检查方式：[TESTS.md](TESTS.md)。
+
+交付审查统一入口：`python3 scripts/review_delivery.py /项目 --input /原始方案.md --report /报告目录/review`。自动检查、语义结论和实际界面证据分开记录；未复核不冒充通过。控件一致性断言、变更影响及固定场景评测见 [delivery-review.md](references/delivery-review.md)。
+
+图形库随站点本地打包并固定版本，支持离线及file直开；来源、版本、SHA-256和许可保存在 `template/site/js/vendor/mermaid.json`。场景路径检查与精确标注复核见对应参考文档；未登记的分支及规则语义仍需Agent审查。

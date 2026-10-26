@@ -15,6 +15,30 @@ def rule_content_error(rule):
     return None
 
 
+def check_blocks(check):
+    return check.get('status')=='pending' and (check.get('blocking') or check.get('impact','implementation')!='editorial')
+
+
+def requirement_blocks(requirement):
+    if any(check_blocks(c) for c in requirement.get('review',{}).get('checks',[])):return True
+    return bool(requirement.get('blocking') and (requirement.get('status')=='pending' or any(r.get('status')=='pending' for r in requirement.get('rule_details',[]))))
+
+
+def case_scenario(case, requirement):
+    """A reference-only case derives its scenario from one canonical acceptance."""
+    if 'input' in case or 'expected' in case:
+        if not all(isinstance(case.get(k), str) and case[k].strip() for k in ('input','expected')):
+            raise ValueError('补充用例需同时提供具体输入和预期')
+        return case
+    ids=case.get('acceptance_ids', [])
+    if not isinstance(ids,list) or len(ids)!=1:
+        raise ValueError('引用型用例必须关联唯一验收场景')
+    ac=next((a for a in requirement.get('acceptance',[]) if a.get('id')==ids[0]),None)
+    if not ac or not all(isinstance(ac.get(k),str) and ac[k].strip() for k in ('given','when','then')):
+        raise ValueError('引用型用例的验收场景不存在或不完整')
+    return dict(case,input=ac['given']+'；'+ac['when'],expected=ac['then'])
+
+
 def rule_table_error(table):
     if not isinstance(table,dict):return '规则表格必须为对象'
     columns,rows=table.get('columns'),table.get('rows')
@@ -152,7 +176,7 @@ def scope_with_features(body, overview_index):
             heading=re.match(r'^(#{1,6}) +(.+?) *#*\s*$',line)
             if heading:headings.append((offset,len(heading.group(1)),heading.group(2)))
         offset+=len(line)
-    background=next((h for h in headings if h[2] in ('背景与目标','背景和目标')),None)
+    background=next((h for h in headings if re.fullmatch(r'背景(?:与|和|、)目标(?:与决策|和决策|、决策)?', h[2])),None)
     if background:
         start,level,_=background
         end=next((pos for pos,depth,_ in headings if pos>start and depth<=level),len(body))

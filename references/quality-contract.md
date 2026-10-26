@@ -30,7 +30,7 @@ python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
   "schema_version": 1,
   "scope": {"prd": true, "prototype": true, "acceptance": true},
   "input_items": [
-    {"id":"INPUT-01", "summary":"用户已确定的方案摘要", "disposition":"included", "requirement_ids":["FR-01"]},
+    {"id":"INPUT-01", "summary":"用户已确定的方案摘要", "disposition":"included", "requirement_ids":["FR-01"], "constraints":[{"id":"INPUT-NAME", "quote":"名称最多40字", "rule_ids":["RULE-01"], "literals":["40字"]}]},
     {"id":"INPUT-02", "summary":"明确排除的方案", "disposition":"excluded", "reason":"本次排除的依据"},
     {"id":"INPUT-03", "summary":"有范围歧义的方案", "disposition":"pending", "question":"需确定的问题", "blocking":true}
   ]
@@ -58,7 +58,7 @@ python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
 ```json
 "review": {"types":["form"], "checks":[
   {"dimension":"validation", "status":"covered", "rule_ids":["RULE-01"], "case_ids":["BC-01"]},
-  {"dimension":"permissions", "status":"pending", "question":"哪些角色可使用？", "blocking":true},
+  {"dimension":"permissions", "status":"pending", "question":"哪些角色可使用？", "impact":"implementation", "blocking":true},
   {"dimension":"recovery", "status":"not_applicable", "reason":"仅本地格式预览，不涉及请求或数据写入"}
 ]}
 ```
@@ -81,17 +81,19 @@ python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
 
 每个状态的必要业务元素还需有适用于该状态的精确标注；共用标注可由元素自身的 data-rule-ref 关联。只有外层区域的标注不能替代子字段、小操作或只读数据的说明。结构检查只验证关联存在，细节是否足够仍需按 prototype.md 做语义复核。
 
-规则的 `acceptance_ids` 指向本功能验收；验收写 given/when/then。未关联的验收、关联不存在的状态/元素、无规则的标注均报错。后台口径等纯文字规则无需强造原型。
+规则的 `acceptance_ids` 指向本功能验收；验收写 given/when/then，场景可带 kind（normal/boundary/exception）。未关联的验收、关联不存在的状态/元素、无规则的标注均报错。后台口径等纯文字规则无需强造原型。
 
 ## 边界与异常用例
 
 `requirements[].boundary_cases`：
 
 ```json
-[{"id":"BC-01", "kind":"boundary", "input":"去除首尾空格后名称为 41 字", "expected":"长度校验失败", "rule_ids":["RULE-01"], "acceptance_ids":["AC-01"], "presentation":{"mode":"text", "reason":"复用字段校验失败布局，不增加画面"}}]
+[{"id":"BC-01", "kind":"boundary", "rule_ids":["RULE-01"], "acceptance_ids":["AC-01"], "presentation":{"mode":"text", "reason":"同布局的数值边界，验收场景足够表达"}}]
 ```
 
-kind 可为 boundary、exception、normal。用例需关联自己的规则与验收。覆盖检查项引用的用例必须关联该检查项的规则。
+kind 可为 boundary、exception、normal。引用型用例省略 input/expected，关联唯一完整 GWT，且该验收明确相同 kind；GWT 的前提/操作/预期是唯一场景正文。网页和导出展示引用，质量报告展开证据。确有独立条件/数据/断言的补充用例才同时提供 input/expected；未交付验收时用独立用例，不引用不存在的 GWT。覆盖检查项引用的用例必须关联该检查项的规则。
+
+同类型也不代表同场景：空结果不能关联失败重试。自动检查类型和关系，语义复核仍需核对具体前提、触发和预期。不要通过更改类型掩盖错误关联。
 
 - 数量/金额/长度的上下界、超过边界、空值、精度、时间跨界等，优先用具体输入与预期描述；只选本功能适用的情况。
 - 页面结构、必要元素、可操作性、提示位置、权限可见性或恢复路径变化时，补对应静态状态并声明必要元素。
@@ -101,3 +103,17 @@ kind 可为 boundary、exception、normal。用例需关联自己的规则与验
 自动检查证明的是登记关系存在。规则与用例的业务一致性、输入是否完整、标记为“不适用”是否合理，以及画面是否正确表达业务，仍需人工/Agent 逐项语义复核。
 
 规则可带字段/内容/决策表 `rule_details[].table`（columns 为非空列名数组，rows 为等宽文本数组），格式见 functional-detail.md。表格与正文为同一规则来源，网页和 Markdown 导出均显示。待明确的实现问题沿用 review.checks，不藏在报告中；正文同步展示问题及是否影响实现。
+
+## 输入约束与未决事项的检查
+
+included 输入条目必须有 constraints：每项 id、quote（本次输入原文片段）、rule_ids；可选 literals 是原文中不能遗漏的关键字面值，如“254字符”“1～40字”。片段保持输入原意，不能从生成规则反抄以假装覆盖。固定枚举、默认、上限等有独立约束时分别追溯；不把内部台账再展示成一份 PRD。
+
+检查器校验约束指向本条输入所属功能的有效规则；去空白后，关键字面值必须同时存在于输入片段及对应规则正文/分项/表格中。它只能发现显式值的遗漏，不能证明关系、否定、单位及完整语义正确，也无法发现根本未登记的原始要求。最终仍需对照原输入复核。
+
+含原型的交付必须提供各页面 state_review，全部已声明状态均纳入 covered 核对；局部控件路径照 local-controls.md 登记。清单完整仍不代表已穷尽业务状态。
+
+pending 检查项声明 impact 为 implementation、acceptance 或 editorial。前两者必须 blocking:true；只有不改变含义、约束和预期的文案校对可用 editorial/false。未声明影响默认按实施问题处理；关键问题未决时报告 incomplete，不能降级让报告通过。结构有效的评审草稿仍可生成，但不能作为就绪交付。
+
+## 统一审查与跨物料检测
+
+含原型的生成/修改完成后，按 [delivery-review.md](delivery-review.md) 执行统一审查入口；它复用本检查器，不替代语义与浏览器复核。含原型时，将规则中可确定的原生控件属性派生为 quality.control_checks（schema 见该文件），由统一入口比对实际 HTML；未知或动态属性保持待复核。该台账不进入 PRD 正文，不作为第二套业务决策来源。

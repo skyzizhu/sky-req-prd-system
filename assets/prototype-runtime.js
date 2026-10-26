@@ -17,6 +17,8 @@ window.PSAnnotationModel = function(reqs,interactions,states,selected,compare){
 window.PSAnnotationSelection = function(model,controlId){
   var all=model.specific.concat(model.common),focused=[],other=[];
   all.forEach(function(entry){(controlId && entry.controls.some(function(it){return it.id===controlId;})?focused:other).push(entry);});
+  var order=[];focused.forEach(function(entry){entry.controls.filter(function(it){return it.id===controlId;}).forEach(function(it){(it.rule_ids || []).forEach(function(id){if(!order.includes(id))order.push(id);});});});
+  focused.sort(function(a,b){return order.indexOf(a.rule.id)-order.indexOf(b.rule.id);});
   return {focused:focused,other:other};
 };
 
@@ -137,7 +139,7 @@ window.PSStaticReader = function (data, page, interactions) {
     var stateElement=el && el.closest('[data-ps-state]');
     if(stateElement){selected=stateElement.dataset.psState;tabs.querySelectorAll('[data-state]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.state===selected));});}
     selectedRule=it.id;renderRules();
-    var button=panel.querySelector('[data-locate="'+it.id+'"]'),card=button && button.closest('.sr-card');
+    var button=panel.querySelector('[data-locate="'+it.id+'"]'),card=panel.querySelector('.sr-card');
     if(card)card.classList.add('sr-selected');
     markSelection();updateHash();
     if(fromPin && window.matchMedia('(max-width:640px)').matches)panel.scrollIntoView({block:'start',behavior:'smooth'});
@@ -151,11 +153,11 @@ window.PSStaticReader = function (data, page, interactions) {
     return html;
   }
   function controlButton(it){var n=interactions.indexOf(it)+1;return '<button type="button" class="sr-control-link" data-locate="'+esc(it.id)+'"><span class="sr-number">'+n+'</span>'+esc(it.title || it.description)+'</button>';}
-  function card(entry){
+  function card(entry,index){
     var rule=entry.rule,controls=entry.controls,first=controls[0];
     var title=rule.title || (controls.length===1?(first.title || first.description):(first.title || first.description)+'等 '+controls.length+' 个控件');
-    var heading=controls.length===1 && (!rule.title || rule.title===(first.title || first.description))?'<h3>'+controlButton(first)+'</h3>':'<h3>'+esc(title)+'</h3><div class="sr-control-links" aria-label="关联控件">'+controls.map(controlButton).join('')+'</div>';
-    return '<article class="sr-card" data-rule-card="'+esc(first.id)+'" data-rule-id="'+esc(rule.id)+'">'+heading+'<div class="sr-rule-body">'+ruleDetails(rule)+'</div>'+(compare?'<p class="sr-applies">适用状态：'+esc(entry.states.map(function(id){var st=states.find(function(s){return s.id===id;});return st?st.title:id;}).join('、'))+'</p>':'')+'<details><summary>依据与验收</summary><p>'+esc(rule.id+' · '+(rule.source==='origin'?'方案依据':'AI 推断')+' · '+(rule.status==='confirmed'?'已确认':'待确认'))+'</p><p><a href="'+esc(prdLink(entry.requirement))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+(rule.acceptance_ids || []).map(function(id){return '<p><a href="'+esc(prdLink(entry.requirement)+'&section=acceptance')+'" target="_blank" rel="noopener">验收 '+esc(id)+'</a></p>';}).join('')+'</details></article>';
+    var heading=panelRuleCount>1?'<h3>'+esc(title)+'</h3>':'';
+    return '<article class="sr-card" data-rule-card="'+esc(first.id)+'" data-rule-id="'+esc(rule.id)+'">'+heading+'<div class="sr-rule-body">'+ruleDetails(rule)+'</div>'+(compare?'<p class="sr-applies">适用状态：'+esc(entry.states.map(function(id){var st=states.find(function(s){return s.id===id;});return st?st.title:id;}).join('、'))+'</p>':'')+'<details><summary>依据与验收</summary><p>'+esc(rule.id+' · '+(rule.source==='origin'?'方案依据':'AI 推断')+' · '+(rule.status==='confirmed'?'已确认':'待确认'))+'</p><p><a href="'+esc(prdLink(entry.requirement))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+(rule.acceptance_ids || []).map(function(id){return '<p><a href="'+esc(prdLink(entry.requirement)+'&section=acceptance&acceptance='+encodeURIComponent(id))+'" target="_blank" rel="noopener">验收 '+esc(id)+'</a></p>';}).join('')+'</details></article>';
   }
   function markSelection(){
     document.body.classList.toggle('sr-has-selection',!!selectedRule);
@@ -170,13 +172,18 @@ window.PSStaticReader = function (data, page, interactions) {
     var before=names(baseline),after=names(current),added=after.filter(function(n){return !before.includes(n);}),removed=before.filter(function(n){return !after.includes(n);});
     return '<section class="sr-state-changes"><h3>本状态变化</h3><p class="sr-change-baseline">相对「'+esc(baseline.title)+'」画面</p><p>'+esc(current.summary || '状态差异以对应画面和专属规则为准。')+'</p>'+(added.length?'<p><strong>新增显示：</strong>'+esc(added.join('、'))+'</p>':'')+(removed.length?'<p><strong>不再显示：</strong>'+esc(removed.join('、'))+'</p>':'')+(current.next?'<p><strong>后续：</strong>'+esc(current.next)+'</p>':'')+'</section>';
   }
+  var panelRuleCount=0;
   function renderRules(){
     var current=states.find(function(st){return st.id===selected;});
     var model=window.PSAnnotationModel(reqs,interactions,states,selected,compare);
     var partition=window.PSAnnotationSelection(model,selectedRule);
     var control=interactions.find(function(it){return it.id===selectedRule;});
     if(control && partition.focused.length){
-      panel.innerHTML='<header class="sr-focus-heading"><span class="sr-eyebrow">当前控件 · '+esc(current.title)+'</span><h2>'+esc(control.title || control.description)+'</h2><div class="sr-focus-actions"><span>'+partition.focused.length+' 条关联规则</span></div></header><div class="sr-focused-rules">'+partition.focused.map(card).join('')+'</div><details class="sr-state-context-fold"><summary>本状态说明</summary>'+stateChanges(current)+'</details>';
+      panelRuleCount=partition.focused.length;
+      var related=new Map();partition.focused.forEach(function(entry){entry.controls.forEach(function(it){if(it.id!==control.id)related.set(it.id,it);});});
+      var n=interactions.indexOf(control)+1;
+      var locate='<button type="button" class="sr-control-link" data-locate="'+esc(control.id)+'" aria-label="'+esc('定位：'+(control.title || control.description))+'"><span class="sr-number">'+n+'</span></button>';
+      panel.innerHTML='<header class="sr-focus-heading"><span class="sr-eyebrow">当前控件 · '+esc(current.title)+'</span><div class="sr-focus-title"><h2>'+esc(control.title || control.description)+'</h2>'+locate+'</div><div class="sr-focus-actions"><span>'+panelRuleCount+' 条关联规则</span></div></header><div class="sr-focused-rules">'+partition.focused.map(card).join('')+'</div>'+(related.size?'<details class="sr-related-controls"><summary>关联控件（'+related.size+'）</summary><div class="sr-control-links">'+Array.from(related.values()).map(controlButton).join('')+'</div></details>':'')+(!compare?'<details class="sr-state-context-fold"><summary>本状态说明</summary>'+stateChanges(current)+'</details>':'');
     }else{
       panel.innerHTML='<header><h2>'+esc(current.title)+'</h2></header><p>本状态暂无可查看的标注。</p>'+stateChanges(current);
     }

@@ -7,7 +7,7 @@ import unittest
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
-from revise_item import locate, lookup, patch, page_context
+from revise_item import locate, lookup, patch, page_context, read_item, summary_matches
 from editlib import state, save, Conflict
 from projectlib import hashes, spec_markdown
 
@@ -48,6 +48,22 @@ class IncrementalTests(unittest.TestCase):
             for field in ('id','rule_details','rule_details/0/statement'):
                 with self.assertRaises(ValueError): patch(new,'FR-ORDER-001',field,'bad')
             with self.assertRaises(Conflict): save(root,'v1.0',patch(state(root,'v1.0'),'FR-ORDER-001','description','bad'))
+
+    def test_exact_read_and_compact_lookup_do_not_rewrite_material(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp)/'demo'
+            subprocess.run([sys.executable,str(ROOT/'tests/fixtures/versioned_project.py'),str(root)],check=True,capture_output=True)
+            before=hashes(root);current=state(root,'v1.1')
+            rule=read_item(current,'RULE-NAME-INPUT')
+            self.assertEqual(rule['kind'],'rule_details');self.assertEqual(rule['parent_requirement'],'FR-ORDER-001')
+            leaf=read_item(current,'FR-ORDER-001','rule_details/RULE-NAME-INPUT/statement')
+            self.assertEqual(leaf['value'],rule['value']['statement'])
+            self.assertNotIn('rule_details',summary_matches(lookup(current,'RULE-NAME-INPUT'))[0])
+            with self.assertRaises(ValueError):read_item(current,'INT-CREATE',page_id='order-detail')
+            with self.assertRaises(ValueError):read_item(current,'FR-ORDER-001','rule_details/0/statement')
+            result=subprocess.run([sys.executable,str(ROOT/'scripts/revise_item.py'),str(root),'--version','v1.1','--id','RULE-NAME-INPUT','--read'],check=True,capture_output=True,text=True)
+            self.assertIn('parent_requirement',result.stdout)
+            self.assertEqual(before,hashes(root))
 
     def test_business_first_export(self):
         spec={'requirements':[{'id':'FR-1','title':'创建订单','description':'业务正文','source':'origin','status':'pending','rules':{'输入校验':'必须填写名称'},'acceptance':[{'id':'AC-1','given':'已登录','when':'提交','then':'列表新增'}]}], 'pages':[], 'interactions':[]}

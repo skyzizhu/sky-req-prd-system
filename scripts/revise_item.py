@@ -52,6 +52,36 @@ def lookup(current, query, page_id=None):
     return result
 
 
+def read_item(current, iid, field=None, page_id=None):
+    """Read one exact item/leaf; never return a whole requirement for a rule lookup."""
+    spec=current['spec'] or {}; candidates=[]
+    allowed=next((p.get('requirement_ids',[]) for p in spec.get('pages',[]) if p['id']==page_id),[]) if page_id else None
+    for kind in ('requirements','interactions','pages'):
+        for obj in spec.get(kind,[]):
+            in_page=not page_id or (obj['id'] in allowed if kind=='requirements' else obj.get('page')==page_id if kind=='interactions' else obj['id']==page_id)
+            if not in_page:continue
+            if obj['id']==iid:candidates.append((kind,None,obj))
+            if kind=='requirements':
+                for collection in ('rule_details','acceptance'):
+                    candidates.extend((collection,obj['id'],child) for child in obj.get(collection,[]) if child['id']==iid)
+    if len(candidates)!=1:raise ValueError('需唯一有效编号；未找到或编号重复，不自动选择其他条目')
+    kind,parent,obj=candidates[0];value=obj
+    if field:
+        for part in field.split('/'):
+            if isinstance(value,list):
+                found=[x for x in value if isinstance(x,dict) and x.get('id')==part]
+                if len(found)!=1:raise ValueError('字段路径不存在；列表使用稳定ID，不用下标')
+                value=found[0]
+            elif isinstance(value,dict) and part in value:value=value[part]
+            else:raise ValueError('字段路径不存在')
+    return dict(kind=kind,id=iid,parent_requirement=parent,field=field,value=value)
+
+
+def summary_matches(matches):
+    return [dict(kind=row['kind'],id=row['item']['id'],title=row['item'].get('title',''),page=row['item'].get('page'),
+                 rule_ids=row['item'].get('rule_ids',[])) for row in matches[:50]]
+
+
 def patch(current, iid, field, value):
     payload = {'revision':current['revision'],'spec':copy.deepcopy(current['spec']),'documents':current['documents']}
     spec = payload['spec'] or {}
@@ -84,14 +114,19 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('location'); parser.add_argument('--version'); parser.add_argument('--query',default='')
     parser.add_argument('--page',help='精确原型页面编号，例如 order-list')
+    parser.add_argument('--read',action='store_true',help='只读取精确编号/叶字段，不写入')
+    parser.add_argument('--summary',action='store_true',help='搜索仅返回精简候选，随后用--read读取目标')
     parser.add_argument('--id'); parser.add_argument('--field'); parser.add_argument('--value',type=pathlib.Path,help='包含 JSON 值的文件')
     parser.add_argument('--revision'); parser.add_argument('--save',action='store_true')
     args=parser.parse_args()
     try:
         root,vid=locate(args.location,args.version); current=state(root,vid)
         context = page_context(root, vid, args.page) if args.page else None
-        if not args.id:
-            result={'root':str(root),'version':vid,'editable':current['editable'],'revision':current['revision'],'page':context,'matches':lookup(current,args.query,args.page)}
+        if args.read:
+            if not args.id or args.save or args.value:raise ValueError('--read需id，不能同时保存或提供value')
+            result={'root':str(root),'version':vid,'editable':current['editable'],'revision':current['revision'],'page':context,'target':read_item(current,args.id,args.field,args.page)}
+        elif not args.id:
+            result={'root':str(root),'version':vid,'editable':current['editable'],'revision':current['revision'],'page':context,'matches':summary_matches(lookup(current,args.query,args.page)) if args.summary else lookup(current,args.query,args.page)}
         else:
             if args.page and args.id not in [x['item']['id'] for x in lookup(current, '', args.page)]:
                 raise ValueError('目标编号不属于指定页面，未修改')

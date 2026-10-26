@@ -20,6 +20,18 @@ python3 <skill>/scripts/revise_item.py <项目> --version v1.1 --query 'RULE-NAM
 
 读取返回的 revision 与实际条目，以及 project.py impact。自然语言由 Agent 理解，脚本不调用模型。PRD 页面“交给 Agent 修改此需求/控件”只生成可复制的版本/需求/控件定位信息，不会偷偷发送请求或写文件。
 
+## 先读取最小内容
+
+```bash
+# 搜索只回精简候选，不展开整个需求
+python3 <skill>/scripts/revise_item.py <项目> --version v1.0 --page notification-settings --query 重复 --summary
+# 精确读取一条规则，带所属需求编号；或用--field进一步缩到叶字段
+python3 <skill>/scripts/revise_item.py <项目> --version v1.0 --id RULE-DUP --read
+python3 <skill>/scripts/revise_item.py <项目> --version v1.0 --id FR-CONFIG --field rule_details/RULE-DUP/statement --read
+```
+
+--read不写入、不创建版本；--page可限制精确读取范围。保存仍使用所属FR/INT的稳定ID和原有叶字段补丁，不将一份简化查询结果当成完整spec覆盖保存。规则改动导致默认值、控件、流程或验收发生变化时，再按关联扩展读取，不机械只改一句文案。
+
 ## 只改一个字段
 
 以 apply_patch 写 JSON 值文件，例如文件内容为 `"订单名称最多 60 字，去除首尾空格后校验。"`。路径使用 `/` 分隔；列表用稳定 ID，不用数组下标。
@@ -35,7 +47,7 @@ python3 <skill>/scripts/revise_item.py <项目> --version v1.1 --id FR-ORDER-001
 
 ## 原型布局、控件和预设状态
 
-- 简单文案/输入约束：优先修改 interactions.properties，同时核对关联规则、提示和测试。
+- 业务文案/输入约束：以rule_details为唯一规则源，按当前呈现方式同步HTML与可选interactions.properties，并核对提示和验收；properties不能代替规则正文。
 - 元素层次、布局、样式：读取当前 HTML/CSS，按稳定 selector 局部 apply_patch；保留其他元素、资源路径和已有手工调整，不重新套模板或重写全页。
 - 显示/隐藏和简单联动：按 [local-controls.md](local-controls.md) 修改声明属性；页面级权限、校验、取消和结果反馈修改相应预设状态及规则。真实跳转/提交只说明业务去向，不新增业务脚本、存储或请求模拟。
 - 布局/状态源码修改不在单项保存器支持范围内；按 workflow.md 的 impact、源码局部修改、build、validate、浏览器验证、checkpoint 执行。修改前保留原始差异/可恢复备份，不以重生成绕过冲突。

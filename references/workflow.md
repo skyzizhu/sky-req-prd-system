@@ -89,7 +89,23 @@ new-version 可加 `--from-version v1.0`，默认继承 current_version；若来
 
 继承内容按本版范围复核：适用内容补齐，不适用写理由；不为填九章编造无关内容。
 
-**交付后必须**：启动 `serve.py` 并验证可访问，向用户汇报服务地址（`http://localhost:端口/site/index.html`）与本地文件路径（项目目录绝对路径 + `/site/index.html`），确保用户能立即打开。
+**每次生成/修改后的最终回复必须**给用户两个可直接使用的地址，不只写进质量报告：
+
+```text
+在线查看：http://localhost:8795/site/index.html#/v/v1.0/_prd/scope
+本地PRD Web入口：/绝对路径/项目/site/index.html
+打包目录：/绝对路径/项目/
+```
+
+先启动/复用本机服务、确认HTTP 200，再用以下只读命令取得真实路径（--page可指定原型入口）：
+
+```bash
+python3 <skill>/scripts/delivery_info.py <项目根> --url http://localhost:8795 --page notification-settings
+```
+
+最终使用Markdown链接呈现在线地址与本地文件；项目目录也给绝对路径。补充本次改动、已执行验证及关键待确认即可，不把完整内部检查日志塞给用户。无服务或无法验证时明确状态，不能假称链接可用。
+
+打包区分查看与维护：静态交付包包含完整site、versions及存在时的attachments/outcomes，保持相对目录，查看不需要.py；可从项目副本排除构建脚本、缓存与临时编辑备份，并复核页面、图和附件。用户本地保留完整源项目，包括project.json、content源文件及构建工具，供后续修订和新增版本。入口HTML和site目录都不是独立完整物料。localhost只在当前机器有效，收件人解压后打开包内site/index.html，必要时使用静态HTTP服务。对外分享前由用户检查内容范围，不自动上传/发送，也不把提供打包目录说成已生成ZIP。
 
 upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
 

@@ -15,6 +15,29 @@ def rule_content_error(rule):
     return None
 
 
+def rule_reference_errors(spec):
+    """Check reading relationships without duplicating rule bodies or coverage."""
+    def rows(value):
+        return value if isinstance(value, list) else []
+    reqs = [r for r in rows(spec.get('requirements')) if isinstance(r, dict)]
+    owners = {rule['id']: r.get('id') for r in reqs for rule in rows(r.get('rule_details'))
+              if isinstance(rule, dict) and isinstance(rule.get('id'), str)}
+    errors = []
+    for req in reqs:
+        entries = [(req, 'shared_rule_ids', req.get('id', ''), None)]
+        entries += [(rule, 'related_rule_ids', str(req.get('id'))+'/'+str(rule.get('id')), rule.get('id'))
+                    for rule in rows(req.get('rule_details')) if isinstance(rule, dict)]
+        for item, key, path, own in entries:
+            if key not in item:
+                continue
+            refs = item[key]
+            if not isinstance(refs, list) or any(not isinstance(ref, str) or ref not in owners for ref in refs):
+                errors.append(dict(path=path, message=key+' 必须引用本版本存在的规则'))
+            elif len(refs) != len(set(refs)) or own in refs or (key == 'shared_rule_ids' and any(owners[ref] == req.get('id') for ref in refs)):
+                errors.append(dict(path=path, message=key+' 不得重复或引用自身所属规则'))
+    return errors
+
+
 def check_blocks(check):
     return check.get('status')=='pending' and (check.get('blocking') or check.get('impact','implementation')!='editorial')
 

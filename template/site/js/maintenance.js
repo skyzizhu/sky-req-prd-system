@@ -101,8 +101,9 @@ document.addEventListener('DOMContentLoaded',function(){
     if(chapter){
      view.title=chapter.title;
      if(parts[3]==='functions'){
-      var acceptance=query.get('acceptance'),active=document.querySelector('#prd-toc button.on'),rid=active && active.dataset.jump;
+      var acceptance=query.get('acceptance'),rule=query.get('rule'),active=document.querySelector('#prd-toc button.on'),rid=active && active.dataset.jump;
       if(lastTarget && lastTarget.reader===document.querySelector('.prd-reader') && items.some(function(i){return i.key===lastTarget.key;}))key=lastTarget.key;
+      else if(rule && items.some(function(i){return i.key==='item:'+rule;}))key='item:'+rule;
       else if(acceptance && items.some(function(i){return i.key==='item:'+acceptance;}))key='item:'+acceptance;
       else if(rid)key='req:'+rid;
       else key='doc:spec.json';

@@ -9,6 +9,8 @@ const suites=[
   ['artboard-surfaces',null],
   ['consumer-mobile',null],
   ['maintenance',null],
+  ['reader-usability',null],
+  ['rule-reading',null],
   ['diagrams','scripts/create_static_demo.py'],
   ['editor','tests/fixtures/versioned_project.py'],
   ['prd','tests/fixtures/versioned_project.py'],

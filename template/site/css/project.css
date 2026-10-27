@@ -40,17 +40,18 @@
 #delivery-tasks pre { white-space:pre-wrap; overflow-wrap:anywhere; }
 #outcome-draft { display: block; box-sizing: border-box; width: 100%; margin: 12px 0; font: 13px/1.5 monospace; }
 .outcome-record { border-top: 1px solid #ddd; padding: 12px 0; overflow-wrap: anywhere; }
-.prd-reader { max-width: 1500px; margin: 0; padding: 18px 22px 28px; font: 14px/1.65 system-ui; }
+.prd-reader { max-width: none; margin: 0; padding: 18px 22px 28px; font: 14px/1.65 system-ui; }
 .prd-reader h1 { font-size: 23px; margin: 0 0 6px; }
 .prd-reader h2 { font-size: 21px; margin: 0; }
 .prd-reader h3 { font-size: 16px; margin: 24px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
 .prd-reader h4 { font-size: 14px; margin: 0 0 6px; }
 .prd-tools { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
 .prd-tools input { min-width: 200px; }
-.prd-layout { display:grid; grid-template-columns:186px minmax(0,1fr); gap:14px; align-items:start; }
+.prd-layout { display:grid; grid-template-columns:168px minmax(0,1fr); gap:24px; align-items:start; }
 #prd-toc { position:sticky; top:10px; display:grid; gap:6px; max-height:70vh; overflow:auto; }
-#prd-toc button { text-align:left; padding:8px; border:0; background:#eef2f7; border-radius:5px; }
-.prd-requirement { background:white; border:1px solid #e2e8f0; border-radius:9px; padding:24px; margin-bottom:20px; scroll-margin-top:12px; overflow-wrap:anywhere; }
+#prd-toc button { text-align:left; padding:9px 10px; border:0; background:transparent; color:#475569; border-radius:5px; line-height:1.5; overflow-wrap:anywhere; }
+#prd-toc button:hover { background:#eef2f7; }
+.prd-requirement { background:white; border:1px solid #e2e8f0; border-radius:9px; padding:24px 28px; margin-bottom:24px; scroll-margin-top:12px; overflow-wrap:anywhere; }
 .prd-meta,.prd-acceptance small { color:#64748b; font-size:12px; }
 .prd-rule { border-left:3px solid #cbd5e1; padding:8px 14px; margin:12px 0; background:#f8fafc; }
 .prd-reader p { white-space:pre-wrap; margin:7px 0; }
@@ -118,19 +119,19 @@
 #prd-toc button.on { background:#1d4ed8; color:#fff; font-weight:600; }
 
 /* V2: module > feature > rule group. */
-.prd-module{margin:6px 0 18px!important;font-size:14px!important;color:#728097}
+.prd-reader .prd-module{margin:8px 0 16px;font-size:20px;font-weight:700;color:#273247;padding-bottom:10px;border-bottom:1px solid #cbd5e1}
 #prd-toc h3{font-size:12px;color:#728097;margin:18px 8px 3px;border:0;padding:0}
 .prd-rule h3{font-size:14px;margin:0 0 8px;border:0;padding:0}.prd-rule ul{margin:0;padding-left:18px}.prd-rule li{margin:9px 0}
 .prd-rule-evidence{font-size:12px;color:#7a8495;margin-top:4px}.prd-rule-evidence summary,.prd-fold summary{cursor:pointer}
 .prd-fold{border-top:1px solid #edf0f4;padding:14px 0}.prd-fold>summary{font-weight:600;font-size:14px}.prd-reader .sr-pending{font-size:10px;color:#946413;background:#fff4d6;border-radius:3px;padding:2px 5px}
 
-.prd-tools{margin:18px 0 10px;gap:12px}.prd-tools label{font-size:12px;color:#697386}.prd-tools input,.prd-tools select{border:1px solid #dbe1ea;border-radius:6px;background:white;color:#273247;padding:7px 9px;font:inherit}.prd-reader button{font:inherit;cursor:pointer}.prd-tools button,.prd-requirement header>button{border:1px solid #dbe1ea;border-radius:6px;background:#fff;color:#627087;font-size:12px;padding:7px 10px}.prd-requirement header>button{float:right;margin-top:-38px}.prd-reader #prd-count{font-size:12px;color:#8390a2;margin:8px 0 18px}.prd-requirement{margin-bottom:16px}.prd-supplement>summary{font-size:12px;padding:8px 14px;color:#8390a2;cursor:pointer}
+.prd-tools{margin:18px 0 10px;gap:12px}.prd-tools label{font-size:12px;color:#697386}.prd-tools input,.prd-tools select{border:1px solid #dbe1ea;border-radius:6px;background:white;color:#273247;padding:7px 9px;font:inherit}.prd-reader button{font:inherit;cursor:pointer}.prd-tools button,.prd-requirement header>button{border:1px solid #dbe1ea;border-radius:6px;background:#fff;color:#627087;font-size:12px;padding:7px 10px}.prd-feature-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.prd-feature-heading{min-width:0}.prd-requirement .prd-feature-header>button{flex:none;margin:0}.prd-reader #prd-count{font-size:12px;color:#8390a2;margin:8px 0 18px}.prd-supplement>summary{font-size:12px;padding:8px 14px;color:#8390a2;cursor:pointer}
 
 /* Narrow reading should not require a manual focus-mode detour. */
 .project-shell.sidebar-collapsed .topbar{padding-left:48px}.project-shell .sidebar-expand{top:5px;padding:4px 10px}.project-shell.project-focus .topbar{padding-left:12px}
 @media(max-width:800px){.project-shell .sidebar{position:fixed;left:0;top:0;z-index:70;width:min(300px,85vw);box-shadow:4px 0 20px #273b5925}.project-shell .main{width:100%}.project-shell .breadcrumb{display:none}.project-shell .project-actions{flex:1;justify-content:flex-end;min-width:0}.project-shell #material-context{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-shell #project-focus{display:none}.project-shell .content:not(.embed-mode){padding:16px}.project-shell .doc{padding:18px}}
 
-.prd-reader .prd-feature-title{font-size:21px;margin:0 0 12px;border:0;padding:0}.prd-rule h4{font-size:14px;margin:0 0 8px}.prd-fold .prd-acceptance p{margin:4px 0}
+.prd-reader .prd-feature-title{font-size:22px;margin:0 0 5px;border:0;padding:0}.prd-rule h4{font-size:14px;margin:0 0 8px}.prd-fold .prd-acceptance p{margin:4px 0}
 .prd-boundary-scroll{overflow-x:auto;margin-top:12px;border:1px solid #e2e8f0;border-radius:6px}
 .prd-boundaries table{width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px}
 .prd-boundaries th,.prd-boundaries td{padding:10px 12px;vertical-align:top;border-bottom:1px solid #e2e8f0;min-width:150px}
@@ -141,13 +142,29 @@
 
 .prd-diagram .mermaid-box{min-width:460px}
 #prd-sections,.prd-diagram{min-width:0}.prd-requirement{min-width:0;max-width:100%;box-sizing:border-box}
-/* Long metadata and the edit action need separate lines in narrow PRD cards. */
-@media(max-width:680px){.prd-requirement header>button{float:none;display:inline-block;margin:10px 0 0}.prd-requirement header .prd-meta{margin-bottom:0}}
+/* Separate the function introduction from executable rules; metadata stays secondary. */
+.prd-reader-header{margin-bottom:26px;padding-bottom:4px;border-bottom:1px solid #dbe2ea}
+.prd-reader-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.prd-reader-heading>div>p{color:#64748b;font-size:13px}
+.prd-index-link{font-size:12px;flex:none}
+.prd-feature-description{margin:16px 0 22px;padding:0 0 16px;border-bottom:1px solid #e2e8f0;color:#475569}
+.prd-reader .prd-feature-description p{margin:0;line-height:1.75}
+.prd-reader .prd-feature-header .prd-meta{margin:0;font-size:11px}
+.prd-blocking{padding:8px 12px;background:#fff4d6;color:#805c00;border-radius:4px;font-size:13px}
+.prd-open-questions{background:#fffaf0;border-left-color:#d5a23d}
+.prd-reader :is(button,a,input,select,summary):focus-visible{outline:2px solid #4769db;outline-offset:3px}
+@media(max-width:680px){.prd-feature-header,.prd-reader-heading{flex-direction:column;align-items:flex-start;gap:10px}.prd-requirement{padding:18px 16px}.prd-reader .prd-feature-title{font-size:20px}.prd-reader-header{margin-bottom:18px}.prd-tools{align-items:stretch}.prd-tools label{display:flex;flex-direction:column;gap:4px;min-width:0;max-width:100%}.prd-tools input{min-width:0;width:100%;box-sizing:border-box}}
+
 
 /* Rule reading: category > subject > constraints / detail table > evidence. */
-.prd-rule-group{background:none;border:0;padding:0;margin:24px 0}
-.prd-rule-group>h4{font-size:14px;color:#475569;margin:0 0 8px;padding:0 0 8px;border-bottom:2px solid #dbe2ea}
-.prd-rule-item{padding:14px 0 16px;border-bottom:1px solid #e5e9ef;min-width:0}
+.prd-rule-group{display:grid;grid-template-columns:120px minmax(0,1fr);gap:20px;background:none;border:0;border-top:1px solid #dbe2ea;padding:20px 0 0;margin:22px 0}
+.prd-rule-group>h4{font-size:14px;font-weight:700;color:#334155;margin:0;padding:2px 0 0;border:0;line-height:1.6}
+.prd-feature-description+.prd-rule-group{border-top:0;padding-top:0}
+.prd-rule-items{min-width:0}
+.prd-rule-item{padding:16px 0;border-bottom:1px solid #e5e9ef;min-width:0}
+.prd-rule-item:first-child{padding-top:0}
+@media(max-width:1200px){.prd-rule-group{grid-template-columns:minmax(0,1fr);gap:14px}.prd-rule-group>h4{background:#f1f5f9;padding:7px 10px;border-radius:4px}.prd-rule-items{padding-inline:4px}}
+
 .prd-rule-item:last-child{border-bottom:0}
 .prd-rule-heading{display:flex;gap:10px;align-items:baseline;margin:0 0 7px}
 .prd-rule-heading h5{font-size:15px;font-weight:650;margin:0;color:#1e293b}
@@ -169,6 +186,22 @@
 .prd-rule-examples h6{font-size:12px;color:#64748b;margin:0 0 6px}
 .prd-rule-examples dl{margin:0;font-size:12px}.prd-rule-examples dt{color:#64748b}.prd-rule-examples dd{margin:2px 0 8px}
 @media(max-width:680px){.prd-rule-clauses>div{grid-template-columns:1fr}.prd-rule-clauses dt{padding:6px 8px}.prd-rule-clauses dd{padding:6px 8px}.prd-rule-item th,.prd-rule-item td{padding:7px 8px}.prd-rule-heading{flex-wrap:wrap;gap:5px}}
+
+/* Rule navigation projects references, never another copy of their bodies. */
+.prd-rule-heading{flex-wrap:wrap}
+.prd-rule-permalink{font:11px/1.5 ui-monospace,monospace;color:#64748b;overflow-wrap:anywhere}
+.prd-related-rules,.prd-shared-rules{font-size:12px;color:#64748b}
+.prd-reader .prd-related-rules{margin:12px 0 0}
+.prd-rule-link{overflow-wrap:anywhere}.prd-rule-link small{font-size:10px;color:#64748b}
+.prd-shared-rules{padding:10px 12px;margin:12px 0 20px;background:#f8fafc;border-left:2px solid #cbd5e1}
+.prd-shared-rules strong{color:#475569}.prd-rule-owner{font-size:11px}
+.prd-search-results{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 18px;padding:10px 12px;border:1px solid #dbe2ea;border-radius:5px;font-size:12px;background:#fff}
+.prd-search-results button{border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;color:#334155;padding:4px 8px;max-width:100%;overflow-wrap:anywhere}
+.prd-reader mark{background:#fff1a8;color:#332e18;padding:0 1px}
+.prd-search-match .prd-rule-heading h5{color:#1d4ed8}
+.prd-rule-item{scroll-margin-top:18px}
+.prd-rule-item.prd-rule-target{outline:2px solid #93b4f4;outline-offset:7px;border-radius:2px}
+.prd-return-source{font-size:12px}.prd-target-notice{padding:10px;background:#fff4d6;color:#805c00;font-size:13px}
 
 /* Preserve readable diagram dimensions; scroll instead of shrinking all text. */
 .mermaid-inline{max-width:100%;min-width:0;overflow:visible}

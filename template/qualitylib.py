@@ -63,6 +63,8 @@ def evaluate(spec, content=None):
         return value
     if not isinstance(spec,dict):
         issue('spec_missing','spec','缺少结构化需求');spec={}
+    for error in prdlib.rule_reference_errors(spec):
+        issue('rule_reference_invalid',error['path'],error['message'])
     quality=spec.get('quality')
     if not isinstance(quality,dict) or quality.get('schema_version')!=1:
         issue('quality_contract','quality','缺少交付检查范围与输入条目登记（schema_version=1）');quality={}

@@ -102,6 +102,11 @@ window.PSStaticReader = function (data, page, interactions) {
   var header = document.createElement('header'); header.className='sr-header';
   header.innerHTML='<div class="sr-identity"><h1 title="'+esc(page.title)+'">'+esc(page.title)+'</h1><span class="sr-eyebrow" title="'+esc(data.projectName+' · '+data.version)+'">'+esc(data.projectName+' · '+data.version)+(pendingCount?' · '+pendingCount+' 项待确认':'')+'</span></div><div class="sr-actions"><label><input type="checkbox" id="sr-numbers" checked>显示编号</label><button type="button" id="sr-compare" aria-pressed="false">展开状态对照</button><button type="button" id="sr-handoff-toggle" aria-expanded="false" aria-controls="sr-handoff">页面信息</button><button type="button" id="sr-link">定位链接</button></div>';
   var tabs=document.createElement('nav');tabs.className='sr-tabs';tabs.setAttribute('aria-label','页面状态');
+  var stateNav=document.createElement('div');stateNav.className='sr-state-nav';
+  var pickerLabel=document.createElement('label');pickerLabel.className='sr-state-picker-label';pickerLabel.hidden=true;
+  pickerLabel.appendChild(document.createTextNode('全部状态（'+states.length+'）'));
+  var statePicker=document.createElement('select');statePicker.id='sr-state-picker';statePicker.setAttribute('aria-label','选择页面状态');
+  states.forEach(function(s){statePicker.add(new Option(s.title,s.id));});pickerLabel.appendChild(statePicker);stateNav.append(tabs,pickerLabel);
   var layout=document.createElement('div');layout.className='sr-layout';
   var view=document.createElement('div');view.className='sr-view';
   var panel=document.createElement('aside');panel.className='sr-rules';panel.setAttribute('aria-label','规则说明');
@@ -111,7 +116,7 @@ window.PSStaticReader = function (data, page, interactions) {
   var prdRoot=new URL('../../../../site/index.html',location.href);
   function chapter(id,query){var url=new URL(prdRoot);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/'+id+(query?'?'+query:'');return url.href;}
   handoff.innerHTML='<p>页面状态由顶部切换；控件仅提供局部交互。点击编号查看规则，正式视觉由设计交付。</p><div class="sr-handoff-grid"><section><h2>页面补充</h2>'+(info.role?'<p>适用角色：'+esc(info.role)+'</p>':'')+['preconditions','scope','out_of_scope','design_notes','dependencies','decisions'].filter(function(k){return info[k] && info[k].length;}).map(function(k){return '<h3>'+({preconditions:'本页前提',scope:'本页范围',out_of_scope:'本页排除项',design_notes:'设计补充',dependencies:'本页依赖',decisions:'待决策'}[k])+'</h3>'+bullets(info[k],'');}).join('')+'<p><a href="'+esc(chapter('scope'))+'" target="_blank" rel="noopener">版本范围</a> · <a href="'+esc(chapter('functions','page='+encodeURIComponent(page.id)+'&section=acceptance'))+'" target="_blank" rel="noopener">本页功能与验收</a></p></section><section><h2>必要元素</h2><div id="sr-elements"></div></section></div>';
-  canvas.before(header,handoff,tabs,layout);view.appendChild(canvas);layout.append(view,panel);
+  canvas.before(header,handoff,stateNav,layout);view.appendChild(canvas);layout.append(view,panel);
   document.body.classList.add('sr-host');
   sections.forEach(function(section){
     section.classList.add('sr-state');
@@ -138,7 +143,7 @@ window.PSStaticReader = function (data, page, interactions) {
     if(el){el.classList.add('sr-highlight');if(!fromPin && !automatic)el.scrollIntoView({block:'center',behavior:'smooth'});}
     var stateElement=el && el.closest('[data-ps-state]');
     if(stateElement){selected=stateElement.dataset.psState;tabs.querySelectorAll('[data-state]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.state===selected));});}
-    selectedRule=it.id;renderRules();
+    statePicker.value=selected;selectedRule=it.id;renderRules();
     var button=panel.querySelector('[data-locate="'+it.id+'"]'),card=panel.querySelector('.sr-card');
     if(card)card.classList.add('sr-selected');
     markSelection();updateHash();
@@ -211,6 +216,7 @@ window.PSStaticReader = function (data, page, interactions) {
     document.body.classList.toggle('sr-comparing',compare);
     if(!tabs.children.length)tabs.innerHTML=states.map(function(s){return '<button type="button" data-state="'+esc(s.id)+'" aria-pressed="'+(selected===s.id)+'">'+esc(s.title)+'</button>';}).join('');
     tabs.querySelectorAll('[data-state]').forEach(function(button){button.setAttribute('aria-pressed',String(button.dataset.state===selected));});
+    statePicker.value=selected;fitStates();
     sections.forEach(function(el){el.hidden=!compare && el.dataset.psState!==selected;});
     // Resolve a missing/stale link against the current snapshot, never another state.
     var currentSection=sections.find(function(el){return el.dataset.psState===selected;});
@@ -239,12 +245,26 @@ window.PSStaticReader = function (data, page, interactions) {
   header.querySelector('#sr-handoff-toggle').onclick=function(){handoff.hidden=!handoff.hidden;this.setAttribute('aria-expanded',String(!handoff.hidden));positionPins();};
   header.querySelector('#sr-link').onclick=function(){var direct=new URL(location.href);direct.hash=new URLSearchParams({state:selected,...(selectedRule?{rule:selectedRule}:{})}).toString();var project=new URL('../../../../site/index.html',location.href);project.hash=(data.pageRoutes || {})[page.id]+'?'+direct.hash.slice(1);linkDialog.querySelector('#sr-project-link').value=project.href;linkDialog.querySelector('#sr-direct-link').value=direct.href;linkDialog.showModal();linkDialog.querySelector('input').select();};
   var live=document.createElement('p');live.className='sr-live';live.setAttribute('role','status');live.setAttribute('aria-live','polite');header.appendChild(live);
-  tabs.onclick=function(e){var b=e.target.closest('[data-state]');if(!b)return;selected=b.dataset.state;selectedRule='';compare=false;localControls.forEach(function(local){local.reset();});view.scrollTop=0;updateHash();draw();tabs.querySelector('[data-state="'+selected+'"]').focus({preventScroll:true});live.textContent='已切换到'+states.find(function(st){return st.id===selected;}).title+'状态，画面与规则已同步。';};
+  function fitStates(){
+    pickerLabel.hidden=states.length<2 || tabs.scrollWidth<=stateNav.clientWidth;
+    var active=Array.from(tabs.querySelectorAll('[data-state]')).find(function(b){return b.dataset.state===selected;});
+    if(active && (active.offsetLeft<tabs.scrollLeft || active.offsetLeft+active.offsetWidth>tabs.scrollLeft+tabs.clientWidth))tabs.scrollLeft=Math.max(0,active.offsetLeft-tabs.clientWidth/2+active.offsetWidth/2);
+  }
+  function chooseState(id,focusTab){
+    if(!states.some(function(s){return s.id===id;}))return;
+    selected=id;selectedRule='';compare=false;localControls.forEach(function(local){local.reset();});view.scrollTop=0;updateHash();draw();
+    if(focusTab)tabs.querySelector('[data-state="'+selected+'"]').focus({preventScroll:true});
+    live.textContent='已切换到'+states.find(function(st){return st.id===selected;}).title+'状态，画面与规则已同步。';
+  }
+  tabs.onclick=function(e){var b=e.target.closest('[data-state]');if(b)chooseState(b.dataset.state,true);};
+  statePicker.onchange=function(){chooseState(statePicker.value,false);};
   panel.onclick=function(e){var b=e.target.closest('[data-locate]');if(b)focusRule(interactions.find(function(it){return it.id===b.dataset.locate;}),false);};
   header.querySelector('#sr-compare').onclick=function(){compare=!compare;draw();};
   header.querySelector('#sr-numbers').onchange=function(e){numbered=e.target.checked;positionPins();};
   window.addEventListener('hashchange',function(){var p=new URLSearchParams(location.hash.slice(1)),id=p.get('state');selectedRule=p.get('rule') || '';if(states.some(function(s){return s.id===id;})){selected=id;compare=false;localControls.forEach(function(local){local.reset();});draw();}});
   window.addEventListener('resize',positionPins);
+  window.addEventListener('resize',fitStates);
+  if(window.ResizeObserver)new ResizeObserver(fitStates).observe(stateNav);
   if(window.ResizeObserver)new ResizeObserver(positionPins).observe(canvas);
   draw();
 };

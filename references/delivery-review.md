@@ -34,6 +34,10 @@ verdict 为 pass/fail/not_applicable/unverified；已复核项均需定位与观
 
 复核项：input_scope、rule_closure、consistency、flow_paths、annotation_scope、redundancy、acceptance、mobile_delivery、browser。流程路径的登记与语义核对见 [process-diagrams.md](process-diagrams.md)，逐状态精确绑定见 [prototype.md](prototype.md)。具体问题由首轮报告生成，不在此重复。逐功能/分支列出检查证据，可同一项记录多处定位；缺陷需要指出遗漏会让下游猜测什么。删除冗余前核对条件、状态、边界及恢复是否仍有唯一明确出处；上下文投影和独立边界不是重复。只为本次功能审查适用情况，不为凑完整新增功能。
 
+实际阅读核对三条路径：从功能清单找到规则并直达具体验收；从状态导航找到必要画面并操作局部控件；从标注看到当前规则及其依据。逐个核对未确认示意值是否在控件旁标明，避免只靠全页待确认计数；状态较多时还要核对可发现性，不用“有Tab”代替“能找到”。具体表达与交互仍按functional-detail、control-annotations及local-controls执行，不增加另一份内容台账。
+
+开发查阅还需沿一个真实操作从入口、校验、确认、处理中走到各结果与恢复，核对关联规则是否必要且可达，共用规则是否在适用功能可发现。复杂规则逐项与原始长段对照，分项/决策表应替代重复正文；交付工具说明不得进入业务行为。涉及时间或草稿时按实际情况查跨日、等待过期和恢复后有效性，缺决策登记阻塞问题，不能为自动检查通过而擅自补答案。这些证据分别记入 rule_closure、redundancy、acceptance 和 browser，不新增第二套审查台账。
+
 同一详情有多个界面时，按prototype.md检查上下独立画板；脚本在controls.findings报告surface_*问题，包括缺标题/内容、缺触发入口、画板嵌套以及基础元素遗漏。browser证据须包含各画板完整画面、标题及灰色间隔，逐画板核对控件与标注，不以遮罩叠加或属性断言通过代替。基础画面和衍生画面同时遗漏的业务元素仍需对照原始方案复核。
 
 ## 控件一致性断言

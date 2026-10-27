@@ -2,7 +2,7 @@
 name: sky-req-prd-system
 description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成、更新或审查产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.24"
+  version: "2.0.0-preview.27"
 ---
 
 # 产品方案 → PRD 与多状态原型
@@ -30,7 +30,7 @@ metadata:
 读取 [standard-prd.md](references/standard-prd.md)、[functional-detail.md](references/functional-detail.md) 和 [delivery-quality.md](references/delivery-quality.md)。菜单、正文归属和跨物料引用见 [information-architecture.md](references/information-architecture.md)。
 
 - 使用标准九章；第一章先背景与目标，再本版功能清单，明确范围及既有能力影响。章节按适用性填写，未知项待确认，不以边界清单代替完整 PRD。
-- 按业务模块 → 功能 → 规则分类组织。规则简短但保留对象、条件、行为、结果及必要异常；复杂内容用分项、表格或实例。PRD 本身足以说明业务要求，不能依赖原型补全遗漏。
+- 按业务模块 → 功能 → 规则分类组织。规则简短但保留对象、条件、行为、结果及必要异常；复杂约束用分项，多结果分支按需用决策表替代长段；共用与关联规则只引用唯一正文，按完整操作查阅及复核。PRD 本身足以说明业务要求，不能依赖原型补全遗漏。
 - `spec.json` 的 `rule_details` 是规则唯一来源；GWT 在功能详情维护，边界索引引用同一场景。共用规则只写一处，状态只写差异，原型、交接与导出读取或引用它，不再手写第二套正文。
 - 有流程才画流程图，有状态流转才画状态图，覆盖适用的正常、异常和恢复路径；无流程不虚构。涉及图时读 [process-diagrams.md](references/process-diagrams.md)，涉及业务抽象时读 [business-modeling.md](references/business-modeling.md)。实体与规则按需说明，状态机直接引用已有状态图。
 

@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.24'
+TEMPLATE_VERSION = '2.0.0-preview.25'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -129,6 +129,9 @@ def pages(manifest):
 
 def spec_markdown(spec, outcomes=None):
     out = ['# 产品需求文档']
+    rule_index = {rule['id']: rule for req in spec.get('requirements', []) for rule in req.get('rule_details', [])}
+    def rule_links(ids):
+        return '、'.join('['+rule_index[rid].get('title', rid).replace('[', '\\[').replace(']', '\\]')+'（'+rid+'）](#rule-'+rid+')' for rid in ids if rid in rule_index)
     latest_execution = {}
     for record in outcomes or []:
         payload = record.get('payload', {}) if isinstance(record, dict) else {}
@@ -155,6 +158,8 @@ def spec_markdown(spec, outcomes=None):
         if questions:
             out += ['#### 待明确的实现口径']
             for check in questions:out += ['- '+check['question']+'（'+('影响实现/验收，需先明确' if prdlib.check_blocks(check) else '仅文案校对，不改变实现/验收')+'）']
+        if r.get('shared_rule_ids'):
+            out += ['适用的共用规则：'+rule_links(r['shared_rule_ids'])]
         for name, value in r.get('rules', {}).items():
             out += [f'#### {name}', str(value)]
         rule_groups = {}
@@ -165,10 +170,13 @@ def spec_markdown(spec, outcomes=None):
             rules=rule_groups[category]
             out += [f"#### {category_names.get(category, category)}"]
             for rule in rules:
+                out += ['<a id="rule-'+rule['id']+'"></a>']
                 if rule.get('title'):out += ['##### '+rule['title']]
                 out += [f"- {rule['statement']}",
                         f"  - 依据：{rule['id']} · {'AI 推断' if rule.get('source')=='ai-inferred' else '原始需求'} · {'已确认' if rule.get('status')=='confirmed' else '待确认'}"]
                 for clause in rule.get('clauses',[]):out += ['  - '+clause['label']+'：'+clause['text']]
+                if rule.get('related_rule_ids'):
+                    out += ['  - 关联规则：'+rule_links(rule['related_rule_ids'])]
                 if 'table' in rule:out += [prdlib.rule_table_markdown(rule['table'])]
                 for example in rule.get('examples', []):
                     out += [f"  - 实例：{example['input']} → {example['expected']}"]
@@ -333,6 +341,7 @@ def validate(root):
                 errors.append(f'{vid}: 缺少 V2 spec.json')
                 continue
             spec = read(specfile)
+            errors.extend(f'{vid}/{e["path"]}: {e["message"]}' for e in prdlib.rule_reference_errors(spec))
             if spec.get('schema_version') != 2:
                 errors.append(f'{vid}: spec 需要 schema_version=2')
             if 'replay_cases' in spec or 'review_notes' in spec:

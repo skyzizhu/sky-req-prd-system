@@ -27,8 +27,10 @@ node tests/run-browser.cjs
 | diagrams-browser.cjs | 本地图形库延迟冷启动、离线真实SVG、缩放/窄屏/键盘、缺资源与错误语法的明确诊断 |
 | local-controls-browser.cjs | 原生选择与联动、状态重置、键盘、窄屏、编号不遮挡控件、控件/标注互不触发、提交受阻 |
 | editor-browser.cjs | 属性/正文预览保存、实际属性生效、撤销与冲突；不模拟业务提交 |
-| prd-browser.cjs | 业务层次、定位信息、关联页面去重、非空控件属性保留与完整导出 |
+| prd-browser.cjs | 业务层次、后置星标、宽窄屏标题/修改入口无重叠、定位信息、关联页面去重、非空控件属性保留与完整导出 |
 | maintenance-browser.cjs | 当前控件/状态/规则上下文、目标切换、未匹配与派生视图、历史版本、预览参数链接、file/HTTP、键盘与窄屏、旧运行时降级 |
+| rule-reading-browser.cjs | 共用/关联规则唯一正文、历史版本直达与返回来源、精确 Agent 上下文、搜索命中高亮/键盘定位、窄屏、导出及失效定位提示 |
+| reader-usability-browser.cjs | 溢出状态完整可达、选择/Tab/对照/键盘同步、切换恢复初始值、规则直达本版本具体验收、宽屏不占多余空间 |
 | delivery-browser.cjs | 交接筛选、待确认子规则、JSON/Markdown 导出及原型入口 |
 | handoff-browser.cjs | 交接版本深链接、历史静态原型及独立快照 |
 | outcomes-browser.cjs | 验收记录与复盘、旧基线提示及证据展示 |

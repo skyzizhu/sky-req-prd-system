@@ -2,7 +2,7 @@
 name: sky-req-prd-system
 description: 将产品经理已经分析、确定的产品方案（可零散）整理为有明确范围、层次清晰的 PRD 与多状态线框原型，支持已有项目增量维护。用于明确要求生成、更新或审查产品方案、PRD、原型的任务；不用于从原始用户痛点挖掘需求，也不因讨论或代码修改自动生成方案。
 metadata:
-  version: "2.0.0-preview.31"
+  version: "2.0.0-preview.32"
 ---
 
 # 产品方案 → PRD 与多状态原型
@@ -11,7 +11,8 @@ metadata:
 
 ## 定位任务与依据
 
-- 已有项目先读 `project.json`；无路径用 `scripts/project.py discover <工作区>`，候选不唯一再询问。不为局部修改另建项目。
+- 已有项目先读 `project.json` 和 `.skill-lock.json`；已锁定时改读锁内 runtime 的 SKILL.md，并使用该副本的说明和工具，不因本机安装更新而升级项目。缺锁的 V2 项目先检查，不猜测来源版本；用户明确采用候选版本后走下述升级流程。
+- 无路径用 `scripts/project.py discover <工作区>`，候选不唯一再询问。不为局部修改另建项目。
 - 读取全局及项目 `config.md` 的实际偏好，当场指令优先。首次生成读 [workflow.md](references/workflow.md)；既有物料小改先读 [maintenance.md](references/maintenance.md)，需要规则/控件定位时再读 [incremental.md](references/incremental.md)。
 - 明确交付物、本次做/不做、已有能力影响及待确认项。未提及不等于不做；仅追问会改变范围、平台或关键业务结果的问题。只有用户原话/痛点时，请补充拟采用的产品方案。
 - 可补齐必要执行细节，无依据的补充标 `ai-inferred/pending`，不编造权限、阈值或业务取舍。`source: origin/ai-inferred` 与 `status: confirmed/pending` 独立；生成、测试和交付都不替代业务确认。
@@ -46,6 +47,8 @@ metadata:
 - 标注覆盖有业务含义的字段、小操作和只读数据，尤其明确选择项及数量、默认值、约束和结果。重复列表按列或同类操作标注一次，保留状态/权限/行为差异；覆盖全部元素不等于为每个重复实例放一个编号。细则见 control-annotations.md，不能用整表单泛化说明代替字段规则。
 
 ## 维护与交付
+
+项目锁定、显式升级和交付打包读取 [production-delivery.md](references/production-delivery.md)。新建项目自动保存技能副本；普通修订和新产品版本沿用项目锁，升级先预览差异并在副本验证。最终用 prepare_delivery.py 汇总检查、地址和静态/源项目包；缺失的语义或浏览器复核由 Agent 补做，只有业务决策交给用户。
 
 - 固定项目入口、稳定版本及页面 ID，只接受 V2 契约。修改前 impact 并检查手改，完成后 build、validate、checkpoint；不整体重生成已有物料，不覆盖冻结版本。
 - 正式编辑读 [editing.md](references/editing.md)，交接读 [developer-delivery.md](references/developer-delivery.md)，记录实际测试/上线结果读 [outcomes.md](references/outcomes.md)。原型校对与真实产品结果分开记录。

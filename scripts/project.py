@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Manage a persistent project; run --help for commands. No network or git operations."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import datetime
 import pathlib
@@ -7,11 +11,14 @@ import re
 import shutil
 import sys
 import uuid
+import json
+import tempfile
 
 SKILL = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SKILL / 'template'))
 from projectlib import read, write, safe, hashes, source_hashes, changes, compile_project, validate, check_build, ID
 import prdlib
+import skilllocklib
 
 
 def install(root):
@@ -20,7 +27,7 @@ def install(root):
         shutil.copy2(SKILL / 'template' / name, root / name)
 
 
-BUILD_TOOLS = ('build.py', 'projectlib.py', 'outcomelib.py', 'prdlib.py', 'attachmentlib.py', 'materiallib.py', 'qualitylib.py', 'diagramlib.py')
+BUILD_TOOLS = skilllocklib.BUILD_TOOLS
 SHARED_ASSETS = ('prototype-runtime.js', 'prototype-runtime.css')
 
 
@@ -53,7 +60,8 @@ def plan_upgrade(root, project):
 
 def apply_upgrade(root, project, plan):
     """仅覆盖外壳、构建工具与 planning 版共享资源；冻结/交接内容绝不触碰；被覆盖文件先备份。"""
-    backup = root / '.upgrade-backup' / datetime.datetime.now().strftime('%Y%m%dT%H%M%SZ')
+    root = root.resolve()
+    backup = root / '.upgrade-backup' / datetime.datetime.now().strftime('%Y%m%dT%H%M%S%fZ')
     saved = 0
 
     def keep(target):
@@ -65,6 +73,7 @@ def apply_upgrade(root, project, plan):
             shutil.copy2(target, dest)
             saved += 1
 
+    keep(root / '.skill-lock.json')
     if plan['shell'] or plan['tools']:
         for rel in plan['shell']:
             keep(root / 'site' / rel)
@@ -88,6 +97,17 @@ def apply_upgrade(root, project, plan):
     return backup if saved else None
 
 
+def project_fingerprint(root):
+    import hashlib
+    digest = hashlib.sha256()
+    for file in sorted(root.rglob('*')):
+        if any(part in ('.git', '.upgrade-backup', '__pycache__') for part in file.relative_to(root).parts):
+            continue
+        if file.is_file():
+            digest.update(str(file.relative_to(root)).encode()); digest.update(file.read_bytes())
+    return digest.hexdigest()
+
+
 def manifest(name, form, version):
     return {'product': {'name': name, 'form': form, 'version': version, 'tagline': '',
                         'updated': datetime.date.today().isoformat()},
@@ -104,7 +124,7 @@ def checkpoint(vr):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'handoff', 'upgrade-shell'])
+    p.add_argument('command', choices=['init', 'discover', 'new-version', 'build', 'check', 'freeze', 'status', 'impact', 'checkpoint', 'handoff', 'upgrade-shell', 'pin-status'])
     p.add_argument('root', type=pathlib.Path)
     p.add_argument('--version', default=None)
     p.add_argument('--name')
@@ -146,6 +166,7 @@ def main():
               'name': a.name or m['product']['name'], 'current_version': vid,
               'versions': [{'id': vid, 'title': a.name or m['product']['name'], 'status': 'planning', 'base': None}]})
         install(root)
+        skilllocklib.pin(root, SKILL)
         compile_project(root)
         checkpoint(vr)
         print('项目入口：', root / 'site/index.html')
@@ -156,6 +177,9 @@ def main():
     vid = a.version or project['current_version']
     vr = safe(root, 'versions/' + vid)
     version = next((v for v in project['versions'] if v['id'] == vid), None)
+    if a.command == 'pin-status':
+        print(json.dumps(skilllocklib.status(root, SKILL), ensure_ascii=False, indent=2))
+        return
     if a.command == 'new-version':
         if version or vr.exists() or not a.version:
             p.error('请提供未使用的 --version')
@@ -185,6 +209,7 @@ def main():
         print('复用固定入口：',root/'site/index.html','；继承基线：',base)
     elif a.command == 'upgrade-shell':
         plan = plan_upgrade(root, project)
+        print(json.dumps(skilllocklib.status(root, SKILL), ensure_ascii=False, indent=2))
         print('外壳差异文件：', len(plan['shell']), ('：' + '、'.join(plan['shell'])) if plan['shell'] else '')
         print('构建工具差异：', len(plan['tools']), ('：' + '、'.join(plan['tools'])) if plan['tools'] else '')
         for item in plan['planning_assets']:
@@ -194,7 +219,21 @@ def main():
         if not a.apply:
             print('预览模式：加 --apply 执行升级；仅覆盖外壳、构建工具与规划版共享资源，冻结/交接内容不触碰。')
             return
+        # Validate the candidate compiler in an isolated copy before touching live files.
+        before = project_fingerprint(root)
+        with tempfile.TemporaryDirectory(prefix='sky-upgrade-') as temporary:
+            stage = pathlib.Path(temporary) / 'project'
+            shutil.copytree(root, stage, ignore=shutil.ignore_patterns('.git', '.upgrade-backup', '__pycache__'))
+            apply_upgrade(stage, project, plan)
+            skilllocklib.pin(stage, SKILL)
+            compile_project(stage)
+            errors, _ = validate(stage)
+            if errors:
+                raise ValueError('副本升级校验失败，原项目未改动：\n' + '\n'.join(errors))
+        if before != project_fingerprint(root):
+            raise ValueError('副本校验期间原项目发生变化，请重新预览升级')
         backup = apply_upgrade(root, project, plan)
+        skilllocklib.pin(root, SKILL)
         compile_project(root)
         errors, warnings = validate(root)
         if errors:
@@ -230,10 +269,10 @@ def main():
         if specfile.exists() and any(prdlib.requirement_blocks(r) for r in read(specfile)['requirements']):
             p.error('阻塞需求或规则待确认，不能交接')
         # Stage the complete operation before touching live metadata or history.
-        import tempfile
         with tempfile.TemporaryDirectory(prefix='sky-handoff-') as tmp:
             stage = pathlib.Path(tmp) / 'project'
             stage.mkdir()
+            skilllocklib.copy_to_stage(root, stage)
             shutil.copy2(root / 'project.json', stage / 'project.json')
             shutil.copytree(root / 'versions', stage / 'versions')
             shutil.copytree(root / 'site', stage / 'site')
@@ -287,7 +326,6 @@ def main():
             raise ValueError('\n'.join(errors))
         checkpoint(vr)
     elif a.command == 'impact':
-        import json
         from editlib import diff
         before = read(vr / '.baseline.json') if (vr / '.baseline.json').exists() else {}
         result = {'since_checkpoint': changes(before, source_hashes(vr))}

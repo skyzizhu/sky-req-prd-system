@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Append a reviewed observation. No deployment, PRD edits or automatic pass verdict."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import datetime
 import fcntl

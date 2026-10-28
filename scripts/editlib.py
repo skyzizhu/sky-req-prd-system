@@ -35,7 +35,7 @@ def diff(before, after, path=''):
 def revision(root):
     # Includes generated files, metadata, manually edited sources, and frozen snapshots.
     result = {}
-    for base in ('project.json', 'config.md', 'versions', 'site', 'outcomes', 'attachments'):
+    for base in ('project.json', '.skill-lock.json', 'config.md', 'versions', 'site', 'outcomes', 'attachments'):
         p = root / base
         if p.is_symlink():
             raise ValueError('编辑项目不支持符号链接：' + base)
@@ -189,6 +189,8 @@ def _save(root, vid, payload, restore=False):
     with tempfile.TemporaryDirectory(prefix='sky-prd-edit-') as tmp:
         stage = pathlib.Path(tmp) / 'project'
         stage.mkdir()
+        from skilllocklib import copy_to_stage
+        copy_to_stage(root, stage)
         for name in ('project.json', 'versions', 'site'):
             p = root / name
             if p.is_dir():

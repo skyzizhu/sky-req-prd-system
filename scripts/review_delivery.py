@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Read-only delivery review: reuse quality checks, inspect native controls, record semantic evidence."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import hashlib
 from html.parser import HTMLParser
@@ -178,7 +182,7 @@ def control_review(spec, content):
 def fingerprint(root, version, inputs):
     for file in inputs:
         if not file.is_file(): raise ValueError('原始输入文件不存在：'+str(file))
-    files = [root/'project.json'] + sorted(root.glob('*.py')) + sorted((root/'site').rglob('*')) + sorted((safe(root, 'versions/'+version)/'content').rglob('*')) + list(inputs)
+    files = [root/'project.json'] + ([root/'.skill-lock.json'] if (root/'.skill-lock.json').exists() else []) + sorted(root.glob('*.py')) + sorted((root/'site').rglob('*')) + sorted((safe(root, 'versions/'+version)/'content').rglob('*')) + list(inputs)
     digest = hashlib.sha256()
     for file in files:
         if file.is_file():

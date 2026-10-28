@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Check project structure, build freshness and current-version delivery coverage."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 from pathlib import Path
 import sys

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Read-only coverage and applicability audit for the selected delivery version."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import json
 from pathlib import Path

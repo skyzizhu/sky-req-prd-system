@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Locate an existing item from project/HTML; preview or save one stable-ID field."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import copy
 import json

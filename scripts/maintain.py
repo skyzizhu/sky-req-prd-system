@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Lightweight lookup and exact text patches. No model call, no new project/version."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import json
 import pathlib

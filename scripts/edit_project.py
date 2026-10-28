@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Serve a token-protected local PRD editor. Bind only to loopback."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import json
 import pathlib

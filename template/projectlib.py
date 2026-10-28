@@ -9,11 +9,12 @@ import prdlib
 import diagramlib
 import attachmentlib
 import materiallib
+import skilllocklib
 from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.31'
+TEMPLATE_VERSION = '2.0.0-preview.32'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
@@ -126,6 +127,7 @@ def source_hashes(version):
 
 def build_inputs(root):
     return {'project': hashlib.sha256((root / 'project.json').read_bytes()).hexdigest(),
+            **({'skill_lock': hashlib.sha256((root / '.skill-lock.json').read_bytes()).hexdigest()} if (root / '.skill-lock.json').exists() else {}),
             'outcomes': hashes(root / 'outcomes'),
             'attachments': hashes(root / 'attachments'),
             'versions': {v['id']: hashes(safe(root, 'versions/' + v['id'])) for v in read(root / 'project.json')['versions']}}
@@ -303,7 +305,7 @@ BODY_LAYOUT = re.compile(r'(^|[},])\s*body\b[^{},]*\{[^}]*display\s*:\s*(?:flex|
 
 
 def validate(root):
-    errors, warnings = [], []
+    errors, warnings = skilllocklib.verify(root), []
     project = read(root / 'project.json')
     if project.get('schema_version') != 3 or not project.get('id') or not project.get('name'):
         errors.append('project.json 需要 schema_version=3、id、name')
@@ -548,6 +550,9 @@ def validate(root):
 
 
 def compile_project(root):
+    lock_errors = skilllocklib.verify(root)
+    if lock_errors:
+        raise ValueError('\n'.join(lock_errors))
     project = read(root / 'project.json')
     if project.get('schema_version') != 3:
         raise ValueError('需要 V2 项目（schema_version=3），不支持旧项目迁移')

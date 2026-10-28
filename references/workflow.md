@@ -107,7 +107,7 @@ python3 <skill>/scripts/delivery_info.py <项目根> --url http://localhost:8795
 
 打包区分查看与维护：静态交付包包含完整site、versions及存在时的attachments/outcomes，保持相对目录，查看不需要.py；可从项目副本排除构建脚本、缓存与临时编辑备份，并复核页面、图和附件。用户本地保留完整源项目，包括project.json、content源文件及构建工具，供后续修订和新增版本。入口HTML和site目录都不是独立完整物料。localhost只在当前机器有效，收件人解压后打开包内site/index.html，必要时使用静态HTTP服务。对外分享前由用户检查内容范围，不自动上传/发送，也不把提供打包目录说成已生成ZIP。
 
-upgrade-shell 用于 skill 模板升级后刷新既有项目：默认预览差异，`--apply` 才执行。只覆盖 `site/` 外壳、根目录构建工具与**规划工作版**的共享原型资源（prototype-runtime），被覆盖文件先备份到项目 `.upgrade-backup/<时间戳>/`；冻结与交接快照绝不触碰（只报告漂移）。应用后自动重建并校验；规划版构建戳会显示新模板版本，需重新在浏览器验证关键路径。
+新项目自动保存 `.skill-lock.json` 与完整运行副本；普通修订和新增产品版本沿用项目锁。`upgrade-shell` 仅在明确升级时运行：默认预览差异，`--apply` 先在副本构建/校验，通过才应用并备份原锁及文件，冻结与交接内容不动。升级后 Agent 复核实际浏览器路径；完整操作与 prepare_delivery.py 双包交付见 [production-delivery.md](production-delivery.md)。
 
 freeze：先构建验证，再记录本版全部文件哈希，状态改 frozen。阻塞开发的 pending 需求不得冻结。frozen/developing/released 均不可修改内容；check/build 会检测快照改变。版本状态存在 project.json，状态流转不会修改冻结内容。
 

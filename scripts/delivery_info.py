@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Print user-facing local delivery locations without changing project material."""
+if __name__ == '__main__':
+    from project_guard import dispatch
+    dispatch(__file__)
+
 import argparse
 import json
 from pathlib import Path

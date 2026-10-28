@@ -16,6 +16,15 @@ class VersionFeatureListTests(unittest.TestCase):
         self.assertEqual({row['id']:row['change'] for row in rows},{'A':'修改','B':'沿用','C':'移除','D':'新增'})
         self.assertEqual(next(row['summary'] for row in rows if row['id']=='A'),'创建后返回列表')
 
+    def test_shared_rule_body_changes_consumer_but_reading_reference_does_not(self):
+        base={'requirements':[{'id':'A','title':'操作','shared_rule_ids':['R']},{'id':'B','title':'权限','rule_details':[{'id':'R','statement':'仅管理员','status':'confirmed'}]},{'id':'C','title':'说明','rule_details':[{'id':'RC','statement':'参见权限','related_rule_ids':['R']}]}]}
+        current=copy.deepcopy(base);current['requirements'][1]['rule_details'][0]['statement']='管理员与运营'
+        rows={r['id']:r for r in feature_list(current,base)}
+        self.assertEqual(rows['A']['change'],'修改')
+        self.assertEqual(rows['C']['change'],'沿用')
+        current=copy.deepcopy(base);current['requirements'][1]['rule_details'][0]['status']='pending'
+        self.assertEqual(feature_list(current,base)[0]['change'],'沿用')
+
     def test_confirming_a_rule_does_not_add_function_scope(self):
         base={'requirements':[{'id':'A','title':'创建','status':'pending','rule_details':[{'id':'R','statement':'必填','source':'ai-inferred','status':'pending'}]}]}
         current=copy.deepcopy(base)

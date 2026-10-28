@@ -1,10 +1,16 @@
 """Conservative review scope; dependencies indicate what to inspect, never auto-apply changes."""
 def affected(spec, requirement_ids):
     changed = set(requirement_ids)
+    # Shared requirements inherit constraints; this expands review, never applies edits.
+    while True:
+        inherited={rule['id'] for req in spec.get('requirements',[]) if req['id'] in changed for rule in req.get('rule_details',[])}
+        consumers={req['id'] for req in spec.get('requirements',[]) if inherited.intersection(req.get('shared_rule_ids',[]))}
+        if consumers.issubset(changed):break
+        changed.update(consumers)
     rules = {r['id'] for req in spec.get('requirements', []) if req['id'] in changed for r in req.get('rule_details', [])}
     interactions = [i for i in spec.get('interactions', []) if changed.intersection(i.get('requirement_ids', [])) or rules.intersection(i.get('rule_ids', []))]
     pages = [p for p in spec.get('pages', []) if changed.intersection(p.get('requirement_ids', [])) or any(i.get('page_id', i.get('page')) == p['id'] for i in interactions)]
-    return {'rules': sorted(rules), 'pages': [p['id'] for p in pages],
+    return {'requirements': sorted(changed), 'rules': sorted(rules), 'pages': [p['id'] for p in pages],
             'states': [{'page':p['id'], 'state':s['id']} for p in pages for s in p.get('states', [])],
             'interactions': [i['id'] for i in interactions],
             'acceptance': sorted({a['id'] for req in spec.get('requirements', []) if req['id'] in changed for a in req.get('acceptance', [])}),

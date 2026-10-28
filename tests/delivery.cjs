@@ -22,3 +22,29 @@ test('implementation question remains blocking even if its flag is incorrectly f
  d.versions.v1.spec.requirements[0].review.checks[0].impact='editorial';
  assert.equal(delivery.filter(delivery.model(d,'v1'),'A','all','blocking','all').length,0);
 });
+
+test('设计方向可筛选，未分工保留且导出使用中文',()=>{
+ const d=fixture();d.versions.v1.spec.requirements[0].delivery={roles:['design']};d.versions.v1.spec.requirements[0].source='origin';
+ const p=delivery.model(d,'v1');assert.ok(delivery.filter(p,'','all','all','design').some(t=>t.id==='A'));
+ assert.ok(delivery.filter(p,'','all','all','design').some(t=>t.id==='C'));
+ assert.ok(!delivery.filter(p,'','all','all','qa').some(t=>t.id==='A'));
+ assert.match(delivery.markdown(p,p.tasks,''),/分工：设计/);assert.match(delivery.markdown(p,p.tasks,''),/来源：原始需求/);
+});
+test('适用共用规则待确认不被父功能掩盖，关联阅读不继承',()=>{
+ const d=fixture(), req=d.versions.v1.spec.requirements;
+ req[1].rule_details=[{id:'RULE-SHARED',status:'pending'}];req[0].rule_details=[{id:'RULE-A',status:'confirmed',related_rule_ids:['RULE-SHARED']}];
+ assert.equal(delivery.model(d,'v1').tasks.find(t=>t.id==='A').confirmation,'confirmed');
+ req[0].shared_rule_ids=['RULE-SHARED'];assert.equal(delivery.model(d,'v1').tasks.find(t=>t.id==='A').confirmation,'pending');
+ assert.equal(req[0].status,'confirmed');
+});
+
+
+test('共用规则正文变化提示引用功能修改，读取链接不继承业务变更',()=>{
+ const d=fixture();d.versions.v1.spec.requirements[0].rule_details=[{id:'RULE-SHARED',statement:'原范围'}];
+ d.versions.v1.spec.requirements[1].shared_rule_ids=['RULE-SHARED'];
+ d.versions.v0=structuredClone(d.versions.v1);
+ d.versions.v1.spec.requirements[0].rule_details[0].statement='新范围';
+ assert.equal(delivery.model(d,'v1').tasks.find(t=>t.id==='C').change,'modified');
+ delete d.versions.v1.spec.requirements[1].shared_rule_ids;delete d.versions.v0.spec.requirements[1].shared_rule_ids;
+ assert.equal(delivery.model(d,'v1').tasks.find(t=>t.id==='C').change,'unchanged');
+});

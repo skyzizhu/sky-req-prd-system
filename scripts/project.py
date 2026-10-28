@@ -298,11 +298,12 @@ def main():
             altered = sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k))
             from review_scope import affected
             result['review_scope_since_checkpoint'] = affected(current, altered)
+            review_ids = set(result['review_scope_since_checkpoint']['requirements']) | set(affected({'requirements':list(old.values())},altered)['requirements'])
             result['changed_since_checkpoint'] = altered
             result['rule_changes_since_checkpoint'] = diff(old, new)
-            result['review_acceptance_since_checkpoint'] = sorted({a['id'] for k in altered for r in (old.get(k, {}), new.get(k, {})) for a in r.get('acceptance', [])})
-            result['review_pages_since_checkpoint'] = [p['id'] for p in current['pages'] if set(p['requirement_ids']) & set(altered)]
-            result['review_interactions_since_checkpoint'] = [i['id'] for i in current['interactions'] if set(i['requirement_ids']) & set(altered)]
+            result['review_acceptance_since_checkpoint'] = sorted({a['id'] for k in review_ids for r in (old.get(k, {}), new.get(k, {})) for a in r.get('acceptance', [])})
+            result['review_pages_since_checkpoint'] = [p['id'] for p in current['pages'] if set(p['requirement_ids']) & review_ids]
+            result['review_interactions_since_checkpoint'] = [i['id'] for i in current['interactions'] if set(i['requirement_ids']) & review_ids]
         base = version.get('base')
         if base:
             br = safe(root, 'versions/' + base)
@@ -313,10 +314,11 @@ def main():
                 new = {r['id']: r for r in current['requirements']}
                 altered = sorted(k for k in old.keys() | new.keys() if old.get(k) != new.get(k))
                 result['review_scope_since_base'] = affected(current, altered)
+                review_ids = set(result['review_scope_since_base']['requirements']) | set(affected({'requirements':list(old.values())},altered)['requirements'])
                 result['changed_requirements'] = altered
-                result['review_pages'] = [p['id'] for p in current['pages'] if set(p['requirement_ids']) & set(altered)]
-                result['review_interactions'] = [i['id'] for i in current['interactions'] if set(i['requirement_ids']) & set(altered)]
-                result['review_acceptance'] = [a['id'] for k in altered if k in new for a in new[k].get('acceptance', [])]
+                result['review_pages'] = [p['id'] for p in current['pages'] if set(p['requirement_ids']) & review_ids]
+                result['review_interactions'] = [i['id'] for i in current['interactions'] if set(i['requirement_ids']) & review_ids]
+                result['review_acceptance'] = [a['id'] for k in review_ids if k in new for a in new[k].get('acceptance', [])]
         print(json.dumps(result, ensure_ascii=False, indent=2))
     print('完成：', a.command, vid)
 

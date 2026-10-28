@@ -13,11 +13,36 @@ from html.parser import HTMLParser
 
 VERSION_STATES = {'planning', 'frozen', 'developing', 'released'}
 # 随 skill 模板发布一并提升；编译进 spec-data 供原型工具栏展示，用于识别模板漂移。
-TEMPLATE_VERSION = '2.0.0-preview.25'
+TEMPLATE_VERSION = '2.0.0-preview.31'
 FORMS = {'web', 'desktop', 'mobile', 'h5', 'miniapp', 'tv'}
 ID = re.compile(r'^[a-z0-9]+(?:[-.][a-z0-9]+)*$')
 
 PROPERTY_LABELS = {'text': '控件文案', 'placeholder': '占位提示', 'defaultValue': '默认值', 'maxLength': '最大长度', 'required': '必填', 'options': '选项', 'width': '宽度', 'min': '最小值', 'max': '最大值', 'step': '步进', 'unit': '单位', 'pattern': '格式校验', 'accept': '可接受文件类型'}
+
+
+def property_display(key, value):
+    """Human display only; preserve canonical values in spec for exact edits."""
+    if key == 'options':
+        return '；'.join(o['label'] + ('（值：' + o['value'] + '）' if o['value'] != o['label'] else '') for o in value)
+    if key == 'width':
+        return {'auto':'随内容适配', 'compact':'紧凑', 'full':'占满可用宽度'}.get(value, value)
+    if isinstance(value, bool):
+        return '是' if value else '否'
+    return '空' if value == '' else str(value)
+
+
+def control_supplements(spec):
+    pages = {p['id']:p for p in spec.get('pages', [])}
+    result = []
+    for it in spec.get('interactions', []):
+        if not it.get('properties'):continue
+        page = pages.get(it['page'], {})
+        states = {s['id']:s['title'] for s in page.get('states', [])}
+        result.append({'id':it['id'], 'requirement_ids':it.get('requirement_ids', []),
+                       'title':it.get('title') or it['description'], 'page':page.get('title', it['page']),
+                       'states':'、'.join(states.get(s, s) for s in it.get('state_ids', [])) or '页面各适用状态',
+                       'items':[{'label':PROPERTY_LABELS.get(k,k), 'value':property_display(k,v)} for k,v in it['properties'].items()]})
+    return result
 
 
 def property_errors(it, element):
@@ -160,6 +185,8 @@ def spec_markdown(spec, outcomes=None):
             for check in questions:out += ['- '+check['question']+'（'+('影响实现/验收，需先明确' if prdlib.check_blocks(check) else '仅文案校对，不改变实现/验收')+'）']
         if r.get('shared_rule_ids'):
             out += ['适用的共用规则：'+rule_links(r['shared_rule_ids'])]
+            if any(rule_index.get(rid,{}).get('status')!='confirmed' for rid in r['shared_rule_ids']):
+                out += ['含待确认的共用规则，相关实现与验收口径需先明确。']
         for name, value in r.get('rules', {}).items():
             out += [f'#### {name}', str(value)]
         rule_groups = {}
@@ -185,14 +212,22 @@ def spec_markdown(spec, outcomes=None):
             if diagram.get('level')=='detail' and diagram.get('requirement_id')==r['id']:
                 out += [diagramlib.markdown(diagram,spec.get('diagrams'),4)]
         if r.get('boundary_cases'):
-            def cell(value):return str(value).replace('|','｜').replace('\n',' ')
-            out += ['#### 边界与异常用例', '| 用例 | 类型 | 验收场景 | 独有补充 |', '| --- | --- | --- | --- |']
+            def label(value):return str(value).replace('\n',' ').replace('[','\\[').replace(']','\\]')
+            out += ['#### 特殊情况与处理']
             for case in r['boundary_cases']:
-                prdlib.case_scenario(case,r)  # Refuse broken references before exporting.
-                extra=case['input']+' → '+case['expected'] if 'input' in case else '—'
-                out.append('| '+' | '.join(cell(v) for v in (case['id'],{'boundary':'边界','exception':'异常','normal':'正常'}.get(case['kind'],case['kind']),'、'.join(case.get('acceptance_ids',[])),extra))+' |')
+                scenario=prdlib.case_scenario(case,r)
+                links='、'.join('[查看验收'+(' '+str(i+1) if len(case.get('acceptance_ids',[]))>1 else '')+'](#acceptance-'+aid+')' for i,aid in enumerate(case.get('acceptance_ids',[])))
+                if 'input' in case:
+                    out += ['- 情况：'+case['input'], '  - 处理：'+case['expected']]
+                    if links:out += ['  - 详细验收：'+links]
+                else:
+                    # Readable index; canonical GWT is exported once below.
+                    aid=case['acceptance_ids'][0]
+                    out += ['- ['+label(scenario['input'])+'](#acceptance-'+aid+')']
+                out += ['  - 定位编号：'+case['id']]
         out += ['#### 验收标准']
         for ac in r.get('acceptance', []):
+            out += ['<a id="acceptance-'+ac['id']+'"></a>']
             out += [f"- 前提：{ac['given']}\n  - 操作：{ac['when']}\n  - 预期：{ac['then']}\n  - 验收编号：{ac['id']}"]
             record = latest_execution.get(ac['id'])
             if record is not None:
@@ -209,7 +244,7 @@ def spec_markdown(spec, outcomes=None):
         for it in configured:
             out += [f"- {page_names.get(it['page'],it['page'])}：{it['description']}（{it['id']}）"]
             for key,value in it['properties'].items():
-                out += [f"  - {PROPERTY_LABELS.get(key,key)}：{json.dumps(value,ensure_ascii=False)}"]
+                out += [f"  - {PROPERTY_LABELS.get(key,key)}：{property_display(key,value)}"]
     rendered='\n\n'.join(out)
     return re.sub(r'(\|)\n\n(?=\|)', r'\1\n', rendered)
 
@@ -365,7 +400,7 @@ def validate(root):
                     errors.append(f'{vid}/{rid}: delivery 必须为对象')
                 else:
                     roles, dependencies = delivery.get('roles', []), delivery.get('dependencies', [])
-                    if not isinstance(roles, list) or any(role not in ('frontend', 'backend', 'qa') for role in roles):
+                    if not isinstance(roles, list) or any(role not in ('frontend', 'backend', 'qa', 'design') for role in roles):
                         errors.append(f'{vid}/{rid}: 交接分工无效')
                     if not isinstance(dependencies, list) or any(not isinstance(dep, str) or not dep.strip() for dep in dependencies):
                         errors.append(f'{vid}/{rid}: 交接依赖需要非空文字列表')
@@ -475,13 +510,15 @@ def validate(root):
                             errors.append(f'{vid}/{item["id"]}: 静态原型只允许 inspect 说明')
                 if html.page_id != pid:
                     errors.append(f'{vid}/{pid}: body data-page-id 与 manifest 不一致')
+                page_dir = safe(vr / 'content', p['file']).parent
+                local_resources = {(page_dir / ref.split('#')[0].split('?')[0]).resolve() for ref in html.refs if not re.match(r'^(https?:|mailto:|tel:|#)',ref)}
                 for required in ('assets/spec-data.js', 'assets/prototype-runtime.js', 'assets/prototype-runtime.css'):
-                    if required not in html.refs:
+                    if (vr / 'content/prototype' / required).resolve() not in local_resources:
                         errors.append(f'{vid}/{pid}: 原型缺少共享需求面板资源 {required}')
                 for ref in html.refs:
                     if not ref.endswith('.css') or 'prototype-runtime.css' in ref or re.match(r'^(https?:)?//', ref):
                         continue
-                    css_path = safe(vr / 'content/prototype', ref) if ref.startswith('assets/') else None
+                    css_path = safe(vr, str((page_dir / ref).relative_to(vr)))
                     if css_path is None or not css_path.is_file():
                         continue
                     css_text = re.sub(r'/\*.*?\*/', '', css_path.read_text(encoding='utf-8'), flags=re.S)
@@ -537,6 +574,7 @@ def compile_project(root):
         sections = prdlib.compile_sections(vr / 'content', spec, spec_markdown(spec or {}, version_outcomes),feature_items,v['id'])
         attachments = attachmentlib.for_version(root, project, v['id'], catalog)
         current = bundle['versions'][v['id']]
+        current['control_supplements'] = control_supplements(spec or {})
         current['prd_sections'] = sections
         current['attachments'] = attachments
         documents={p['file']:safe(vr/'content',p['file']).read_text(encoding='utf-8') for p in pages(manifest) if p['type']=='markdown'}
@@ -569,6 +607,7 @@ def compile_project(root):
         if spec and v['status'] == 'planning':
             data = {'schema_version': 2, 'project': project['id'], 'projectName': project['name'], 'version': v['id'], 'build': {'template': TEMPLATE_VERSION, 'generated_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}, 'spec': spec,
                     'pageRoutes': {p['id']: '/v/' + v['id'] + '/' + m['id'] + '/' + p['id'] for m in manifest['modules'] for p in m['pages'] if p['type'] == 'prototype'},
+                    'projectEntries': {p['id']: '../' * (len(pathlib.PurePosixPath(p['file']).parts)+2) + 'site/index.html' for p in pages(manifest) if p['type'] == 'prototype'},
                     'pageFiles': {p['id']: p['file'] for p in pages(manifest) if p['type'] == 'prototype'}}
             out = vr / 'content/prototype/assets/spec-data.js'
             out.parent.mkdir(parents=True, exist_ok=True)

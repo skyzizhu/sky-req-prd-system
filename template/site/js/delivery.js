@@ -1,10 +1,15 @@
 /* One model powers the delivery view and both exports. No network required. */
 (function (root) {
   'use strict';
+  var ROLE_LABELS={frontend:'前端',backend:'后端',qa:'测试',design:'设计'};
   function stable(value) {
     if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
     if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(function (k) { return JSON.stringify(k) + ':' + stable(value[k]); }).join(',') + '}';
     return JSON.stringify(value);
+  }
+  function sharedRules(requirement,spec){
+    var rules={};((spec || {}).requirements || []).forEach(function(req){(req.rule_details || []).forEach(function(rule){rules[rule.id]=rule;});});
+    return ((requirement || {}).shared_rule_ids || []).map(function(id){return rules[id] || {id:id};});
   }
   function model(data, vid) {
     var version = data.project.versions.find(function (v) { return v.id === vid; });
@@ -25,9 +30,10 @@
         if (p.type === 'spec' || mappings.some(function (page) { return page.id === p.id; })) links.push({title:p.title, type:p.type, route:p.type==='spec' ? ((bundle.prd_sections || []).some(function(s){return s.id==='functions';})?'#/v/'+encodeURIComponent(linkVersion)+'/_prd/functions':'#/v/'+[linkVersion,m.id,p.id].map(encodeURIComponent).join('/'))+'?requirement='+encodeURIComponent(id) : '#/v/' + [linkVersion,m.id,p.id].map(encodeURIComponent).join('/')});
       }); });
       var openChecks=(r.review && r.review.checks || []).filter(function(c){return c.status==='pending';});
-      var pending = !!openChecks.length || r.status !== 'confirmed' || (r.rule_details || []).some(function (rule) { return rule.status !== 'confirmed'; });
+      var sharedPending=(r.shared_rule_ids || []).some(function(id){return ((bundle.spec || {}).requirements || []).some(function(req){return (req.rule_details || []).some(function(rule){return rule.id===id && rule.status!=='confirmed';});});});
+      var pending = sharedPending || !!openChecks.length || r.status !== 'confirmed' || (r.rule_details || []).some(function (rule) { return rule.status !== 'confirmed'; });
       var delivery = r.delivery || {};
-      return {id:id, title:r.title, change:removed ? 'removed' : !before[id] ? 'added' : stable(before[id]) !== stable(r) ? 'modified' : stable(interactions) !== stable(oldInteractions) || stable(mappings) !== stable(oldMappings) || files.length ? 'review' : 'unchanged',
+      return {id:id, title:r.title, change:removed ? 'removed' : !before[id] ? 'added' : stable(before[id]) !== stable(r) || stable(sharedRules(before[id],base && base.spec)) !== stable(sharedRules(r,bundle.spec)) ? 'modified' : stable(interactions) !== stable(oldInteractions) || stable(mappings) !== stable(oldMappings) || files.length ? 'review' : 'unchanged',
         confirmation:pending ? 'pending' : 'confirmed', blocking:(!!r.blocking || openChecks.some(function(c){return c.blocking || c.impact!=='editorial';})) && pending,
         roles:Array.isArray(delivery.roles) ? delivery.roles : [], dependencies:Array.isArray(delivery.dependencies) ? delivery.dependencies : [],
         source:r.source || 'unknown', description:r.description || '', rules:r.rules || {}, rule_details:r.rule_details || [], acceptance:r.acceptance || [], interactions:interactions, links:links};
@@ -47,7 +53,7 @@
     lines.push('## 需求清单', '| 需求名称 | 编号 | 变更 | 确认状态 |\n| --- | --- | --- | --- |\n'+tasks.map(function(t){return '| '+[t.title,t.id,({added:'新增',modified:'修改',removed:'移除',review:'需复核',unchanged:'未变化'}[t.change] || t.change),t.confirmation==='pending'?'待确认':'已确认'].map(cell).join(' | ')+' |';}).join('\n'));
     tasks.forEach(function (t) {
       lines.push('## '+t.title, '追踪编号：'+t.id, '变化：'+({added:'新增',modified:'修改',removed:'移除',review:'关联变化待复核',unchanged:'未变化'}[t.change] || t.change)+'；确认：'+(t.confirmation==='confirmed'?'已确认':'待确认')+(t.blocking?'；阻塞开发':''), t.description,
-        '来源：'+t.source, '分工：'+(t.roles.join('、') || '待分工'), '依赖：'+(t.dependencies.join('；') || '未登记，需评审'));
+        '来源：'+({origin:'原始需求','ai-inferred':'AI 推断'}[t.source] || t.source), '分工：'+(t.roles.map(function(r){return ROLE_LABELS[r] || r;}).join('、') || '待分工'), '依赖：'+(t.dependencies.join('；') || '未登记，需评审'));
       lines.push('验收引用：'+(t.acceptance.map(function(a){return a.id;}).join('、') || '尚未登记')+'；完整条件见下方功能原文。');
       lines.push('### 相关物料');
       t.links.forEach(function (l) { lines.push('- ['+l.title+']('+baseUrl+l.route+')'); });
@@ -59,11 +65,11 @@
     var pack = model(data, vid), selected = null;
     var names = {added:'新增',modified:'修改',removed:'移除',review:'关联变化待复核',unchanged:'未变化'};
     var tldr='<p>按变更、确认状态和分工检查交付准备情况；功能规则与验收条件统一查阅 PRD。</p>';
-    var roles = {frontend:'前端',backend:'后端',qa:'测试'};
+    var roles = ROLE_LABELS;
     var roleText = function(t){return t.roles.map(function(r){return roles[r] || r;}).join('、') || '待分工';};
     var status = function(t){return (t.confirmation==='pending'?'待确认':'已确认')+(t.blocking?' · 阻塞开发':'');};
     var para = function(s){return '<p>'+esc(s || '')+'</p>';};
-    container.innerHTML = '<div class="scope-reader"><h1>交付清单</h1>' + tldr + '<dl class="scope-summary"><div><dt>当前版本</dt><dd>'+esc(vid+' · '+(pack.draft?'工作草稿':'交接/冻结物料'))+'</dd></div><div><dt>比较基线</dt><dd>'+esc(pack.baseline || '首版')+'</dd></div><div><dt>当前开发依据</dt><dd>'+esc(pack.basis || '尚无交接快照')+'</dd></div></dl><details class="scope-notice"><summary>交接说明与限制</summary>'+para(pack.notice)+'</details><h2>需求清单</h2><div class="delivery-filters"><label>搜索 <input id="delivery-query" type="search"></label><label>范围 <select id="delivery-change"><option value="changed">仅本次变化</option><option value="all">全部需求</option></select></label><label>状态 <select id="delivery-status"><option value="all">全部状态</option><option value="pending">待确认</option><option value="blocking">阻塞开发</option></select></label><label>关注方向 <select id="delivery-role"><option value="all">全部</option><option value="frontend">前端</option><option value="backend">后端</option><option value="qa">测试</option></select></label><button id="delivery-md">导出交接清单（Markdown）</button><button id="delivery-json">导出结构化数据（JSON）</button></div><p id="delivery-count" role="status"></p><div class="scope-table-wrap"><table class="scope-table"><caption>当前筛选的需求范围；确认不代表测试通过</caption><thead><tr><th scope="col">需求名称 / 编号</th><th scope="col">变更</th><th scope="col">确认状态</th><th scope="col">关注方向</th><th scope="col">依赖</th><th scope="col">详情</th></tr></thead><tbody id="delivery-rows"></tbody></table></div><h2>交付资料</h2><div id="delivery-tasks"></div></div>';
+    container.innerHTML = '<div class="scope-reader"><h1>交付清单</h1>' + tldr + '<dl class="scope-summary"><div><dt>当前版本</dt><dd>'+esc(vid+' · '+(pack.draft?'工作草稿':'交接/冻结物料'))+'</dd></div><div><dt>比较基线</dt><dd>'+esc(pack.baseline || '首版')+'</dd></div><div><dt>当前开发依据</dt><dd>'+esc(pack.basis || '尚无交接快照')+'</dd></div></dl><details class="scope-notice"><summary>交接说明与限制</summary>'+para(pack.notice)+'</details><h2>需求清单</h2><div class="delivery-filters"><label>搜索 <input id="delivery-query" type="search"></label><label>范围 <select id="delivery-change"><option value="changed">仅本次变化</option><option value="all">全部需求</option></select></label><label>状态 <select id="delivery-status"><option value="all">全部状态</option><option value="pending">待确认</option><option value="blocking">阻塞开发</option></select></label><label>关注方向 <select id="delivery-role"><option value="all">全部</option><option value="frontend">前端</option><option value="backend">后端</option><option value="qa">测试</option><option value="design">设计</option></select></label><button id="delivery-md">导出交接清单（Markdown）</button><button id="delivery-json">导出结构化数据（JSON）</button></div><p id="delivery-count" role="status"></p><div class="scope-table-wrap"><table class="scope-table"><caption>当前筛选的需求范围；确认不代表测试通过</caption><thead><tr><th scope="col">需求名称 / 编号</th><th scope="col">变更</th><th scope="col">确认状态</th><th scope="col">关注方向</th><th scope="col">依赖</th><th scope="col">详情</th></tr></thead><tbody id="delivery-rows"></tbody></table></div><h2>交付资料</h2><div id="delivery-tasks"></div></div>';
     var q = function(id){return container.querySelector('#delivery-'+id);};
     function visible(){return filter(pack,q('query').value,q('change').value,q('status').value,q('role').value);}
     function detail(t) {

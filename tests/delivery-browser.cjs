@@ -10,6 +10,9 @@ const path=require('node:path'), fs=require('node:fs'), assert=require('node:ass
     await page.goto(pathToFileURL(path.join(root,'site/index.html')).href+'#/v/v1.1/_delivery/tasks');
     await page.getByRole('heading',{name:'交付清单',exact:true}).waitFor();
     assert.ok(await page.locator('#delivery-rows [data-task]').count() > 1);
+    assert.equal(await page.locator('#delivery-role option[value=design]').innerText(),'设计');
+    await page.locator('#delivery-role').selectOption('design');
+    await page.locator('#delivery-role').selectOption('all');
     await page.locator('[data-task="FR-ORDER-002"]').click();
     assert.equal(await page.locator('#delivery-tasks h3').innerText(),'查阅订单');
     assert.equal(await page.locator('#delivery-tasks pre').count(),0);

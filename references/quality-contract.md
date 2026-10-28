@@ -79,7 +79,7 @@ python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
 
 画面目标必须出现在 `pages[].states[].elements`，且位于该状态 HTML 的 `.sr-snapshot` 内。`interactions[]` 必须有精确的 `rule_ids`；画面规则须由同一页面、状态、元素关联。HTML hidden/aria-hidden 会报错，CSS 遮挡及实际可见性由浏览器复核。
 
-每个状态的必要业务元素还需有适用于该状态的精确标注；共用标注可由元素自身的 data-rule-ref 关联。只有外层区域的标注不能替代子字段、小操作或只读数据的说明。结构检查只验证关联存在，细节是否足够仍需按 prototype.md 做语义复核。
+每个状态的必要业务元素还需有关联到适用规则的精确标注，重复实例可用同一data-rule-ref关联列/操作代表标注，无需每行另设编号；共用标注可由元素自身的 data-rule-ref 关联。只有外层区域的标注不能替代子字段、小操作或只读数据的说明。结构检查只验证关联存在，细节是否足够仍需按 prototype.md 做语义复核。
 
 规则的 `acceptance_ids` 指向本功能验收；验收写 given/when/then，场景可带 kind（normal/boundary/exception）。未关联的验收、关联不存在的状态/元素、无规则的标注均报错。后台口径等纯文字规则无需强造原型。
 
@@ -91,7 +91,7 @@ python3 <skill>/scripts/validate.py <项目> --report <项目>/quality-report
 [{"id":"BC-01", "kind":"boundary", "rule_ids":["RULE-01"], "acceptance_ids":["AC-01"], "presentation":{"mode":"text", "reason":"同布局的数值边界，验收场景足够表达"}}]
 ```
 
-kind 可为 boundary、exception、normal。引用型用例省略 input/expected，关联唯一完整 GWT，且该验收明确相同 kind；GWT 的前提/操作/预期是唯一场景正文。网页和导出展示引用，质量报告展开证据。确有独立条件/数据/断言的补充用例才同时提供 input/expected；未交付验收时用独立用例，不引用不存在的 GWT。覆盖检查项引用的用例必须关联该检查项的规则。
+kind 可为 boundary、exception、normal。引用型用例省略 input/expected，关联唯一完整 GWT，且该验收明确相同 kind；GWT 的前提/操作/预期是唯一场景正文。网页“特殊情况与处理”直接投影该验收的前提/操作与预期，编号和类型放次要定位信息，不展示纯编号与全空的“独有补充”列。Markdown用可读场景链接到完整验收，GWT正文只导出一次；质量报告展开核对证据。确有独立条件/数据/断言的补充用例才同时提供 input/expected；未交付验收时用独立用例，不引用不存在的 GWT。覆盖检查项引用的用例必须关联该检查项的规则。
 
 同类型也不代表同场景：空结果不能关联失败重试。自动检查类型和关系，语义复核仍需核对具体前提、触发和预期。不要通过更改类型掩盖错误关联。
 

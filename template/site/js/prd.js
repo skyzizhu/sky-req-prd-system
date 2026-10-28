@@ -24,7 +24,7 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
   }
   function readText(text,from){
     text=String(text || '');var re=/\bRULE-[A-Za-z0-9_-]+\b/g,result='',start=0,match;
-    while((match=re.exec(text))){result+=marked(text.slice(start,match.index));result+=ruleIndex[match[0]]?'<a class="prd-rule-link" href="'+esc(ruleHref(match[0],from))+'" title="'+esc(ruleIndex[match[0]].rule.title || match[0])+'">'+marked(match[0])+'</a>':marked(match[0]);start=re.lastIndex;}
+    while((match=re.exec(text))){result+=marked(text.slice(start,match.index));result+=ruleIndex[match[0]]?'<a class="prd-rule-link" href="'+esc(ruleHref(match[0],from))+'" title="'+esc(ruleIndex[match[0]].rule.title || match[0])+'">'+marked(ruleIndex[match[0]].rule.title || match[0])+'</a>':marked(match[0]);start=re.lastIndex;}
     return result+marked(text.slice(start));
   }
   var acLatest={};
@@ -46,11 +46,11 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     var title=rule.title || '规则 '+(index+1);
     var clauses=(rule.clauses || []).map(function(item){return '<div><dt>'+marked(item.label)+'</dt><dd>'+readText(item.text,rule.id)+'</dd></div>';}).join('');
     var examples=(rule.examples || []).map(function(e){return '<div><dt>'+readText(e.input,rule.id)+'</dt><dd>'+readText(e.expected,rule.id)+'</dd></div>';}).join('');
-    var acceptance=(rule.acceptance_ids || []).map(function(id){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(requirement.id)+'&amp;section=acceptance&amp;acceptance='+encodeURIComponent(id)+'">'+esc(id)+'</a>';}).join(' · ');
+    var acceptance=(rule.acceptance_ids || []).map(function(id){var ac=(requirement.acceptance || []).find(function(a){return a.id===id;});return '<a data-acceptance-link="'+esc(id)+'" title="'+esc(id)+'" href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(requirement.id)+'&amp;section=acceptance&amp;acceptance='+encodeURIComponent(id)+'">'+esc(ac?(ac.title || ac.given+'；'+ac.when):id)+'</a>';}).join(' · ');
     return '<article class="prd-rule-item" tabindex="-1" data-rule-id="'+esc(rule.id)+'"><div class="prd-rule-heading"><h5>'+marked(title)+'</h5><a class="prd-rule-permalink" href="'+esc(ruleHref(rule.id))+'" aria-label="'+esc('定位规则：'+title+'（'+rule.id+'）')+'">'+marked(rule.id)+'</a>'+(rule.status==='pending'?'<span class="sr-pending">待确认</span>':'')+'</div><p class="prd-rule-summary">'+readText(rule.statement,rule.id)+'</p>'+(clauses?'<dl class="prd-rule-clauses">'+clauses+'</dl>':'')+ruleTable(rule)+((rule.related_rule_ids || []).length?'<p class="prd-related-rules">关联规则：'+rule.related_rule_ids.map(function(id){return ruleLink(id,rule.id);}).join(' · ')+'</p>':'')+(examples?'<div class="prd-rule-examples"><h6>说明示例</h6><dl>'+examples+'</dl></div>':'')+'<details class="prd-rule-evidence"><summary>依据与验收</summary><p>'+esc(rule.id+' · '+meta(rule))+'</p>'+(acceptance?'<p>关联验收：'+acceptance+'</p>':'')+'</details></article>';
   }
   function p(text) { return '<p>'+readText(text)+'</p>'; }
-  function meta(item) { return (item.source==='ai-inferred'?'AI 推断':'原始需求')+' · '+(item.status==='confirmed'?'已确认':'待确认')+((item.rule_details || []).some(function(r){return r.status!=='confirmed';})?' · 含待确认规则':''); }
+  function meta(item) { return (item.source==='ai-inferred'?'AI 推断':'原始需求')+' · '+(item.status==='confirmed'?'已确认':'待确认')+(((item.rule_details || []).some(function(r){return r.status!=='confirmed';}) || (item.shared_rule_ids || []).some(function(id){return ruleIndex[id] && ruleIndex[id].rule.status!=='confirmed';})?' · 含待确认规则':'')); }
   container.className='content';
   container.innerHTML='<div class="prd-reader"><header class="prd-reader-header"><div class="prd-reader-heading"><div><h1>功能需求与规则</h1><p>按模块查看功能，按分类阅读规则。</p></div><a class="prd-index-link" href="#/v/'+encodeURIComponent(vid)+'/_prd/scope">功能清单与范围 ↗</a></div><div class="prd-tools"><label>页面 <select id="prd-page"><option value="">全部页面</option>'+pages.map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>';}).join('')+'</select></label><label>搜索标题、正文或编号 <input id="prd-search" type="search"></label><button id="prd-export">导出完整 PRD（Markdown）</button></div><p id="prd-count" role="status"></p></header><div class="prd-layout"><nav id="prd-toc" aria-label="需求目录"></nav><div id="prd-sections"></div></div><dialog id="prd-edit-context"><h2>交给 Agent 精确修改</h2><p>复制下面的定位信息并补充修改意图；不会自动提交，也不会重新生成项目。</p><textarea rows="7" aria-label="Agent 修改上下文" readonly></textarea><button>关闭</button></dialog></div>';
   function setActive(id){container.querySelectorAll('#prd-toc button').forEach(function(b){b.classList.toggle('on', b.dataset.jump===id);});}
@@ -109,10 +109,14 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
       Object.keys(groups).sort(function(a,b){var keys=Object.keys(category);return (keys.includes(a)?keys.indexOf(a):keys.length)-(keys.includes(b)?keys.indexOf(b):keys.length);}).forEach(function(key){html+='<section class="prd-rule prd-rule-group"><h4>'+esc(category[key] || key)+'</h4><div class="prd-rule-items">'+groups[key].map(function(rule,index){return ruleItem(rule,index,r);}).join('')+'</div></section>';});
       (spec.diagrams || []).filter(function(d){return d.level==='detail' && d.requirement_id===r.id;}).forEach(function(d){html+='<section class="prd-diagram" id="diagram-'+esc(d.id)+'">'+(d.parent_id?'<p><a href="'+parentDiagramLink(d)+'">查看上层流程</a></p>':'')+window.PS.mdToHtml((data.versions[vid].diagrams || {})[d.id] || '')+'</section>';});
       if((r.boundary_cases || []).length){
-        html+='<details class="prd-fold prd-boundaries"><summary>边界与异常用例（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="边界与异常用例表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>用例 / 类型</th><th>独有补充</th><th>验收场景</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){
-          var links=(c.acceptance_ids || []).map(function(id){return '<a href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(r.id)+'&amp;section=acceptance&amp;acceptance='+encodeURIComponent(id)+'">'+esc(id)+'</a>';}).join(' · ');
-          var extra='input' in c?esc(c.input)+'<br>'+esc(c.expected):'—';
-          return '<tr><td>'+esc(c.id)+'<br><small>'+esc({boundary:'边界',exception:'异常',normal:'正常'}[c.kind] || c.kind)+'</small></td><td>'+extra+'</td><td>'+links+(caseView(c)?'<br>'+caseView(c):'')+'</td></tr>';
+        html+='<details class="prd-fold prd-boundaries"><summary>特殊情况与处理（'+r.boundary_cases.length+'）</summary><div class="prd-boundary-scroll" role="region" aria-label="特殊情况与处理表，窄屏可横向滚动" tabindex="0"><table><thead><tr><th>遇到的情况</th><th>应有的处理</th><th>详细验收</th></tr></thead><tbody>'+r.boundary_cases.map(function(c){
+          var ids=c.acceptance_ids || [], ac=(r.acceptance || []).find(function(a){return a.id===ids[0];});
+          var independent='input' in c || 'expected' in c;
+          var condition=independent?readText(c.input || '未提供具体情况'):(ac?'<div class="prd-case-condition"><span>前提</span>'+readText(ac.given)+'</div><div class="prd-case-condition"><span>操作</span>'+readText(ac.when)+'</div>':'该场景缺少完整验收，请补充。');
+          var expected=independent?c.expected:(ac && ac.then);
+          var links=ids.map(function(id,index){return '<a aria-label="'+esc('查看验收：'+id)+'" href="#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(r.id)+'&amp;section=acceptance&amp;acceptance='+encodeURIComponent(id)+'">查看验收'+(ids.length>1?' '+(index+1):'')+'</a>';}).join('<br>');
+          var evidence='<details class="prd-case-evidence"><summary>定位信息</summary><p>'+esc('用例：'+c.id+' · '+({boundary:'边界',exception:'异常',normal:'正常'}[c.kind] || c.kind))+'</p>'+(ids.length?'<p>'+esc('关联验收：'+ids.join('、'))+'</p>':'')+'</details>';
+          return '<tr data-case-id="'+esc(c.id)+'"><td>'+condition+evidence+'</td><td>'+readText(expected || '未提供处理结果，请补充。')+'</td><td>'+links+(caseView(c)?'<div class="prd-case-prototype">'+caseView(c)+'</div>':'')+'</td></tr>';
         }).join('')+'</tbody></table></div></details>';
       }
       html+='<details class="prd-fold prd-ac-fold" id="acceptance-'+esc(r.id)+'"><summary>验收标准（'+(r.acceptance || []).length+'）</summary><ol class="prd-acceptance">';
@@ -123,8 +127,8 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
         if(mod)html+='<a href="#/v/'+encodeURIComponent(vid)+'/'+encodeURIComponent(mod.id)+'/'+encodeURIComponent(pg.id)+'">'+esc(pg.title)+'</a> · ';
       });
       html+='</p></details>';
-      var configured=interactions.filter(function(i){return i.requirement_ids.includes(r.id) && Object.keys(i.properties || {}).length;});
-      if(configured.length){html+='<details class="prd-fold"><summary>控件属性补充</summary>';configured.forEach(function(i){html+='<p>'+esc(i.description+' · '+i.id)+'</p>';Object.keys(i.properties).forEach(function(k){html+=p(k+'：'+JSON.stringify(i.properties[k]));});});html+='</details>';}
+      var configured=(data.versions[vid].control_supplements || []).filter(function(i){return i.requirement_ids.includes(r.id);});
+      if(configured.length){html+='<details class="prd-fold"><summary>控件属性补充</summary>';configured.forEach(function(i){html+='<section><h5>'+esc(i.title)+'</h5><p>'+esc(i.page+' · '+i.states)+'</p><dl class="prd-rule-clauses">'+i.items.map(function(item){return '<div><dt>'+esc(item.label)+'</dt><dd>'+esc(item.value)+'</dd></div>';}).join('')+'</dl><details><summary>定位信息</summary>'+p(i.id)+'</details></section>';});html+='</details>';}
       return html+'</article>';
     }).join('') || '<p>没有匹配需求，请调整筛选。编号不存在时不会自动定位到其他需求。</p>';
     var params=new URLSearchParams(query), targetRuleId=params.get('rule');
@@ -148,6 +152,8 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
       });
       if(hits.length){var matches=document.createElement('nav');matches.className='prd-search-results';matches.setAttribute('aria-label','命中的规则');matches.innerHTML='<strong>命中 '+hits.length+' 条规则</strong>'+hits.map(function(el){return '<button type="button" data-jump-rule="'+esc(el.dataset.ruleId)+'">'+marked(ruleIndex[el.dataset.ruleId].rule.title || el.dataset.ruleId)+'</button>';}).join('');container.querySelector('#prd-sections').prepend(matches);}
     }
+    var caseTarget=params.get('section')==='cases'?container.querySelector('.prd-boundaries'):null;
+    if(caseTarget)caseTarget.open=true;
     var targetAcceptance=new URLSearchParams(query).get('acceptance');
     var acceptanceTarget=targetAcceptance?Array.from(container.querySelectorAll('[data-acceptance]')).find(function(el){return el.dataset.acceptance===targetAcceptance;}):null;
     if(acceptanceTarget){acceptanceTarget.closest('details').open=true;requestAnimationFrame(function(){if(acceptanceTarget.isConnected)acceptanceTarget.scrollIntoView({block:'start'});});}
@@ -155,7 +161,7 @@ window.PSPRD = {render:function (container, data, vid, page, query, esc) {
     if(ruleTarget)ruleTarget.classList.add('prd-rule-target');
     window.PS.renderDiagrams(container).then(function(){
       var wanted=new URLSearchParams(query).get('diagram');
-      var target=wanted?document.getElementById('diagram-'+wanted):acceptanceTarget || ruleTarget || (!targetAcceptance && new URLSearchParams(query).get('section')==='acceptance'?container.querySelector('.prd-ac-fold'):null);
+      var target=wanted?document.getElementById('diagram-'+wanted):acceptanceTarget || ruleTarget || caseTarget || (!targetAcceptance && new URLSearchParams(query).get('section')==='acceptance'?container.querySelector('.prd-ac-fold'):null);
       if(target && container.contains(target)){target.scrollIntoView({block:'start'});if(target===ruleTarget)target.focus({preventScroll:true});}
     });
     watchSpy(selected);

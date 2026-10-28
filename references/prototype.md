@@ -102,7 +102,7 @@ Tab 来自 states[]，画面内的轻量操作由声明属性控制；状态选�
 
 requirements 继续包含稳定 id、title、description、module、source、status、blocking、rule_details、acceptance。规则仍是唯一来源，不在 HTML 硬写第二份。
 
-每个有业务含义的区域声明一条 interaction：
+每类独立业务含义声明 interaction；重复行的同列或同类操作按 control-annotations.md 共用代表标注：
 
 ```json
 {"id":"INT-ORDER-FAILURE","page":"create-order","selector":"#failed-feedback","title":"失败反馈","description":"失败后保留输入并允许重试","action":"inspect","requirement_ids":["FR-ORDER-001"],"rule_ids":["RULE-ORDER-FAILURE"],"state_ids":["failed"]}
@@ -111,7 +111,7 @@ requirements 继续包含稳定 id、title、description、module、source、sta
 - `title` 是短业务名称；description 是后备简述，不重复显示规则正文。
 - 同一控件在不同状态适用不同规则时，分别登记状态专属interaction（可指向各状态内对应元素），不能复用同一个interaction ID却悄悄改变rule_ids。
 - `state_ids` 缺省或空数组表示共用说明，填写表示只在这些状态显示。元素目标须在这些状态的画布中。共用规则只列一份，目标可指向 main 内包围各状态的稳定区域；差异规则绑定状态内具体区域。
-- 共用区域在各状态内可用 `data-rule-ref="INT-ORDER-NAME"` 关联同一 interaction；编号和定位优先选择当前状态对应区域，避免为相同规则维护多份记录。selector 保留指向页面内稳定容器的 #id。
+- 共用区域在各状态内可用 `data-rule-ref="INT-ORDER-NAME"` 关联同一 interaction；编号和定位优先选择当前状态内 selector 指向的代表锚点，其次选择 data-rule-ref 对应区域，避免为相同规则维护多份记录。selector 保留指向页面内稳定容器的 #id。
 - `rule_ids` 按当前操作所需顺序，先当前行为/状态差异，再必要共用约束，指向本 interaction 关联需求内的精确细目。每个 rule_details 包含 id/category/statement/source/status/acceptance_ids，必要时附 examples。不与其他正文重复。
 - 新版 interaction 仍只使用 inspect，表示标注关联；局部交互由HTML的声明属性控制，不能把标注action改为submit或业务操作。实际产品按钮的可用/禁用样式按画面状态呈现，不因原型不可操作而写成“产品不支持”。
 - 所有业务控件、只读关键数据均有关联；纯装饰不需要编号。编号由 interaction 顺序生成，稳定 ID 用于维护。
@@ -120,7 +120,7 @@ requirements 继续包含稳定 id、title、description、module、source、sta
 
 逐控件编写及复核时读取 [control-annotations.md](control-annotations.md)，包含下拉、多选、单选及其他控件的数据、默认值与交互要求。标注只解释实际使用的控件，不扩充页面能力。
 
-一个独立业务控件或数据项使用精确 interaction，通过 selector 或元素自身的 data-rule-ref 关联；不能以整个表单的一条说明代替逐元素规则。重复行可标列/操作代表项，说明统一适用范围。控件语义及复核表只在 [control-annotations.md](control-annotations.md) 维护。
+一个独立业务控件或数据项关联精确 interaction（允许同义重复实例共用），通过 selector 或元素自身的 data-rule-ref 关联；不能以整个表单的一条说明代替逐元素规则。重复行可标列/操作代表项，说明统一适用范围。控件语义及复核表只在 [control-annotations.md](control-annotations.md) 维护。
 
 规则表达复用 [functional-detail.md](functional-detail.md) 的 title/statement/clauses/table/examples；原型由 interaction.rule_ids 精确引用，不另写正文或猜测拆句。
 
@@ -177,3 +177,9 @@ page.handoff 为当前页面交接信息：role（角色名称）、precondition
 生成后反向核对：画面每个有业务含义的状态差异，点该控件标注是否就能读到依据？control_checks中用于解释当前属性的rule_ids也须出现在该控件当前状态的精确标注中；自动检查会报遗漏。反过来，标注多绑了无关规则、只绑定文字相似却语义不同的规则，仍需按delivery-review.md的annotation_scope逐项审查。
 
 字段校验优先在字段附近给出具体错误；确有顶部错误摘要时只提供定位和概括，避免与字段提示同义复述。不能为减少文案删除错误状态、原因或修复方法。
+
+设计交付检查：各真实业务状态具备必要元素、提示文案和可操作/禁用差异；弹层有触发入口、确认/关闭/返回及底层页面关系。规则说明不能代替必要状态画面，画面也不能代替精确数据与行为约束。只展示本次确有的状态，不为设计检查虚构页面或交互；Agent/导出/标注工具保留在阅读器，不进入业务画板。
+
+共享标注编号默认20px正圆，字重与选中外环保持轻量；宽高及最小/最大尺寸由阅读器固定，避免业务按钮的min-height把它撑成椭圆。定位间距与尺寸同步，预留独立编号栏，不放大业务控件或占用其点击区；键盘焦点保持可见。“显示标注编号”只控制阅读辅助层。
+
+查阅回归还需覆盖：代表项隐藏后的可见实例回退；表格内部滚动后编号随目标更新，裁切区外不悬空编号；状态对照时右栏及关联控件只来自当前选中状态；选项重建后默认/回填值不受属性键顺序影响。页面可在prototype子目录，资源按页面实际位置引用，PRD/定位链接使用构建出的projectEntries，不手写固定父级跳转。

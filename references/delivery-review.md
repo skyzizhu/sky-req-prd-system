@@ -71,3 +71,5 @@ python3 <skill>/scripts/evaluate_scenarios.py <候选映射.json> --report-dir <
 ```
 
 输出每场景报告和 summary.json。未提供的场景明确 not_run，未复核为 review_required；没有总分，不能把未评估当通过。脚本只评估候选，不调用模型生成候选。回归对比使用修改前后的两份报告，逐项解释新缺陷、修复和未决变化；不能用增加材料长度换取评分。新增真实失败再补场景，避免堆积同义用例。
+
+三类角色的阅读证据纳入现有复核项：开发沿操作到副作用与恢复（rule_closure/consistency），测试从规则进入可复现验收并区分各结果（acceptance），设计逐状态核对元素、提示、禁用、弹层与返回（annotation_scope/browser）。对照 information-architecture.md 的阅读取舍，检查编号链接、工具说明或原始数据是否挤占业务阅读（redundancy）。同一证据可支持多个复核项，不新增角色专用台账；脚本通过不代表上述语义已核实。

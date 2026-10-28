@@ -14,6 +14,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'template')
 from projectlib import read, write, safe, hashes, pages, validate, compile_project, HTMLCheck, property_errors
 import prdlib
 import attachmentlib
+import review_scope
 
 
 class Conflict(ValueError):
@@ -93,14 +94,15 @@ def impact(before, after, docs_before, docs_after):
     changed_it = {iid for iid in old_it.keys() | new_it.keys() if old_it.get(iid) != new_it.get(iid)}
     changed.update(rid for iid in changed_it for it in (old_it.get(iid, {}), new_it.get(iid, {})) for rid in it.get('requirement_ids', []))
     specs = [before or {}, after or {}]
+    review_changed = set().union(*(set(review_scope.affected(s,changed)['requirements']) for s in specs))
     changed_docs = sorted(k for k in docs_before.keys() | docs_after.keys() if docs_before.get(k) != docs_after.get(k))
     # A document change has no reliable structured graph; conservatively request review of every page.
-    affected = lambda item: bool(changed_docs or set(item.get('requirement_ids', [])) & changed)
+    affected = lambda item: bool(changed_docs or set(item.get('requirement_ids', [])) & review_changed)
     return {'changes': diff(before, after) + diff(docs_before, docs_after, '/documents'),
             'requirements': sorted(changed),
             'review_pages': sorted({p['id'] for s in specs for p in s.get('pages', []) if affected(p)}),
             'review_interactions': sorted({i['id'] for s in specs for i in s.get('interactions', []) if affected(i)}),
-            'review_acceptance': sorted({a['id'] for r in list(old.values()) + list(new.values()) if changed_docs or r['id'] in changed for a in r.get('acceptance', [])}),
+            'review_acceptance': sorted({a['id'] for r in list(old.values()) + list(new.values()) if changed_docs or r['id'] in review_changed for a in r.get('acceptance', [])}),
             'documents': changed_docs,
             'notice': 'PRD 和原型需求数据在保存后重新编译；原型状态画面、局部交互声明、独立测试文档及真实产品需按影响清单复核。正文变化按全页面保守复核。未自动 checkpoint。'}
 

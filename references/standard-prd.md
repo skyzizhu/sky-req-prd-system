@@ -73,7 +73,7 @@ CTO 主要通过标准大纲、目标范围、功能清单、依赖风险和计�
 
 上传落盘后构建失败会返回已保存及错误，不要重复上传；先修复并 build。若进程在文件落盘、引用登记之间中断，会留下未引用文件：Agent 核对 attachments 元数据、实际摘要与目标规划版本，恢复缺失引用后重新验证；不要删除或覆盖已有文件。
 
-边界及异常用例维护在 `requirements[].boundary_cases`，功能详情折叠展示，完整导出保留输入与预期表格。用例引用规则和验收，避免在其他章节复制正文。交付覆盖元数据见 [quality-contract.md](quality-contract.md)。
+边界及异常用例维护在 `requirements[].boundary_cases`，功能详情以“特殊情况与处理”直接展示具体条件和预期；Markdown保留可读索引及独立补充，完整GWT仅导出一次。用例引用规则和验收，避免在其他章节复制正文。交付覆盖元数据见 [quality-contract.md](quality-contract.md)。
 
 存在流程时按“模块全貌 → 必要子流程”组织，存在状态流转时提供对应状态图，图用 spec.diagrams 单一数据源生成，详见 [process-diagrams.md](process-diagrams.md)。原型静态状态展示不能替代状态流转图，文字流程不能替代应交付的图。
 

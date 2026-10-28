@@ -83,6 +83,20 @@ class QualityTests(unittest.TestCase):
         self.assertIn('create-order/failed/#failed-amount',paths)
         self.assertNotIn('create-order/default/#default-amount',paths)
 
+    def test_repeated_cells_share_annotation_without_losing_element_checks(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as directory:
+            content=Path(directory)/'content';shutil.copytree(self.content,content)
+            file=content/'prototype/create-order.html'
+            table='<table><tr><td><span id="row-a-name" data-rule-ref="INT-ORDER-NAME">A</span></td></tr><tr><td><span id="row-b-name" data-rule-ref="INT-ORDER-NAME">B</span></td></tr></table>'
+            original=file.read_text();self.assertIn('<div class="form-body">',original)
+            file.write_text(original.replace('<div class="form-body">',table+'<div class="form-body">',1))
+            self.spec['pages'][0]['states'][0]['elements'] += [{'selector':'#row-a-name','title':'第一行名称'},{'selector':'#row-b-name','title':'第二行名称'}]
+            report=evaluate(self.spec,content)
+            self.assertFalse([i for i in report['issues'] if i['severity']=='error'])
+            file.write_text(file.read_text().replace('id="row-b-name" data-rule-ref="INT-ORDER-NAME"','id="row-b-name" data-rule-ref="INT-MISSING"'))
+            self.assertIn('element_annotation_missing',{i['code'] for i in evaluate(self.spec,content)['issues']})
+
     def test_common_field_mapping_is_a_precise_visual_target(self):
         self.req['rule_details'][0]['presentation']={'mode':'prototype','targets':[{'page':'create-order','state':'failed','selector':'#failed-name'}]}
         self.assertEqual(self.codes(),set())

@@ -153,24 +153,27 @@ def chapter_body(markdown):
 def feature_list(spec, baseline=None):
     """Version overview index. Confirmation metadata is not a functional change."""
     def business(item,source):
-        keys=('title','module','description','rules','rule_details','acceptance')
+        keys=('title','module','description','rules','rule_details','acceptance','shared_rule_ids')
         def clean(value):
             if isinstance(value,dict):return {k:clean(v) for k,v in value.items() if k not in ('source','status','blocking')}
             if isinstance(value,list):return [clean(v) for v in value]
             return value
         value={key:item.get(key) for key in keys}
+        rule_index={rule['id']:rule for req in (source or {}).get('requirements',[]) for rule in req.get('rule_details',[])}
+        value['shared_rules']=[rule_index.get(rid,{'id':rid}) for rid in item.get('shared_rule_ids',[])]
         value['diagrams']=[d for d in (source or {}).get('diagrams',[]) if d.get('requirement_id')==item['id']]
         return clean(value)
     before={item['id']:item for item in (baseline or {}).get('requirements',[])}
     after={item['id']:item for item in (spec or {}).get('requirements',[])}
-    def confirmation(item):
-        return 'pending' if item.get('status')!='confirmed' or any(c.get('status')=='pending' for c in item.get('review',{}).get('checks',[])) or any(rule.get('status')!='confirmed' for rule in item.get('rule_details',[])) else 'confirmed'
+    def confirmation(item, source):
+        shared={rule['id']:rule for req in (source or {}).get('requirements',[]) for rule in req.get('rule_details',[])}
+        return 'pending' if item.get('status')!='confirmed' or any(c.get('status')=='pending' for c in item.get('review',{}).get('checks',[])) or any(rule.get('status')!='confirmed' for rule in item.get('rule_details',[])) or any(shared.get(rid,{}).get('status')!='confirmed' for rid in item.get('shared_rule_ids',[])) else 'confirmed'
     rows=[]
     for rid,item in after.items():
         change='新增' if rid not in before else '沿用' if business(item,spec)==business(before[rid],baseline) else '修改'
-        rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change=change,priority=item.get('priority') or '待定',status=confirmation(item)))
+        rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change=change,priority=item.get('priority') or '待定',status=confirmation(item,spec)))
     for rid,item in before.items():
-        if rid not in after:rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change='移除',priority=item.get('priority') or '待定',status=confirmation(item)))
+        if rid not in after:rows.append(dict(id=rid,module=item.get('module') or '功能需求',title=item['title'],summary=item.get('description',''),change='移除',priority=item.get('priority') or '待定',status=confirmation(item,baseline)))
     return rows
 
 

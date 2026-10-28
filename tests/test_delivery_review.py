@@ -30,6 +30,14 @@ class ControlConsistencyTests(unittest.TestCase):
         self.spec['quality']['control_checks']=[dict(page='apply',state=state,selector=selector,rule_ids=['RULE'],expected=expected)]
         return control_review(self.spec,self.content)
 
+    def test_repeated_buttons_share_annotation_but_each_keeps_attribute_check(self):
+        file=self.content/'page.html'
+        file.write_text(file.read_text().replace('<input id="submit"', '<button id="submit-copy" type="button" data-rule-ref="INT-submit" disabled>提交</button><input id="submit"'))
+        self.spec['quality']['control_checks']=[dict(page='apply',state='default',selector='#'+key,rule_ids=['RULE'],expected={'disabled':True}) for key in ['submit','submit-copy']]
+        self.assertFalse(control_review(self.spec,self.content)['findings'])
+        file.write_text(file.read_text().replace('data-rule-ref="INT-submit"','data-rule-ref="WRONG"'))
+        self.assertIn('control_annotation_mismatch',{i['code'] for i in control_review(self.spec,self.content)['findings']})
+
     def test_enums_and_default_are_independent_assertions(self):
         report=self.check('#device',{'options':[{'value':'laptop','label':'Laptop'},{'value':'monitor','label':'Monitor'}],'value':'laptop'})
         self.assertEqual(len(report['findings']),1)
@@ -91,6 +99,18 @@ class UnifiedReviewTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):cls.tmp.cleanup()
+
+    def test_shared_rule_review_expands_to_consumers_without_mutating_sources(self):
+        spec={'requirements':[{'id':'BASE','rule_details':[{'id':'R'}]},{'id':'CONSUMER','shared_rule_ids':['R'],'rule_details':[{'id':'RC'}],'acceptance':[{'id':'AC-C'}]},{'id':'READER','rule_details':[{'id':'RR','related_rule_ids':['R']}]}],
+              'pages':[{'id':'form','requirement_ids':['CONSUMER'],'states':[{'id':'default'}]}]}
+        original=json.dumps(spec,sort_keys=True)
+        result=affected(spec,['BASE'])
+        self.assertEqual(result['pages'],['form']);self.assertIn('AC-C',result['acceptance'])
+        from editlib import impact
+        before=json.loads(original);after=json.loads(original);after['requirements'][0]['rule_details'][0]['statement']='Changed scope'
+        delta=impact(before,after,{},{});self.assertEqual(delta['requirements'],['BASE']);self.assertIn('form',delta['review_pages']);self.assertIn('AC-C',delta['review_acceptance'])
+        self.assertIn('RC',result['rules']);self.assertNotIn('RR',result['rules'])
+        self.assertEqual(original,json.dumps(spec,sort_keys=True))
 
     def test_read_only_and_pending_reviews_remain_explicit(self):
         before={str(p):p.read_bytes() for p in self.root.rglob('*') if p.is_file()}

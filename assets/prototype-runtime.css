@@ -42,8 +42,8 @@ body.sr-host { margin: 0; background: #f5f5f5; color: #252525; font: 13px/1.5 -a
 .sr-snapshot :disabled { color: #888; background-color: #f1f1f1; }
 .sr-host.sr-comparing .sr-state>h2 { display: block; font-size: 12px; margin: 0 0 6px; color: #555; }
 .sr-pins { position: absolute; inset: 0; pointer-events: none; }
-.sr-pin { position: absolute; pointer-events: auto; width: 24px; height: 24px; padding: 0; border: 2px solid white; border-radius: 50%; background: #fff; color: #526482; font-size: 11px!important; font-weight: 600; border-color: #8190a7; border-width: 1px; }
-.sr-annotation-anchor { position: relative; padding-left: 30px; min-width: 0; min-height: 30px; max-width: 100%; }
+.sr-pin { position: absolute; pointer-events: auto; box-sizing: border-box; width: 20px; height: 20px; min-width: 20px; min-height: 20px; max-width: 20px; max-height: 20px; padding: 0; margin: 0; border: 1px solid #8190a7; border-radius: 50%; background: #fff; color: #526482; font-size: 9px!important; line-height: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.sr-annotation-anchor { position: relative; padding-left: 24px; min-width: 0; min-height: 24px; max-width: 100%; }
 .sr-anchor-inline { display: inline-block; }
 .sr-annotation-anchor>.sr-control-group { margin: 0; }
 .sr-annotation-anchor>input,.sr-annotation-anchor>select,.sr-annotation-anchor>textarea { max-width: 100%; }
@@ -90,8 +90,8 @@ body.sr-host { margin: 0; background: #f5f5f5; color: #252525; font: 13px/1.5 -a
 .sr-clauses dt { font-weight: 600; color: #64748b; font-size: 11px; }
 .sr-clauses dd { margin: 0; white-space: pre-wrap; color: #334155; }
 .sr-has-selection .sr-pin:not(.sr-pin-selected) { opacity: .62; }
-.sr-pin.sr-pin-selected,.sr-pin:hover,.sr-pin:focus-visible { opacity: 1; background: #345acb; color: #fff; border: 2px solid #fff; }
-.sr-pin.sr-pin-selected { box-shadow: 0 0 0 2px #345acb; }
+.sr-pin.sr-pin-selected,.sr-pin:hover,.sr-pin:focus-visible { opacity: 1; background: #345acb; color: #fff; border: 1px solid #fff; }
+.sr-pin.sr-pin-selected { box-shadow: 0 0 0 1px #345acb; }
 .sr-control-links { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
 .sr-control-link { display: inline-flex; align-items: center; gap: 5px; text-align: left; border: 1px solid #d8dee8; background: #fff; border-radius: 3px; padding: 3px 6px; color: #526078; font-size: 11px!important; line-height: 1.5; min-height: 28px; }
 .sr-control-link .sr-number { min-width: 17px; height: 17px; font-size: 10px; border: 0; background: #f1f4f8; }

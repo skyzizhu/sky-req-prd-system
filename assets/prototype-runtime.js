@@ -36,7 +36,7 @@ window.PSLocalControls = function(snapshot,onLayout){
     var node=owner(el),mode=node && node.dataset.psLocal,type=(el.type || '').toLowerCase();
     return (mode==='choice' && el.tagName==='INPUT' && ['checkbox','radio'].includes(type)) ||
       (mode==='select' && el.tagName==='SELECT') ||
-      (mode==='input' && (el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && ['text','password','email','number','date','time','search','tel','url','range'].includes(type)))) ||
+      (mode==='input' && (el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && ['text','password','email','number','date','datetime-local','month','week','time','search','tel','url','range'].includes(type)))) ||
       (mode==='disclosure' && el.tagName==='SUMMARY');
   }
   controls.forEach(function(el){if(!allowed(el) && !el.disabled)el.setAttribute('tabindex','-1');});
@@ -100,7 +100,7 @@ window.PSStaticReader = function (data, page, interactions) {
   var compare = false, numbered = true;
   var reqs = data.spec.requirements || [];
   var header = document.createElement('header'); header.className='sr-header';
-  header.innerHTML='<div class="sr-identity"><h1 title="'+esc(page.title)+'">'+esc(page.title)+'</h1><span class="sr-eyebrow" title="'+esc(data.projectName+' · '+data.version)+'">'+esc(data.projectName+' · '+data.version)+(pendingCount?' · '+pendingCount+' 项待确认':'')+'</span></div><div class="sr-actions"><label><input type="checkbox" id="sr-numbers" checked>显示编号</label><button type="button" id="sr-compare" aria-pressed="false">展开状态对照</button><button type="button" id="sr-handoff-toggle" aria-expanded="false" aria-controls="sr-handoff">页面信息</button><button type="button" id="sr-link">定位链接</button></div>';
+  header.innerHTML='<div class="sr-identity"><h1 title="'+esc(page.title)+'">'+esc(page.title)+'</h1><span class="sr-eyebrow" title="'+esc(data.projectName+' · '+data.version)+'">'+esc(data.projectName+' · '+data.version)+(pendingCount?' · '+pendingCount+' 项待确认':'')+'</span></div><div class="sr-actions"><label><input type="checkbox" id="sr-numbers" checked>显示标注编号</label><button type="button" id="sr-compare" aria-pressed="false">展开状态对照</button><button type="button" id="sr-handoff-toggle" aria-expanded="false" aria-controls="sr-handoff">页面信息</button><button type="button" id="sr-link">定位链接</button></div>';
   var tabs=document.createElement('nav');tabs.className='sr-tabs';tabs.setAttribute('aria-label','页面状态');
   var stateNav=document.createElement('div');stateNav.className='sr-state-nav';
   var pickerLabel=document.createElement('label');pickerLabel.className='sr-state-picker-label';pickerLabel.hidden=true;
@@ -113,7 +113,7 @@ window.PSStaticReader = function (data, page, interactions) {
   var handoff=document.createElement('section');handoff.className='sr-handoff';handoff.id='sr-handoff';handoff.hidden=true;handoff.setAttribute('aria-label','页面补充与必要元素');
   var info=page.handoff || {};
   function bullets(items,empty){return '<ul>'+((items && items.length)?items:[empty]).map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul>';}
-  var prdRoot=new URL('../../../../site/index.html',location.href);
+  var prdRoot=new URL((data.projectEntries || {})[page.id] || '../../../../site/index.html',location.href);
   function chapter(id,query){var url=new URL(prdRoot);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/'+id+(query?'?'+query:'');return url.href;}
   handoff.innerHTML='<p>页面状态由顶部切换；控件仅提供局部交互。点击编号查看规则，正式视觉由设计交付。</p><div class="sr-handoff-grid"><section><h2>页面补充</h2>'+(info.role?'<p>适用角色：'+esc(info.role)+'</p>':'')+['preconditions','scope','out_of_scope','design_notes','dependencies','decisions'].filter(function(k){return info[k] && info[k].length;}).map(function(k){return '<h3>'+({preconditions:'本页前提',scope:'本页范围',out_of_scope:'本页排除项',design_notes:'设计补充',dependencies:'本页依赖',decisions:'待决策'}[k])+'</h3>'+bullets(info[k],'');}).join('')+'<p><a href="'+esc(chapter('scope'))+'" target="_blank" rel="noopener">版本范围</a> · <a href="'+esc(chapter('functions','page='+encodeURIComponent(page.id)+'&section=acceptance'))+'" target="_blank" rel="noopener">本页功能与验收</a></p></section><section><h2>必要元素</h2><div id="sr-elements"></div></section></div>';
   canvas.before(header,handoff,stateNav,layout);view.appendChild(canvas);layout.append(view,panel);
@@ -124,18 +124,32 @@ window.PSStaticReader = function (data, page, interactions) {
     if(title && state && title.textContent.trim()===state.title+' · '+(state.summary || ''))title.textContent=state.title;
     var snapshot=section.querySelector('.sr-snapshot');
     if (!snapshot) throw new Error('状态 '+section.dataset.psState+' 缺少 .sr-snapshot');
-    // Reserve a separate annotation gutter; pins must not cover widget hit areas.
-    interactions.forEach(function(it){
-      var el=target(it,section);if(!el || !snapshot.contains(el) || el.parentElement.classList.contains('sr-annotation-anchor'))return;
-      if(['TR','TD','TH','TBODY','THEAD','OPTION','SUMMARY'].includes(el.tagName))return;
-      var anchor=document.createElement('div');anchor.className='sr-annotation-anchor'+(el.tagName==='BUTTON' || el.tagName==='A'?' sr-anchor-inline':'');
-      el.before(anchor);anchor.appendChild(el);
-    });
+    // Only the visible representative reserves a gutter; repeated instances keep their layout.
+    interactions.forEach(function(it){ensureAnchor(target(it,section),snapshot);});
     var layer=document.createElement('div');layer.className='sr-pins';section.appendChild(layer);
   });
   var localControls=sections.map(function(section){return window.PSLocalControls(section.querySelector('.sr-snapshot'),function(){positionPins();});});
-  function applicable(it){return !it.state_ids || !it.state_ids.length || compare || it.state_ids.includes(selected);}
-  function target(it,section){var scope=section || sections.find(function(el){return !el.hidden && el.dataset.psState===selected;});var mapped=scope && scope.querySelector('[data-rule-ref="'+it.id+'"]');return mapped || canvas.querySelector(it.selector);}
+  function inspectable(el,section){
+    if(!el || !el.getClientRects().length)return false;
+    var rect=el.getBoundingClientRect();
+    for(var parent=el.parentElement;parent && parent!==section;parent=parent.parentElement){
+      var style=getComputedStyle(parent),clip=parent.getBoundingClientRect();
+      if(/auto|scroll|hidden|clip/.test(style.overflowX) && (rect.right<=clip.left || rect.left>=clip.right))return false;
+      if(/auto|scroll|hidden|clip/.test(style.overflowY) && (rect.bottom<=clip.top || rect.top>=clip.bottom))return false;
+    }
+    return true;
+  }
+  function ensureAnchor(el,snapshot){
+    if(!el || !snapshot.contains(el) || el.parentElement.classList.contains('sr-annotation-anchor') || ['TR','TD','TH','TBODY','THEAD','OPTION','SUMMARY'].includes(el.tagName))return el;
+    var anchor=document.createElement('div');anchor.className='sr-annotation-anchor'+(el.tagName==='BUTTON' || el.tagName==='A'?' sr-anchor-inline':'');
+    el.before(anchor);anchor.appendChild(el);return el;
+  }
+  function target(it,section){
+    var scope=section || sections.find(function(el){return !el.hidden && el.dataset.psState===selected;});if(!scope)return null;
+    var representative=scope.querySelector(it.selector),candidates=Array.from(scope.querySelectorAll('[data-rule-ref="'+it.id+'"]'));
+    if(representative)candidates.unshift(representative);
+    return candidates.find(function(el){return inspectable(el,scope);}) || representative || candidates[0] || null;
+  }
   function focusRule(it,fromPin,section,automatic){
     if(!it)return;
     document.querySelectorAll('.sr-highlight').forEach(function(el){el.classList.remove('sr-highlight');});
@@ -150,11 +164,17 @@ window.PSStaticReader = function (data, page, interactions) {
     if(fromPin && window.matchMedia('(max-width:640px)').matches)panel.scrollIntoView({block:'start',behavior:'smooth'});
     if(button && !automatic)button.focus({preventScroll:true});
   }
+  function ruleText(text){
+    var known=Object.create(null);reqs.forEach(function(req){(req.rule_details || []).forEach(function(rule){known[rule.id]={rule:rule,req:req.id};});});
+    var value=String(text == null?'':text), re=/\bRULE-[A-Za-z0-9_-]+\b/g, result='', start=0, match;
+    while((match=re.exec(value))){var target=known[match[0]];result+=esc(value.slice(start,match.index));result+=target?'<a href="'+esc(prdLink(target.req)+'&rule='+encodeURIComponent(match[0]))+'" target="_blank" rel="noopener" title="'+esc(match[0])+'">'+esc(target.rule.title || match[0])+'</a>':esc(match[0]);start=re.lastIndex;}
+    return result+esc(value.slice(start));
+  }
   function ruleDetails(rule){
-    var html=esc(rule.statement)+(rule.status==='pending'?' <span class="sr-pending">待确认</span>':'');
-    if(rule.clauses && rule.clauses.length)html+='<dl class="sr-clauses">'+rule.clauses.map(function(item){return '<div><dt>'+esc(item.label)+'</dt><dd>'+esc(item.text)+'</dd></div>';}).join('')+'</dl>';
-    if(rule.table){var table=rule.table;html+='<div class="sr-table-wrap"><table><thead><tr>'+table.columns.map(function(c){return '<th scope="col">'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
-    if(rule.examples && rule.examples.length)html+='<dl class="sr-examples">'+rule.examples.map(function(e){return '<dt>例如：'+esc(e.input)+'</dt><dd>'+esc(e.expected)+'</dd>';}).join('')+'</dl>';
+    var html=ruleText(rule.statement)+(rule.status==='pending'?' <span class="sr-pending">待确认</span>':'');
+    if(rule.clauses && rule.clauses.length)html+='<dl class="sr-clauses">'+rule.clauses.map(function(item){return '<div><dt>'+esc(item.label)+'</dt><dd>'+ruleText(item.text)+'</dd></div>';}).join('')+'</dl>';
+    if(rule.table){var table=rule.table;html+='<div class="sr-table-wrap"><table><thead><tr>'+table.columns.map(function(c){return '<th scope="col">'+ruleText(c)+'</th>';}).join('')+'</tr></thead><tbody>'+table.rows.map(function(row){return '<tr>'+row.map(function(c){return '<td>'+ruleText(c)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';}
+    if(rule.examples && rule.examples.length)html+='<dl class="sr-examples">'+rule.examples.map(function(e){return '<dt>例如：'+ruleText(e.input)+'</dt><dd>'+ruleText(e.expected)+'</dd>';}).join('')+'</dl>';
     return html;
   }
   function controlButton(it){var n=interactions.indexOf(it)+1;return '<button type="button" class="sr-control-link" data-locate="'+esc(it.id)+'"><span class="sr-number">'+n+'</span>'+esc(it.title || it.description)+'</button>';}
@@ -162,7 +182,7 @@ window.PSStaticReader = function (data, page, interactions) {
     var rule=entry.rule,controls=entry.controls,first=controls[0];
     var title=rule.title || (controls.length===1?(first.title || first.description):(first.title || first.description)+'等 '+controls.length+' 个控件');
     var heading=panelRuleCount>1?'<h3>'+esc(title)+'</h3>':'';
-    return '<article class="sr-card" data-rule-card="'+esc(first.id)+'" data-rule-id="'+esc(rule.id)+'">'+heading+'<div class="sr-rule-body">'+ruleDetails(rule)+'</div>'+(compare?'<p class="sr-applies">适用状态：'+esc(entry.states.map(function(id){var st=states.find(function(s){return s.id===id;});return st?st.title:id;}).join('、'))+'</p>':'')+'<details><summary>依据与验收</summary><p>'+esc(rule.id+' · '+(rule.source==='origin'?'方案依据':'AI 推断')+' · '+(rule.status==='confirmed'?'已确认':'待确认'))+'</p><p><a href="'+esc(prdLink(entry.requirement))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+(rule.acceptance_ids || []).map(function(id){return '<p><a href="'+esc(prdLink(entry.requirement)+'&section=acceptance&acceptance='+encodeURIComponent(id))+'" target="_blank" rel="noopener">验收 '+esc(id)+'</a></p>';}).join('')+'</details></article>';
+    return '<article class="sr-card" data-rule-card="'+esc(first.id)+'" data-rule-id="'+esc(rule.id)+'">'+heading+'<div class="sr-rule-body">'+ruleDetails(rule)+'</div>'+(compare?'<p class="sr-applies">适用状态：'+esc(entry.states.map(function(id){var st=states.find(function(s){return s.id===id;});return st?st.title:id;}).join('、'))+'</p>':'')+'<details><summary>依据与验收</summary><p>'+esc(rule.id+' · '+(rule.source==='origin'?'方案依据':'AI 推断')+' · '+(rule.status==='confirmed'?'已确认':'待确认'))+'</p><p><a href="'+esc(prdLink(entry.requirement))+'" target="_blank" rel="noopener">查看 PRD 原文</a></p>'+(rule.acceptance_ids || []).map(function(id){var owner=reqs.find(function(r){return r.id===entry.requirement;}), ac=((owner || {}).acceptance || []).find(function(a){return a.id===id;});return '<p><a data-acceptance-link="'+esc(id)+'" title="'+esc(id)+'" href="'+esc(prdLink(entry.requirement)+'&section=acceptance&acceptance='+encodeURIComponent(id))+'" target="_blank" rel="noopener">验收：'+esc(ac?(ac.title || ac.given+'；'+ac.when):id)+'</a></p>';}).join('')+'</details></article>';
   }
   function markSelection(){
     document.body.classList.toggle('sr-has-selection',!!selectedRule);
@@ -180,7 +200,7 @@ window.PSStaticReader = function (data, page, interactions) {
   var panelRuleCount=0;
   function renderRules(){
     var current=states.find(function(st){return st.id===selected;});
-    var model=window.PSAnnotationModel(reqs,interactions,states,selected,compare);
+    var model=window.PSAnnotationModel(reqs,interactions,states,selected,false);
     var partition=window.PSAnnotationSelection(model,selectedRule);
     var control=interactions.find(function(it){return it.id===selectedRule;});
     if(control && partition.focused.length){
@@ -196,18 +216,22 @@ window.PSStaticReader = function (data, page, interactions) {
   }
   function positionPins(){
     sections.forEach(function(section){
-      var layer=section.querySelector('.sr-pins');layer.replaceChildren();
-      if(section.hidden || !numbered)return;
+      var layer=section.querySelector('.sr-pins'),existing=new Map(),kept=new Set();
+      Array.from(layer.children).forEach(function(pin){existing.set(pin.dataset.interaction,pin);});
+      if(section.hidden || !numbered){layer.replaceChildren();return;}
       var box=section.getBoundingClientRect(), occupied=[];
-      interactions.filter(applicable).forEach(function(it){
-        var el=target(it,section);if(!el || !section.contains(el) || !el.getClientRects().length)return;
-        var rect=el.getBoundingClientRect(),pin=document.createElement('button');pin.type='button';pin.className='sr-pin';
+      interactions.filter(function(it){return !(it.state_ids || []).length || it.state_ids.includes(section.dataset.psState);}).forEach(function(it){
+        var el=target(it,section);if(!el || !section.contains(el) || !inspectable(el,section))return;
+        ensureAnchor(el,section.querySelector('.sr-snapshot'));
+        var rect=el.getBoundingClientRect(),pin=existing.get(it.id) || document.createElement('button');kept.add(it.id);pin.type='button';pin.classList.add('sr-pin');
         pin.dataset.interaction=it.id;pin.textContent=String(interactions.indexOf(it)+1);pin.setAttribute('aria-label','查看规则 '+pin.textContent+'：'+(it.title || it.description));
-        var size=24,x=Math.max(0,Math.min(box.width-size,rect.left-box.left-28)),y=Math.max(0,rect.top-box.top+Math.max(0,(Math.min(rect.height,28)-size)/2));
+        var size=20,x=Math.max(0,Math.min(box.width-size,rect.left-box.left-24)),y=Math.max(0,rect.top-box.top+Math.max(0,(Math.min(rect.height,24)-size)/2));
         while(occupied.some(function(p){return Math.abs(p.x-x)<size+2 && Math.abs(p.y-y)<size+2;})){y+=size+2;}
         occupied.push({x:x,y:y});pin.style.left=x+'px';pin.style.top=y+'px';
-        pin.onclick=function(e){e.preventDefault();e.stopPropagation();focusRule(it,true,section);};layer.appendChild(pin);
+        pin.onclick=function(e){e.preventDefault();e.stopPropagation();focusRule(it,true,section);};if(pin.parentNode!==layer)layer.appendChild(pin);
       });
+      // Reposition existing buttons without detaching the keyboard target.
+      existing.forEach(function(pin,id){if(!kept.has(id))pin.remove();});
     });
     markSelection();
   }
@@ -220,7 +244,7 @@ window.PSStaticReader = function (data, page, interactions) {
     sections.forEach(function(el){el.hidden=!compare && el.dataset.psState!==selected;});
     // Resolve a missing/stale link against the current snapshot, never another state.
     var currentSection=sections.find(function(el){return el.dataset.psState===selected;});
-    function selectable(it){var el=target(it,currentSection);return (!it.state_ids || !it.state_ids.length || it.state_ids.includes(selected)) && (it.rule_ids || []).length && el && currentSection.contains(el) && el.getClientRects().length;}
+    function selectable(it){var el=target(it,currentSection);return (!it.state_ids || !it.state_ids.length || it.state_ids.includes(selected)) && (it.rule_ids || []).length && el && currentSection.contains(el) && inspectable(el,currentSection);}
     var chosen=interactions.find(function(it){return it.id===selectedRule && selectable(it);}) || interactions.find(selectable);
     selectedRule=chosen?chosen.id:'';
     var current=states.find(function(s){return s.id===selected;});
@@ -232,7 +256,7 @@ window.PSStaticReader = function (data, page, interactions) {
     positionPins();
     if(chosen)focusRule(chosen,false,currentSection,true);else{markSelection();updateHash();}
   }
-  function prdLink(rid){var url=new URL('../../../../site/index.html',location.href);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/functions?requirement='+encodeURIComponent(rid);return url.href;}
+  function prdLink(rid){var url=new URL(prdRoot);url.hash='/v/'+encodeURIComponent(data.version)+'/_prd/functions?requirement='+encodeURIComponent(rid);return url.href;}
   function updateHash(){var p=new URLSearchParams({state:selected});if(selectedRule)p.set('rule',selectedRule);history.replaceState(null,'','#'+p.toString());}
   // Reply only to this frame's parent, on demand; supports file:// opaque origins.
   window.addEventListener('message',function(event){
@@ -243,7 +267,7 @@ window.PSStaticReader = function (data, page, interactions) {
   });
   var linkDialog=document.createElement('dialog');linkDialog.className='sr-link-dialog';linkDialog.innerHTML='<h2>定位当前状态与规则</h2><p>接收者打开同一份项目即可定位。file:// 地址需有相同本地文件路径；localhost 链接只适用于当前电脑。</p><label>项目入口<input readonly id="sr-project-link"></label><label>独立页面<input readonly id="sr-direct-link"></label><button type="button">关闭</button>';document.body.appendChild(linkDialog);linkDialog.querySelector('button').onclick=function(){linkDialog.close();};
   header.querySelector('#sr-handoff-toggle').onclick=function(){handoff.hidden=!handoff.hidden;this.setAttribute('aria-expanded',String(!handoff.hidden));positionPins();};
-  header.querySelector('#sr-link').onclick=function(){var direct=new URL(location.href);direct.hash=new URLSearchParams({state:selected,...(selectedRule?{rule:selectedRule}:{})}).toString();var project=new URL('../../../../site/index.html',location.href);project.hash=(data.pageRoutes || {})[page.id]+'?'+direct.hash.slice(1);linkDialog.querySelector('#sr-project-link').value=project.href;linkDialog.querySelector('#sr-direct-link').value=direct.href;linkDialog.showModal();linkDialog.querySelector('input').select();};
+  header.querySelector('#sr-link').onclick=function(){var direct=new URL(location.href);direct.hash=new URLSearchParams({state:selected,...(selectedRule?{rule:selectedRule}:{})}).toString();var project=new URL(prdRoot);project.hash=(data.pageRoutes || {})[page.id]+'?'+direct.hash.slice(1);linkDialog.querySelector('#sr-project-link').value=project.href;linkDialog.querySelector('#sr-direct-link').value=direct.href;linkDialog.showModal();linkDialog.querySelector('input').select();};
   var live=document.createElement('p');live.className='sr-live';live.setAttribute('role','status');live.setAttribute('aria-live','polite');header.appendChild(live);
   function fitStates(){
     pickerLabel.hidden=states.length<2 || tabs.scrollWidth<=stateNav.clientWidth;
@@ -262,6 +286,7 @@ window.PSStaticReader = function (data, page, interactions) {
   header.querySelector('#sr-compare').onclick=function(){compare=!compare;draw();};
   header.querySelector('#sr-numbers').onchange=function(e){numbered=e.target.checked;positionPins();};
   window.addEventListener('hashchange',function(){var p=new URLSearchParams(location.hash.slice(1)),id=p.get('state');selectedRule=p.get('rule') || '';if(states.some(function(s){return s.id===id;})){selected=id;compare=false;localControls.forEach(function(local){local.reset();});draw();}});
+  canvas.addEventListener('scroll',positionPins,true);
   window.addEventListener('resize',positionPins);
   window.addEventListener('resize',fitStates);
   if(window.ResizeObserver)new ResizeObserver(fitStates).observe(stateNav);
@@ -283,14 +308,14 @@ window.PSStaticReader = function (data, page, interactions) {
   // PS_STATIC_PROPERTIES: authored properties are applied before the snapshots become inert.
   var interactions=data.spec.interactions.filter(function(i){return i.page===page.id;});
   interactions.forEach(function(it){var el=document.querySelector(it.selector),props=it.properties || {};if(!el)return;
-    Object.keys(props).forEach(function(k){var v=props[k];if(k==='text' && !el.children.length)el.textContent=v;
-      else if(k==='defaultValue'){el.value=v;el.defaultValue=v;}
-      else if(k==='options' && el.tagName==='SELECT'){el.replaceChildren();v.forEach(function(o){el.add(new Option(o.label,o.value));});}
+    if(props.options && el.tagName==='SELECT'){var selected=Array.from(el.selectedOptions).map(function(o){return o.value;});el.replaceChildren();props.options.forEach(function(o){el.add(new Option(o.label,o.value,false,selected.includes(o.value)));});}
+    Object.keys(props).forEach(function(k){var v=props[k];if(k==='options' || k==='defaultValue')return;if(k==='text' && !el.children.length)el.textContent=v;
       else if(k==='width')el.style.width={auto:'auto',compact:'160px',full:'100%'}[v];
       else if(k==='unit')el.dataset.unit=v;
       else if(k==='required')el.required=v;
       else el.setAttribute(k,v);
     });
+    if(Object.prototype.hasOwnProperty.call(props,'defaultValue')){el.value=props.defaultValue;el.defaultValue=props.defaultValue;}
   });
   window.PSStaticReader(data,page,interactions);
 })();

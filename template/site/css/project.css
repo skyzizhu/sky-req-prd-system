@@ -136,6 +136,14 @@
 .prd-boundaries table{width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px}
 .prd-boundaries th,.prd-boundaries td{padding:10px 12px;vertical-align:top;border-bottom:1px solid #e2e8f0;min-width:150px}
 .prd-boundaries thead{background:#f8fafc}.prd-boundaries small{color:#64748b;font-size:11px}
+.prd-boundaries th:first-child{width:43%}.prd-boundaries th:nth-child(2){width:42%}.prd-boundaries th:last-child{width:15%}
+.prd-boundaries th:last-child,.prd-boundaries td:last-child{min-width:100px}
+.prd-boundaries td{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.prd-case-condition{margin:0 0 6px}.prd-case-condition>span{font-size:11px;color:#64748b;margin-right:8px}
+.prd-case-evidence{font-size:11px;color:#64748b;margin:8px 0 0}.prd-case-evidence>summary{font-size:11px;font-weight:400;cursor:pointer}
+.prd-reader .prd-case-evidence p{margin:4px 0;font-size:11px}
+.prd-case-prototype{margin-top:8px;font-size:12px}
+
 
 .prd-diagram{margin:18px 0;padding:14px;border:1px solid #e2e8f0;border-radius:7px;background:#fff}
 .mermaid-inline{overflow-x:auto;margin:16px 0}.mermaid-box{min-width:0;text-align:center;padding:12px}.mermaid-box svg{max-width:100%;height:auto}

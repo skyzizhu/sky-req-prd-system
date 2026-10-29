@@ -190,14 +190,21 @@ window.PSStaticReader = function (data, page, interactions) {
     panel.querySelectorAll('[data-locate]').forEach(function(button){var on=button.dataset.locate===selectedRule;button.classList.toggle('sr-control-selected',on);button.setAttribute('aria-pressed',String(on));});
   }
   function stateChanges(current){
-    if(compare)return '';
-    var baseline=states[0];
-    if(current.id===baseline.id)return '<p class="sr-state-context">基准画面 · 以下列出适用约束。</p>'+(current.summary?'<p class="sr-state-context">'+esc(current.summary)+'</p>':'')+(current.next?'<p class="sr-state-context"><strong>后续：</strong>'+esc(current.next)+'</p>':'');
-    var names=function(st){return (st.elements || []).map(function(e){return e.title;});};
-    var before=names(baseline),after=names(current),added=after.filter(function(n){return !before.includes(n);}),removed=before.filter(function(n){return !after.includes(n);});
-    return '<section class="sr-state-changes"><h3>本状态变化</h3><p class="sr-change-baseline">相对「'+esc(baseline.title)+'」画面</p><p>'+esc(current.summary || '状态差异以对应画面和专属规则为准。')+'</p>'+(added.length?'<p><strong>新增显示：</strong>'+esc(added.join('、'))+'</p>':'')+(removed.length?'<p><strong>不再显示：</strong>'+esc(removed.join('、'))+'</p>':'')+(current.next?'<p><strong>后续：</strong>'+esc(current.next)+'</p>':'')+'</section>';
+    // Element titles/DOM IDs are labels, not stable identities for business differences.
+    if(!current.summary && !current.next)return '';
+    return '<section class="sr-state-context" aria-label="当前状态说明">'+(current.summary?'<p><strong>当前状态：</strong>'+esc(current.summary)+'</p>':'')+(current.next?'<p><strong>后续处理：</strong>'+esc(current.next)+'</p>':'')+'</section>';
   }
   var panelRuleCount=0;
+  function relatedRules(entries){
+    var shown=new Set(entries.map(function(e){return e.rule.id;})), links=new Map(), known=new Map();
+    reqs.forEach(function(req){(req.rule_details || []).forEach(function(rule){known.set(rule.id,{rule:rule,req:req.id});});});
+    entries.forEach(function(entry){(entry.rule.related_rule_ids || []).forEach(function(id){
+      if(shown.has(id) || links.has(id) || !known.has(id))return;
+      var target=known.get(id);
+      links.set(id,'<li><a href="'+esc(prdLink(target.req)+'&rule='+encodeURIComponent(id)+'&from='+encodeURIComponent(entry.rule.id))+'" target="_blank" rel="noopener">'+esc(target.rule.title || id)+'</a>'+(target.rule.status==='pending'?' <span class="sr-pending">待确认</span>':'')+'</li>');
+    });});
+    return links.size?'<nav class="sr-related-rules" aria-label="关联规则"><h3>关联规则</h3><ul>'+Array.from(links.values()).join('')+'</ul></nav>':'';
+  }
   function renderRules(){
     var current=states.find(function(st){return st.id===selected;});
     var model=window.PSAnnotationModel(reqs,interactions,states,selected,false);
@@ -208,7 +215,7 @@ window.PSStaticReader = function (data, page, interactions) {
       var related=new Map();partition.focused.forEach(function(entry){entry.controls.forEach(function(it){if(it.id!==control.id)related.set(it.id,it);});});
       var n=interactions.indexOf(control)+1;
       var locate='<button type="button" class="sr-control-link" data-locate="'+esc(control.id)+'" aria-label="'+esc('定位：'+(control.title || control.description))+'"><span class="sr-number">'+n+'</span></button>';
-      panel.innerHTML='<header class="sr-focus-heading"><span class="sr-eyebrow">当前控件 · '+esc(current.title)+'</span><div class="sr-focus-title"><h2>'+esc(control.title || control.description)+'</h2>'+locate+'</div><div class="sr-focus-actions"><span>'+panelRuleCount+' 条关联规则</span></div></header><div class="sr-focused-rules">'+partition.focused.map(card).join('')+'</div>'+(related.size?'<details class="sr-related-controls"><summary>关联控件（'+related.size+'）</summary><div class="sr-control-links">'+Array.from(related.values()).map(controlButton).join('')+'</div></details>':'')+(!compare?'<details class="sr-state-context-fold"><summary>本状态说明</summary>'+stateChanges(current)+'</details>':'');
+      panel.innerHTML='<header class="sr-focus-heading"><span class="sr-eyebrow">当前控件 · '+esc(current.title)+'</span><div class="sr-focus-title"><h2>'+esc(control.title || control.description)+'</h2>'+locate+'</div><div class="sr-focus-actions"><span>'+panelRuleCount+' 条关联规则</span></div></header>'+stateChanges(current)+'<div class="sr-focused-rules">'+partition.focused.map(card).join('')+'</div>'+relatedRules(partition.focused)+(related.size?'<details class="sr-related-controls"><summary>关联控件（'+related.size+'）</summary><div class="sr-control-links">'+Array.from(related.values()).map(controlButton).join('')+'</div></details>':'');
     }else{
       panel.innerHTML='<header><h2>'+esc(current.title)+'</h2></header><p>本状态暂无可查看的标注。</p>'+stateChanges(current);
     }

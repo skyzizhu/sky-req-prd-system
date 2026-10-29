@@ -40,7 +40,7 @@ const {pathToFileURL}=require('node:url');
    assert.equal(await scope.locator('.sr-pin-selected').getAttribute('data-interaction'),'INT-ORDER-NAME');
    await scope.getByRole('button',{name:'提交失败',exact:true}).click();
    assert.equal(await scope.locator('[data-ps-state="failed"]').isVisible(),true);
-   assert.equal(await scope.locator('.sr-state-context-fold[open]').count(),0);
+   assert.equal(await scope.locator('.sr-state-context').isVisible(),true);
    assert.equal(await scope.locator('.sr-tabs button[aria-pressed="true"]:focus').count(),1);
    assert.doesNotMatch(await scope.locator('.sr-rules').innerText(),/失败后保留已填内容/);
    assert.doesNotMatch(await scope.locator('.sr-rules').innerText(),/提交中禁用/);

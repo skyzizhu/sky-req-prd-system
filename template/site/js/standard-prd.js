@@ -11,6 +11,19 @@ window.PSStandardPRD = {
     var labels={provided:'已提供（不代表需求已确认）',pending:'待补充',not_applicable:'不适用'};
     container.className='content';
     container.innerHTML='<div class="doc standard-prd"><header><h1>'+esc(section.title)+'</h1>'+(section.status==='provided'?'<details class="chapter-evidence"><summary>资料依据</summary><p>'+esc(section.reason)+'</p></details>':'<p class="chapter-status">'+esc(labels[section.status]+' · '+section.reason)+'</p>')+'<button id="standard-prd-export">导出完整 PRD（Markdown）</button></header><div>'+window.PS.mdToHtml(section.markdown)+'</div>'+(cid==='appendix'?((bundle.attachments || []).length?'<h2>文件附件</h2>':'')+'<div id="standard-attachments"></div>':'')+'</div>';
+    if(cid==='scope'){
+      // Enrich only the generated functional index, never arbitrary business tables.
+      var heading=Array.from(container.querySelectorAll('h3')).find(function(h){return h.textContent==='本版功能清单';}), table=heading && heading.nextElementSibling;
+      while(table && table.tagName!=='TABLE' && !/^H[1-6]$/.test(table.tagName))table=table.nextElementSibling;
+      if(table && table.tagName==='TABLE'){
+        var labels=Array.from(table.querySelectorAll('thead th')).map(function(th){return th.textContent.trim();}), nameAt=labels.indexOf('功能'), idAt=labels.indexOf('编号'), changeAt=labels.indexOf('变更类型');
+        if(nameAt>=0 && idAt>=0 && changeAt>=0)table.querySelectorAll('tbody tr').forEach(function(row){
+          var cells=row.cells, id=cells[idAt] && cells[idAt].textContent.trim();
+          if(!cells[nameAt] || !cells[changeAt] || cells[changeAt].textContent.trim()==='移除' || !((bundle.spec || {}).requirements || []).some(function(r){return r.id===id;}))return;
+          var link=document.createElement('a');link.textContent=cells[nameAt].textContent;link.href='#/v/'+encodeURIComponent(vid)+'/_prd/functions?requirement='+encodeURIComponent(id);cells[nameAt].replaceChildren(link);
+        });
+      }
+    }
     if(cid==='users'){
       (bundle.spec.diagrams || []).filter(function(d){return d.level==='module';}).forEach(function(d){
         var heading=Array.from(container.querySelectorAll('h3')).find(function(h){return h.textContent===d.title;});

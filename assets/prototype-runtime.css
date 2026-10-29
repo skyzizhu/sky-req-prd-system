@@ -100,16 +100,18 @@ body.sr-host { margin: 0; background: #f5f5f5; color: #252525; font: 13px/1.5 -a
 .sr-rule-body { font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
 .sr-rule-body .sr-clauses { margin: 7px 0; }
 .sr-rule-body .sr-clauses>div { border-top: 1px solid #edf0f3; padding-top: 5px; }
-.sr-state-changes { border-left: 2px solid #8c9bb3; background: #f7f9fc; margin: 10px 0 14px; padding: 8px 10px; font-size: 12px; }
-.sr-state-changes h3 { font-size: 12px; margin: 0 0 5px; }
-.sr-state-changes p { margin: 5px 0; line-height: 1.6; }
-.sr-state-context,.sr-applies { font-size: 11px; color: #687488; line-height: 1.6; margin: 5px 0 9px; }
+.sr-state-context { border-left: 2px solid #8c9bb3; background: #f7f9fc; margin: 10px 0; padding: 6px 10px; font-size: 12px; color: #334155; overflow-wrap: anywhere; }
+.sr-state-context p { margin: 4px 0; line-height: 1.6; }
+.sr-applies { font-size: 11px; color: #687488; line-height: 1.6; margin: 5px 0 9px; }
+.sr-related-rules { border-top: 1px solid #e2e8f0; padding: 10px 0; font-size: 12px; overflow-wrap: anywhere; }
+.sr-related-rules h3 { font-size: 12px; margin: 0 0 6px; }
+.sr-related-rules ul { margin: 0; padding-left: 18px; }
+.sr-related-rules li { margin: 5px 0; }
+.sr-related-rules a { color: #345acb; }
 .sr-card .sr-rule-body { color: #334155; line-height: 1.7; }
 .sr-focus-heading { border-bottom: 1px solid #dce2ea; padding-bottom: 10px; margin-bottom: 2px; }
 .sr-focus-heading h2 { margin: 4px 0 8px!important; font-size: 16px!important; }
 .sr-focus-actions { display: flex; gap: 8px; align-items: center; justify-content: space-between; color: #64748b; font-size: 11px; }
-.sr-state-context-fold { border-top: 1px solid #e2e8f0; margin-top: 12px; padding-top: 10px; font-size: 12px; }
-.sr-state-context-fold>summary { cursor: pointer; color: #526078; font-weight: 600; padding: 3px 0; }
 .sr-snapshot input[type=checkbox][role=switch] { appearance: none; position: relative; display: inline-block; width: 28px; height: 16px; border: 1px solid #888; border-radius: 9px; background: #ddd; vertical-align: middle; }
 .sr-snapshot input[type=checkbox][role=switch]::before { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 1px #555; }
 .sr-snapshot input[type=checkbox][role=switch]:checked { background: #666; border-color: #666; }

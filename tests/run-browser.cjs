@@ -5,6 +5,7 @@ const repo=path.resolve(__dirname,'..');
 const work=fs.mkdtempSync(path.join(os.tmpdir(),'prd-browser-'));
 const suites=[
   ['static-reader','scripts/create_static_demo.py'],
+  ['downstream-reading',null],
   ['local-controls',null],
   ['list-annotations',null],
   ['production-reader','scripts/create_static_demo.py'],

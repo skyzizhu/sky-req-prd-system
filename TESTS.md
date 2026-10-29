@@ -24,6 +24,7 @@ node tests/run-browser.cjs
 | 用例 | 覆盖 |
 | --- | --- |
 | static-reader-browser.cjs | 独立页与站点 iframe、默认标注、状态切换/对照、精确规则、PRD 导出、窄屏 |
+| downstream-reading-browser.cjs | 操作结果关联链接、同版本定位与来源返回、引用去重及不递归、状态说明优先、技术编号不产生错误增删说明、功能清单跳转、独立页/iframe/键盘/窄屏 |
 | diagrams-browser.cjs | 本地图形库延迟冷启动、离线真实SVG、缩放/窄屏/键盘、缺资源与错误语法的明确诊断 |
 | local-controls-browser.cjs | 原生选择与联动、状态重置、键盘、窄屏、编号不遮挡控件、控件/标注互不触发、提交受阻 |
 | editor-browser.cjs | 属性/正文预览保存、实际属性生效、撤销与冲突；不模拟业务提交 |
